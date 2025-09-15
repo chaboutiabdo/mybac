@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THE SMART - AI-Powered Learning Platform</title>
+    <meta name="description" content="THE SMART - Master your exams with AI-powered quizzes, expert solutions, and personalized learning paths." />
+    <meta name="author" content="THE SMART Team" />
+    <meta name="keywords" content="smart learning, AI education, online quizzes, exam preparation, personalized learning" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <link rel="icon" href="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
+
+    <meta property="og:title" content="THE SMART - AI-Powered Learning Platform" />
+    <meta property="og:description" content="Master your exams with AI-powered quizzes and personalized learning paths." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@thesmart" />
+    <meta name="twitter:image" content="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- PWA Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            }, function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
