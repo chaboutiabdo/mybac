@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,6 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-
 interface School {
   id: string;
   name: string;
@@ -41,58 +41,86 @@ export function SchoolsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newSchool, setNewSchool] = useState({ name: "", location: "" });
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with real data from Supabase
-  const [schools, setSchools] = useState<School[]>([
-    {
-      id: "1",
-      name: "Lycée Mohamed Boudiaf",
-      location: "Algiers",
-      studentsCount: 245,
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "2", 
-      name: "Lycée Ibn Khaldoun",
-      location: "Oran",
-      studentsCount: 198,
-      createdAt: "2024-01-20"
-    },
-    {
-      id: "3",
-      name: "Lycée El Houria",
-      location: "Constantine",
-      studentsCount: 156,
-      createdAt: "2024-02-01"
-    }
-  ]);
+  // Fetch schools from Supabase
+  useEffect(() => {
+    const fetchSchools = async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase.from("schools").select("id, name, city, created_at");
+      if (error) {
+        setError("Failed to fetch schools");
+      } else if (data) {
+        // Optionally, fetch students count for each school if needed
+        setSchools(
+          data.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            location: s.city,
+            studentsCount: 0, // You can fetch real count if needed
+            createdAt: s.created_at,
+          }))
+        );
+      }
+      setLoading(false);
+    };
+    fetchSchools();
+  }, []);
 
   const filteredSchools = schools.filter(school =>
     school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     school.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddSchool = () => {
+  const handleAddSchool = async () => {
     if (newSchool.name && newSchool.location) {
-      const school: School = {
-        id: Date.now().toString(),
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase.from("schools").insert({
         name: newSchool.name,
-        location: newSchool.location,
-        studentsCount: 0,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setSchools([...schools, school]);
-      setNewSchool({ name: "", location: "" });
-      setIsAddDialogOpen(false);
+        city: newSchool.location,
+        contract_date: new Date().toISOString(),
+      }).select();
+      if (error) {
+        setError("Failed to add school");
+      } else if (data && data.length > 0) {
+        // Optionally, fetch students count for the new school
+        setSchools([
+          ...schools,
+          {
+            id: data[0].id,
+            name: data[0].name,
+            location: data[0].city,
+            studentsCount: 0,
+            createdAt: data[0].created_at,
+          },
+        ]);
+        setNewSchool({ name: "", location: "" });
+        setIsAddDialogOpen(false);
+      }
+      setLoading(false);
     }
   };
 
-  const handleDeleteSchool = (id: string) => {
-    setSchools(schools.filter(school => school.id !== id));
+  const handleDeleteSchool = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.from("schools").delete().eq("id", id);
+    if (error) {
+      setError("Failed to delete school");
+    } else {
+      setSchools(schools.filter(school => school.id !== id));
+    }
+    setLoading(false);
   };
 
   return (
     <div className="space-y-6">
+      {error && <div className="text-red-500">{error}</div>}
+      {loading && <div className="text-gray-500">Loading...</div>}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

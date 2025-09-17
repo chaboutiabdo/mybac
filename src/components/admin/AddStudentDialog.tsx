@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,13 +46,25 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
     notes: ""
   });
 
-  const schools = [
-    "Lycée Mohamed Boudiaf",
-    "Lycée Ibn Khaldoun", 
-    "Lycée El Houria",
-    "Lycée Ibn Sina",
-    "Lycée Al Khawarizmi"
-  ];
+
+  // Fetch real schools from Supabase
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [schoolsError, setSchoolsError] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchSchools = async () => {
+      setSchoolsLoading(true);
+      setSchoolsError(null);
+      const { data, error } = await supabase.from("schools").select("id, name");
+      if (error) {
+        setSchoolsError("Failed to load schools");
+      } else if (data) {
+        setSchools(data);
+      }
+      setSchoolsLoading(false);
+    };
+    fetchSchools();
+  }, []);
 
   const streams = [
     "Sciences Expérimentales",
@@ -61,28 +75,69 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
     "Informatique"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Add student creation logic when Supabase is connected
-    console.log("Creating student:", { ...studentData, hasSchool });
-    
-    toast({
-      title: "Student Added",
-      description: `${studentData.name} has been successfully added to the system.`,
-    });
-    
-    setOpen(false);
-    // Reset form
-    setStudentData({
-      name: "",
-      email: "",
-      password: "",
-      school: "",
-      stream: "",
-      phone: "",
-      notes: ""
-    });
-    setHasSchool(false);
+    // 1. Create user in Supabase Auth (optional, if using Supabase Auth)
+    // 2. Insert into profiles table
+    // 3. If hasSchool, insert into school_students
+    try {
+      // Insert into profiles
+      // 1. Create user in Supabase Auth
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        email: studentData.email,
+        password: studentData.password,
+        email_confirm: true
+      });
+      if (authError || !authUser?.user) {
+        toast({ title: "Error", description: authError?.message || "Failed to create auth user.", variant: "destructive" });
+        return;
+      }
+      const userId = authUser.user.id;
+      // 2. Insert into profiles
+      const { data: profile, error: profileError } = await supabase.from("profiles").insert({
+        name: studentData.name,
+        email: studentData.email,
+        stream: studentData.stream,
+        role: "student",
+        user_id: userId,
+        subscription_tier: "basic",
+        total_score: 0,
+      }).select().single();
+      if (profileError || !profile) {
+        toast({ title: "Error", description: profileError?.message || "Failed to add student.", variant: "destructive" });
+        return;
+      }
+      // If hasSchool, link to school_students
+      if (hasSchool && studentData.school) {
+        // Find school id by name
+        const { data: school } = await supabase.from("schools").select("id").eq("name", studentData.school).single();
+        if (school) {
+          await supabase.from("school_students").insert({
+            school_id: school.id,
+            student_id: profile.user_id,
+            status: "active"
+          });
+        }
+      }
+      toast({
+        title: "Student Added",
+        description: `${studentData.name} has been successfully added to the system.`,
+      });
+      setOpen(false);
+      // Reset form
+      setStudentData({
+        name: "",
+        email: "",
+        password: "",
+        school: "",
+        stream: "",
+        phone: "",
+        notes: ""
+      });
+      setHasSchool(false);
+    } catch (err) {
+      toast({ title: "Error", description: "Unexpected error.", variant: "destructive" });
+    }
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,17 +147,47 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
     }
   };
 
-  const processCsvFile = () => {
+  const processCsvFile = async () => {
     if (!csvFile) return;
-    
-    // TODO: Process CSV file when Supabase is connected
-    console.log("Processing CSV file:", csvFile.name);
-    
-    toast({
-      title: "CSV Upload Started",
-      description: "Processing student data from CSV file...",
-    });
-    
+    toast({ title: "CSV Upload Started", description: "Processing student data from CSV file..." });
+    try {
+      const text = await csvFile.text();
+      const rows = text.split(/\r?\n/).filter(Boolean);
+      if (rows.length < 2) throw new Error("CSV must have a header and at least one row");
+      const headers = rows[0].split(",").map(h => h.trim());
+      const students = rows.slice(1).map(row => {
+        const values = row.split(",");
+        const obj = {} as any;
+        headers.forEach((h, i) => { obj[h] = values[i] ? values[i].trim() : ""; });
+        return obj;
+      });
+      for (const student of students) {
+        // Insert into profiles
+        const userId = student.email;
+        const { data: profile, error: profileError } = await supabase.from("profiles").insert({
+          name: student.name,
+          email: student.email,
+          stream: student.stream,
+          role: "student",
+          user_id: userId,
+        }).select().single();
+        if (profileError || !profile) continue;
+        // If school specified, link to school_students
+        if (student.school) {
+          const { data: school } = await supabase.from("schools").select("id").eq("name", student.school).single();
+          if (school) {
+            await supabase.from("school_students").insert({
+              school_id: school.id,
+              student_id: profile.user_id,
+              status: "active"
+            });
+          }
+        }
+      }
+      toast({ title: "CSV Upload Complete", description: "All students processed." });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to process CSV.", variant: "destructive" });
+    }
     setCsvFile(null);
     setOpen(false);
   };
@@ -229,17 +314,18 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                   {hasSchool ? (
                     <div className="space-y-2">
                       <Label htmlFor="school">School</Label>
-                      <Select 
-                        value={studentData.school} 
+                      <Select
+                        value={studentData.school}
                         onValueChange={(value) => setStudentData(prev => ({ ...prev, school: value }))}
+                        disabled={schoolsLoading || !!schoolsError}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select student's school" />
+                          <SelectValue placeholder={schoolsLoading ? "Loading..." : (schoolsError ? schoolsError : "Select student's school")} />
                         </SelectTrigger>
                         <SelectContent>
                           {schools.map((school) => (
-                            <SelectItem key={school} value={school}>
-                              {school}
+                            <SelectItem key={school.id} value={school.name}>
+                              {school.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
