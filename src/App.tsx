@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import LazyLoad from "./components/LazyLoad";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PerformanceMonitor from "./components/PerformanceMonitor";
 
 // Lazy load heavy components for better performance
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -34,6 +35,7 @@ const App = () => (
       <ThemeProvider>
         <LanguageProvider>
           <TooltipProvider>
+            <PerformanceMonitor />
             <Toaster />
             <Sonner />
             <BrowserRouter>
