@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import "katex/dist/katex.min.css";
 import { InlineMath, BlockMath } from "react-katex";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Brain, MessageCircle, BookOpen, Lightbulb, Sparkles, Loader2 } from "lucide-react";
+import { Brain, MessageCircle, BookOpen, Lightbulb, Sparkles, Loader2, Send, Bot, User } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +53,21 @@ const LearnAI = () => {
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'ai', content: string}>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAskQuestion();
+    }
+  };
 
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject);
@@ -190,10 +205,10 @@ const LearnAI = () => {
             </div>
 
             <div className="lg:col-span-2">
-              <Card className="h-[500px] md:h-[600px] flex flex-col">
-                <CardHeader>
+              <Card className="h-[600px] md:h-[700px] flex flex-col border-2 border-primary/20 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
                   <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-                    <MessageCircle className="h-5 w-5 text-primary" />
+                    <Bot className="h-6 w-6 text-primary" />
                     مساعد الذكاء الاصطناعي للدراسة
                   </CardTitle>
                   <CardDescription className="text-sm md:text-base">
@@ -201,77 +216,118 @@ const LearnAI = () => {
                   </CardDescription>
                 </CardHeader>
                 
-                <CardContent className="flex-1 flex flex-col">
-                  <div className="flex-1 bg-muted/20 rounded-lg p-3 md:p-4 mb-4 overflow-y-auto">
+                <CardContent className="flex-1 flex flex-col p-0">
+                  {/* Chat Messages Area */}
+                  <div className="flex-1 bg-gradient-to-b from-background to-muted/5 p-4 overflow-y-auto">
                     {chatMessages.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-center text-muted-foreground">
-                        <div className="space-y-2">
-                          <Brain className="h-10 w-10 md:h-12 md:w-12 mx-auto text-primary/50" />
-                          <p className="text-sm md:text-base">اختر موضوعاً واسأل سؤالك الأول!</p>
-                          <p className="text-xs md:text-sm">أنا هنا لمساعدتك في فهم مفاهيم البكالوريا خطوة بخطوة.</p>
+                      <div className="h-full flex items-center justify-center text-center">
+                        <div className="space-y-4 max-w-md">
+                          <div className="relative">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
+                              <Brain className="h-10 w-10 text-primary animate-pulse" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center">
+                              <Sparkles className="h-3 w-3 text-accent-foreground" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-lg font-semibold text-foreground">مرحباً! أنا مساعدك الذكي</h3>
+                            <p className="text-sm text-muted-foreground">اختر موضوعاً واسأل سؤالك الأول!</p>
+                            <p className="text-xs text-muted-foreground">أنا هنا لمساعدتك في فهم مفاهيم البكالوريا خطوة بخطوة.</p>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         {chatMessages.map((message, index) => (
-                          <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] md:max-w-[80%] p-3 rounded-lg ${
+                          <div key={index} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {/* Avatar */}
+                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                               message.role === 'user' 
                                 ? 'bg-primary text-primary-foreground' 
-                                : 'bg-card border'
+                                : 'bg-secondary text-secondary-foreground'
                             }`}>
                               {message.role === 'user' ? (
-                                <p className="text-xs md:text-sm whitespace-pre-wrap">{message.content}</p>
+                                <User className="h-4 w-4" />
                               ) : (
-                                <div className="prose prose-sm dark:prose-invert max-w-none">
-                                  {message.content.split(/(\\\(.*?\\\)|\\\[.*?\\\])/).map((part, index) => {
-                                    if (part.startsWith('\\(') && part.endsWith('\\)')) {
-                                      // Inline math
-                                      const math = part.slice(2, -2);
-                                      return <InlineMath key={index}>{math}</InlineMath>;
-                                    } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
-                                      // Block math
-                                      const math = part.slice(2, -2);
-                                      return <BlockMath key={index}>{math}</BlockMath>;
-                                    } else {
-                                      // Regular text
-                                      return <span key={index} className="text-xs md:text-sm whitespace-pre-wrap">{part}</span>;
-                                    }
-                                  })}
-                                </div>
+                                <Bot className="h-4 w-4" />
                               )}
+                            </div>
+                            
+                            {/* Message Content */}
+                            <div className={`flex-1 max-w-[85%] ${message.role === 'user' ? 'text-left' : 'text-right'}`}>
+                              <div className={`p-4 rounded-2xl shadow-sm ${
+                                message.role === 'user' 
+                                  ? 'bg-primary text-primary-foreground ml-auto' 
+                                  : 'bg-card border border-border/50'
+                              }`}>
+                                {message.role === 'user' ? (
+                                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                ) : (
+                                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+                                    {message.content.split(/(\\\(.*?\\\)|\\\[.*?\\\])/).map((part, partIndex) => {
+                                      if (part.startsWith('\\(') && part.endsWith('\\)')) {
+                                        // Inline math
+                                        const math = part.slice(2, -2);
+                                        return <InlineMath key={partIndex}>{math}</InlineMath>;
+                                      } else if (part.startsWith('\\[') && part.endsWith('\\]')) {
+                                        // Block math
+                                        const math = part.slice(2, -2);
+                                        return <BlockMath key={partIndex}>{math}</BlockMath>;
+                                      } else {
+                                        // Regular text with better formatting
+                                        return (
+                                          <span key={partIndex} className="whitespace-pre-wrap">
+                                            {part.split('\n').map((line, lineIndex) => (
+                                              <span key={lineIndex}>
+                                                {line}
+                                                {lineIndex < part.split('\n').length - 1 && <br />}
+                                              </span>
+                                            ))}
+                                          </span>
+                                        );
+                                      }
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
+                        <div ref={chatEndRef} />
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-3">
-                    <Textarea
-                      placeholder={user ? (selectedChapter ? "اسأل سؤالاً حول الفصل المختار..." : "اختر موضوعاً أولاً، ثم اسأل سؤالك...") : "يجب تسجيل الدخول للاستفادة من الذكاء الاصطناعي"}
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      disabled={!selectedChapter || isLoading || !user}
-                      className="min-h-[60px] md:min-h-[80px] text-sm md:text-base"
-                    />
-                    <Button 
-                      onClick={handleAskQuestion}
-                      disabled={!question.trim() || !selectedChapter || isLoading || !user}
-                      className="w-full text-sm md:text-base"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          جاري الحصول على الإجابة...
-                        </>
-                      ) : (
-                        <>
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          اسأل المساعد الذكي
-                        </>
-                      )}
-                    </Button>
+                  {/* Input Area */}
+                  <div className="p-4 bg-card border-t border-border/50">
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <Textarea
+                          ref={textareaRef}
+                          placeholder={user ? (selectedChapter ? "اسأل سؤالاً حول الفصل المختار... (اضغط Enter للإرسال)" : "اختر موضوعاً أولاً، ثم اسأل سؤالك...") : "يجب تسجيل الدخول للاستفادة من الذكاء الاصطناعي"}
+                          value={question}
+                          onChange={(e) => setQuestion(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          disabled={!selectedChapter || isLoading || !user}
+                          className="min-h-[60px] md:min-h-[80px] text-sm md:text-base resize-none border-2 focus:border-primary/50 transition-colors"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleAskQuestion}
+                        disabled={!question.trim() || !selectedChapter || isLoading || !user}
+                        className="px-6 py-3 h-auto gradient-primary text-white hover:scale-105 transition-all duration-200 shadow-lg"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Send className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground text-center">
+                      اضغط Enter للإرسال أو Shift+Enter لسطر جديد
+                    </div>
                   </div>
                 </CardContent>
               </Card>

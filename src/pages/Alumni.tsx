@@ -3,17 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { GraduationCap, MessageCircle, Calendar, Phone, Star, Award, Crown } from "lucide-react";
+import { GraduationCap, Star, Award, FileText, Download, Eye, MessageSquare } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useSubscription } from "@/hooks/useSubscription";
-import { Link } from "react-router-dom";
 
 interface Alumni {
   id: string;
@@ -27,25 +22,47 @@ interface Alumni {
   linkedin_url?: string;
 }
 
+interface AlumniFile {
+  id: string;
+  alumni_id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  description?: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+interface AlumniAdvice {
+  id: string;
+  alumni_id: string;
+  title: string;
+  content: string;
+  category: string;
+  is_featured: boolean;
+  created_at: string;
+}
+
 const Alumni = () => {
   const [selectedAlumni, setSelectedAlumni] = useState<Alumni | null>(null);
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [alumni, setAlumni] = useState<Alumni[]>([]);
+  const [alumniFiles, setAlumniFiles] = useState<AlumniFile[]>([]);
+  const [alumniAdvice, setAlumniAdvice] = useState<AlumniAdvice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bookingData, setBookingData] = useState({
-    topic: "",
-    timePreference: "",
-    phone: "",
-    message: ""
-  });
-  const { user } = useAuth();
   const { toast } = useToast();
-  const { isPremium } = useSubscription();
 
   useEffect(() => {
     fetchAlumni();
   }, []);
+
+  useEffect(() => {
+    if (selectedAlumni) {
+      fetchAlumniFiles(selectedAlumni.id);
+      fetchAlumniAdvice(selectedAlumni.id);
+    }
+  }, [selectedAlumni]);
 
   const fetchAlumni = async () => {
     try {
@@ -69,78 +86,48 @@ const Alumni = () => {
     }
   };
 
-  const handleBookMentoring = (alumni: Alumni) => {
-    if (!isPremium) {
-      setShowPremiumDialog(true);
-      return;
+  const fetchAlumniFiles = async (alumniId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('alumni_files')
+        .select('*')
+        .eq('alumni_id', alumniId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAlumniFiles(data || []);
+    } catch (error) {
+      console.error('Error fetching alumni files:', error);
     }
-    setSelectedAlumni(alumni);
-    setShowBookingForm(true);
   };
 
-  const handleSubmitBooking = async () => {
-    if (!user || !selectedAlumni) return;
-
-    if (!bookingData.topic || !bookingData.timePreference || !bookingData.phone) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const fetchAlumniAdvice = async (alumniId: string) => {
     try {
-      // Create proper time preference based on selection
-      const now = new Date();
-      let timePreferenceTimestamp;
-      
-      switch (bookingData.timePreference) {
-        case 'morning':
-          timePreferenceTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 10, 0, 0).toISOString();
-          break;
-        case 'afternoon':
-          timePreferenceTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 15, 0, 0).toISOString();
-          break;
-        case 'evening':
-          timePreferenceTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 19, 0, 0).toISOString();
-          break;
-        default:
-          timePreferenceTimestamp = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(); // Next day
-      }
-      
-      const { error } = await supabase
-        .from('bookings')
-        .insert({
-          student_id: user.id,
-          alumni_id: selectedAlumni.id,
-          topic: bookingData.topic,
-          time_preference: timePreferenceTimestamp,
-          phone: bookingData.phone,
-          notes: bookingData.message || null,
-          status: 'pending'
-        });
+      const { data, error } = await supabase
+        .from('alumni_advice')
+        .select('*')
+        .eq('alumni_id', alumniId)
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase booking error:', error);
-        throw error;
-      }
-
-      toast({
-        title: "Success",
-        description: "Mentoring session request submitted successfully!",
-      });
-
-      setShowBookingForm(false);
-      setBookingData({ topic: "", timePreference: "", phone: "", message: "" });
+      if (error) throw error;
+      setAlumniAdvice(data || []);
     } catch (error) {
-      console.error('Error submitting booking:', error);
-      toast({
-        title: "Error", 
-        description: `Failed to submit booking request. Please try again.`,
-        variant: "destructive",
-      });
+      console.error('Error fetching alumni advice:', error);
     }
+  };
+
+  const handleViewProfile = (alumnus: Alumni) => {
+    setSelectedAlumni(alumnus);
+    setShowDetailsDialog(true);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const getScoreColor = (score: number) => {
@@ -164,16 +151,15 @@ const Alumni = () => {
             </p>
           </div>
 
-          {!showBookingForm ? (
-            loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : alumni.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No alumni mentors available at the moment.</p>
-              </div>
-            ) : (
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : alumni.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No alumni mentors available at the moment.</p>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {alumni.map((alumnus) => (
                 <Card key={alumnus.id} className="group hover:shadow-lg transition-all duration-300 border-primary/10 animate-fade-in hover:scale-105">
@@ -223,137 +209,124 @@ const Alumni = () => {
                     </div>
 
                     <Button 
-                      onClick={() => handleBookMentoring(alumnus)}
+                      onClick={() => handleViewProfile(alumnus)}
                       className="w-full gradient-primary text-white hover:scale-105 transition-all"
                       variant="default"
                     >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Book Mentoring Session
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Files & Advice
                     </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            )
-          ) : (
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Book Mentoring Session with {selectedAlumni?.name}
-                </CardTitle>
-                <CardDescription>
-                  Fill out the form below to schedule a mentoring session
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Discussion Topic</label>
-                    <Select value={bookingData.topic} onValueChange={(value) => setBookingData({...bookingData, topic: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select topic" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="study-strategies">Study Strategies</SelectItem>
-                        <SelectItem value="exam-preparation">Exam Preparation</SelectItem>
-                        <SelectItem value="university-choice">University Choice</SelectItem>
-                        <SelectItem value="career-guidance">Career Guidance</SelectItem>
-                        <SelectItem value="motivation">Motivation & Mindset</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Preferred Time</label>
-                    <Select value={bookingData.timePreference} onValueChange={(value) => setBookingData({...bookingData, timePreference: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="morning">Morning (9AM-12PM)</SelectItem>
-                        <SelectItem value="afternoon">Afternoon (2PM-5PM)</SelectItem>
-                        <SelectItem value="evening">Evening (6PM-9PM)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    Phone Number
-                  </label>
-                  <Input
-                    placeholder="Your phone number for the session"
-                    value={bookingData.phone}
-                    onChange={(e) => setBookingData({...bookingData, phone: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Additional Message (Optional)</label>
-                  <Textarea
-                    placeholder="Any specific questions or topics you'd like to discuss..."
-                    value={bookingData.message}
-                    onChange={(e) => setBookingData({...bookingData, message: e.target.value})}
-                    className="min-h-[100px]"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setShowBookingForm(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSubmitBooking}
-                    className="flex-1"
-                    disabled={!bookingData.topic || !bookingData.timePreference || !bookingData.phone}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Submit Request
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           )}
         </div>
       </main>
 
-      {/* Premium Required Dialog */}
-      <Dialog open={showPremiumDialog} onOpenChange={setShowPremiumDialog}>
-        <DialogContent>
+      {/* Files and Advice Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Crown className="h-5 w-5 text-primary" />
-              اشتراك مميز مطلوب
+              <GraduationCap className="h-6 w-6 text-primary" />
+              {selectedAlumni?.name}'s Profile
             </DialogTitle>
             <DialogDescription>
-              يجب أن تكون مشتركاً مميزاً للوصول إلى هذه الميزة
+              View files and advice from this successful graduate
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              يمكن للمشتركين المميزين فقط حجز جلسات الإرشاد مع الخريجين. قم بالترقية الآن للاستفادة من هذه الميزة.
-            </p>
-            <div className="flex gap-2">
-              <Link to="/pricing" className="flex-1">
-                <Button className="w-full">ترقية إلى المميز</Button>
-              </Link>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowPremiumDialog(false)}
-                className="flex-1"
-              >
-                إلغاء
-              </Button>
-            </div>
-          </div>
+
+          <Tabs defaultValue="advice" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="advice" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Advice
+              </TabsTrigger>
+              <TabsTrigger value="files" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Files
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="advice" className="space-y-4 mt-4">
+              {alumniAdvice.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No advice available yet from this alumni.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {alumniAdvice.map((advice) => (
+                    <Card key={advice.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold text-lg">{advice.title}</h3>
+                          {advice.is_featured && (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                              Featured
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground mb-3">{advice.content}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline">{advice.category}</Badge>
+                          <span>•</span>
+                          <span>{new Date(advice.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="files" className="space-y-4 mt-4">
+              {alumniFiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No files available yet from this alumni.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {alumniFiles.map((file) => (
+                    <Card key={file.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <FileText className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium truncate">{file.file_name}</h4>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span>{formatFileSize(file.file_size)}</span>
+                                <span>•</span>
+                                <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                              </div>
+                              {file.description && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{file.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(file.file_path, '_blank')}
+                            className="ml-2"
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>

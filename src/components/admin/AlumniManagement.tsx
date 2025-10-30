@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table,
   TableBody,
@@ -41,10 +42,16 @@ import {
   Trophy,
   Users,
   Building,
-  Target
+  Target,
+  FileText,
+  Plus,
+  Eye,
+  Star,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Alumni {
   id: string;
@@ -59,13 +66,40 @@ interface Alumni {
   created_at: string;
 }
 
+interface AlumniFile {
+  id: string;
+  alumni_id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  description?: string;
+  uploaded_by: string;
+  created_at: string;
+}
+
+interface AlumniAdvice {
+  id: string;
+  alumni_id: string;
+  title: string;
+  content: string;
+  category: string;
+  is_featured: boolean;
+  created_at: string;
+}
+
 export function AlumniManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fieldFilter, setFieldFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedAlumni, setSelectedAlumni] = useState<Alumni | null>(null);
+  const [showManageDialog, setShowManageDialog] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [alumni, setAlumni] = useState<Alumni[]>([]);
+  const [alumniFiles, setAlumniFiles] = useState<AlumniFile[]>([]);
+  const [alumniAdvice, setAlumniAdvice] = useState<AlumniAdvice[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form state for manual creation
@@ -81,11 +115,33 @@ export function AlumniManagement() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // File upload state
+  const [fileUploadData, setFileUploadData] = useState({
+    file: null as File | null,
+    description: "",
+    category: "general"
+  });
+
+  // Advice state
+  const [adviceData, setAdviceData] = useState({
+    title: "",
+    content: "",
+    category: "general",
+    is_featured: false
+  });
+
   const fields = ["Computer Science", "Engineering", "Medicine", "Economics", "Law", "Architecture", "Business", "Sciences"];
 
   useEffect(() => {
     fetchAlumni();
   }, []);
+
+  useEffect(() => {
+    if (selectedAlumni) {
+      fetchAlumniFiles(selectedAlumni.id);
+      fetchAlumniAdvice(selectedAlumni.id);
+    }
+  }, [selectedAlumni]);
 
   const fetchAlumni = async () => {
     try {
@@ -105,6 +161,36 @@ export function AlumniManagement() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAlumniFiles = async (alumniId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('alumni_files')
+        .select('*')
+        .eq('alumni_id', alumniId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAlumniFiles(data || []);
+    } catch (error) {
+      console.error('Error fetching alumni files:', error);
+    }
+  };
+
+  const fetchAlumniAdvice = async (alumniId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('alumni_advice')
+        .select('*')
+        .eq('alumni_id', alumniId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAlumniAdvice(data || []);
+    } catch (error) {
+      console.error('Error fetching alumni advice:', error);
     }
   };
 
@@ -156,7 +242,6 @@ export function AlumniManagement() {
     try {
       let avatarUrl = formData.avatar_url;
 
-      // If there's a selected file, upload it first
       if (selectedFile) {
         const uploadedUrl = await uploadImage(selectedFile);
         if (uploadedUrl) {
@@ -209,6 +294,150 @@ export function AlumniManagement() {
     }
   };
 
+  const handleFileUpload = async () => {
+    if (!fileUploadData.file || !selectedAlumni || !user) return;
+
+    try {
+      const fileExt = fileUploadData.file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `alumni/${selectedAlumni.id}/${fileUploadData.category}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('alumni-files')
+        .upload(filePath, fileUploadData.file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('alumni-files')
+        .getPublicUrl(filePath);
+
+      const { error: dbError } = await supabase
+        .from('alumni_files')
+        .insert({
+          alumni_id: selectedAlumni.id,
+          file_name: fileUploadData.file.name,
+          file_path: publicUrl,
+          file_type: fileUploadData.file.type,
+          file_size: fileUploadData.file.size,
+          description: fileUploadData.description || null,
+          uploaded_by: user.id
+        });
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "Success",
+        description: "File uploaded successfully",
+      });
+
+      setFileUploadData({ file: null, description: "", category: "general" });
+      fetchAlumniFiles(selectedAlumni.id);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddAdvice = async () => {
+    if (!adviceData.title || !adviceData.content || !selectedAlumni) return;
+
+    try {
+      const { error } = await supabase
+        .from('alumni_advice')
+        .insert({
+          alumni_id: selectedAlumni.id,
+          title: adviceData.title,
+          content: adviceData.content,
+          category: adviceData.category,
+          is_featured: adviceData.is_featured
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Advice added successfully",
+      });
+
+      setAdviceData({ title: "", content: "", category: "general", is_featured: false });
+      fetchAlumniAdvice(selectedAlumni.id);
+    } catch (error) {
+      console.error('Error adding advice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add advice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      const { error } = await supabase
+        .from('alumni_files')
+        .delete()
+        .eq('id', fileId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
+
+      if (selectedAlumni) {
+        fetchAlumniFiles(selectedAlumni.id);
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAdvice = async (adviceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('alumni_advice')
+        .delete()
+        .eq('id', adviceId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Advice deleted successfully",
+      });
+
+      if (selectedAlumni) {
+        fetchAlumniAdvice(selectedAlumni.id);
+      }
+    } catch (error) {
+      console.error('Error deleting advice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete advice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const totalAlumni = alumni.length;
   const avgScore = alumni.length > 0 ? Math.round(alumni.reduce((sum, a) => sum + (a.bac_score || 0), 0) / alumni.length) : 0;
   const uniqueUniversities = new Set(alumni.map(a => a.university)).size;
@@ -223,7 +452,7 @@ export function AlumniManagement() {
             <GraduationCap className="h-8 w-8" />
             Alumni Management
           </h1>
-          <p className="text-muted-foreground">Manage alumni profiles and track success stories</p>
+          <p className="text-muted-foreground">Manage alumni profiles, files, and advice</p>
         </div>
         <div className="flex gap-2">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -453,13 +682,18 @@ export function AlumniManagement() {
                         {alumnus.advice && (
                           <p className="text-xs text-muted-foreground line-clamp-2">{alumnus.advice}</p>
                         )}
-                        {alumnus.linkedin_url && (
-                          <Button variant="outline" size="sm" className="w-full text-xs" asChild>
-                            <a href={alumnus.linkedin_url} target="_blank" rel="noopener noreferrer">
-                              LinkedIn Profile
-                            </a>
-                          </Button>
-                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full text-xs" 
+                          onClick={() => {
+                            setSelectedAlumni(alumnus);
+                            setShowManageDialog(true);
+                          }}
+                        >
+                          <Eye className="h-3 w-3 mr-2" />
+                          Manage Files & Advice
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -474,6 +708,219 @@ export function AlumniManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Manage Dialog */}
+      <Dialog open={showManageDialog} onOpenChange={setShowManageDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Manage {selectedAlumni?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Upload files and add advice for this alumni
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="files" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="files">
+                <FileText className="h-4 w-4 mr-2" />
+                Files
+              </TabsTrigger>
+              <TabsTrigger value="advice">
+                <Star className="h-4 w-4 mr-2" />
+                Advice
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Files Tab */}
+            <TabsContent value="files" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upload File</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>File</Label>
+                      <Input
+                        type="file"
+                        onChange={(e) => setFileUploadData({...fileUploadData, file: e.target.files?.[0] || null})}
+                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={fileUploadData.category} onValueChange={(value) => setFileUploadData({...fileUploadData, category: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="resume">Resume</SelectItem>
+                          <SelectItem value="portfolio">Portfolio</SelectItem>
+                          <SelectItem value="certificates">Certificates</SelectItem>
+                          <SelectItem value="documents">Documents</SelectItem>
+                          <SelectItem value="images">Images</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      placeholder="File description..."
+                      value={fileUploadData.description}
+                      onChange={(e) => setFileUploadData({...fileUploadData, description: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+                  <Button onClick={handleFileUpload} disabled={!fileUploadData.file} className="w-full">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload File
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Uploaded Files</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {alumniFiles.length === 0 ? (
+                    <p className="text-center py-8 text-muted-foreground">No files uploaded yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {alumniFiles.map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-primary" />
+                            <div>
+                              <p className="font-medium">{file.file_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatFileSize(file.file_size)} • {new Date(file.created_at).toLocaleDateString()}
+                              </p>
+                              {file.description && (
+                                <p className="text-xs text-muted-foreground mt-1">{file.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => window.open(file.file_path, '_blank')}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteFile(file.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Advice Tab */}
+            <TabsContent value="advice" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add Advice</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Title</Label>
+                      <Input
+                        placeholder="Advice title"
+                        value={adviceData.title}
+                        onChange={(e) => setAdviceData({...adviceData, title: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={adviceData.category} onValueChange={(value) => setAdviceData({...adviceData, category: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="study">Study Tips</SelectItem>
+                          <SelectItem value="exam">Exam Preparation</SelectItem>
+                          <SelectItem value="university">University Choice</SelectItem>
+                          <SelectItem value="career">Career Guidance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Content</Label>
+                    <Textarea
+                      placeholder="Your advice content..."
+                      value={adviceData.content}
+                      onChange={(e) => setAdviceData({...adviceData, content: e.target.value})}
+                      rows={6}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      checked={adviceData.is_featured}
+                      onChange={(e) => setAdviceData({...adviceData, is_featured: e.target.checked})}
+                      className="rounded"
+                    />
+                    <Label htmlFor="featured">Mark as featured</Label>
+                  </div>
+                  <Button onClick={handleAddAdvice} disabled={!adviceData.title || !adviceData.content} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Advice
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Advice List</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {alumniAdvice.length === 0 ? (
+                    <p className="text-center py-8 text-muted-foreground">No advice added yet</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {alumniAdvice.map((advice) => (
+                        <div key={advice.id} className="p-4 border rounded-lg">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-semibold">{advice.title}</h4>
+                                {advice.is_featured && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Featured
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">{advice.content}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {advice.category} • {new Date(advice.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteAdvice(advice.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

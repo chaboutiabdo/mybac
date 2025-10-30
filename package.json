@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:optimized": "vite build --mode production",
+    "analyze": "vite build --mode production && npx vite-bundle-analyzer dist",
+    "optimize": "node scripts/optimize.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
