@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface StudyTopic {
@@ -49,7 +49,6 @@ const LearnAI = () => {
     [],
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { toast } = useToast();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -103,11 +102,7 @@ const LearnAI = () => {
       setChatMessages((prev) => [...prev, { role: "ai", content: data.answer }]);
     } catch (error) {
       console.error("Error asking question:", error);
-      toast({
-        title: "خطأ في الاتصال",
-        description: "حدث خطأ أثناء الحصول على الإجابة. يرجى المحاولة مرة أخرى.",
-        variant: "destructive",
-      });
+      toast.error("خطأ في الاتصال", { description: "حدث خطأ أثناء الحصول على الإجابة. يرجى المحاولة مرة أخرى." });
 
       // Add error message to chat
       setChatMessages((prev) => [

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Search, Edit, Trash2, Calendar, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { UploadQuizDialog } from "./UploadQuizDialog";
 
 type Quiz = Tables<'quizzes'>;
@@ -22,7 +22,6 @@ export function QuizzesManagement() {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [dailyUploadDialogOpen, setDailyUploadDialogOpen] = useState(false);
-  const { toast } = useToast();
 
   const loadQuizzes = async () => {
     setLoading(true);
@@ -39,11 +38,7 @@ export function QuizzesManagement() {
       })));
     } catch (error) {
       console.error('Error loading quizzes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load quizzes",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load quizzes" });
     } finally {
       setLoading(false);
     }
@@ -82,19 +77,12 @@ export function QuizzesManagement() {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Quiz deleted successfully",
-      });
+      toast.success("Success", { description: "Quiz deleted successfully" });
       
       loadQuizzes();
     } catch (error) {
       console.error('Error deleting quiz:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete quiz",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to delete quiz" });
     }
   };
 

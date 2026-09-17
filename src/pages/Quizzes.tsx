@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuizStats } from "@/hooks/useQuizStats";
@@ -36,7 +36,6 @@ const Quizzes = () => {
   const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const { trackQuizQuestion } = useActivityTracking();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [practiceQuizzes, setPracticeQuizzes] = useState<Quiz[]>([]);
   const [dailyQuizzes, setDailyQuizzes] = useState<Quiz[]>([]);
@@ -61,11 +60,7 @@ const Quizzes = () => {
       setDailyQuizzes(quizzes.filter(quiz => quiz.type === 'daily'));
     } catch (error) {
       console.error('Error fetching quizzes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load quizzes",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load quizzes" });
     } finally {
       setLoading(false);
     }
@@ -73,11 +68,7 @@ const Quizzes = () => {
 
   const startQuiz = async (quiz: Quiz) => {
     if (!user) {
-      toast({
-        title: "Login required",
-        description: "Please login to take quizzes",
-        variant: "destructive",
-      });
+      toast.error("Login required", { description: "Please login to take quizzes" });
       return;
     }
 
@@ -94,11 +85,7 @@ const Quizzes = () => {
       );
       
       if (hasCompletedBefore) {
-        toast({
-          title: "Retaking Quiz",
-          description: "You can practice this quiz again, but no additional score will be awarded.",
-          variant: "default",
-        });
+        toast.success("Retaking Quiz", { description: "You can practice this quiz again, but no additional score will be awarded." });
       }
 
       // Check for existing attempts to determine attempt number
@@ -129,20 +116,13 @@ const Quizzes = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Quiz started",
-        description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions`,
-      });
+      toast.success("Quiz started", { description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions` });
 
       // Navigate to the quiz taking page
       navigate(`/quiz/${attempt.id}`);
     } catch (error) {
       console.error('Error starting quiz:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start quiz",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to start quiz" });
     }
   };
   

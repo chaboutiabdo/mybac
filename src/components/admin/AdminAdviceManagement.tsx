@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { MessageSquare, Pin, Edit, Trash2, Plus, Calendar } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { errorMessage } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -24,7 +24,6 @@ export function AdminAdviceManagement() {
     content: '',
     is_pinned: false
   });
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchAdvice();
@@ -42,11 +41,7 @@ export function AdminAdviceManagement() {
       setAdviceList(data || []);
     } catch (error) {
       console.error('Error fetching advice:', error);
-      toast({
-        title: "خطأ في تحميل النصائح",
-        description: errorMessage(error),
-        variant: "destructive",
-      });
+      toast.error("خطأ في تحميل النصائح", { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
@@ -69,10 +64,7 @@ export function AdminAdviceManagement() {
 
         if (error) throw error;
 
-        toast({
-          title: "تم التحديث بنجاح",
-          description: "تم تحديث النصيحة بنجاح",
-        });
+        toast.success("تم التحديث بنجاح", { description: "تم تحديث النصيحة بنجاح" });
       } else {
         // Create new advice
         const { error } = await supabase
@@ -85,10 +77,7 @@ export function AdminAdviceManagement() {
 
         if (error) throw error;
 
-        toast({
-          title: "تم الإضافة بنجاح",
-          description: "تم إضافة النصيحة الجديدة بنجاح",
-        });
+        toast.success("تم الإضافة بنجاح", { description: "تم إضافة النصيحة الجديدة بنجاح" });
       }
 
       setShowDialog(false);
@@ -97,11 +86,7 @@ export function AdminAdviceManagement() {
       await fetchAdvice();
     } catch (error) {
       console.error('Error saving advice:', error);
-      toast({
-        title: "خطأ في الحفظ",
-        description: errorMessage(error),
-        variant: "destructive",
-      });
+      toast.error("خطأ في الحفظ", { description: errorMessage(error) });
     }
   };
 
@@ -126,19 +111,12 @@ export function AdminAdviceManagement() {
 
       if (error) throw error;
 
-      toast({
-        title: "تم الحذف بنجاح",
-        description: "تم حذف النصيحة بنجاح",
-      });
+      toast.success("تم الحذف بنجاح", { description: "تم حذف النصيحة بنجاح" });
 
       await fetchAdvice();
     } catch (error) {
       console.error('Error deleting advice:', error);
-      toast({
-        title: "خطأ في الحذف",
-        description: errorMessage(error),
-        variant: "destructive",
-      });
+      toast.error("خطأ في الحذف", { description: errorMessage(error) });
     }
   };
 

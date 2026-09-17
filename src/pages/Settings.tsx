@@ -10,14 +10,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Settings as SettingsIcon, Bell, Globe, User, Shield, Palette, LogOut } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
   const { profile, signOut, user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -42,11 +41,7 @@ const Settings = () => {
 
   const handleSaveSettings = async () => {
     if (!profile || !user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to save settings.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "You must be logged in to save settings." });
       return;
     }
 
@@ -74,29 +69,18 @@ const Settings = () => {
         });
         
         if (emailError) {
-          toast({
-            title: "Email update failed",
-            description: "Profile updated but email update failed. Please verify your current email first.",
-            variant: "destructive",
-          });
+          toast.error("Email update failed", { description: "Profile updated but email update failed. Please verify your current email first." });
         }
       }
 
-      toast({
-        title: "Settings saved",
-        description: "Your preferences have been updated successfully. The page will refresh to show changes.",
-      });
+      toast.success("Settings saved", { description: "Your preferences have been updated successfully. The page will refresh to show changes." });
       
       // Refresh the page after a short delay to show the toast message
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      toast({
-        title: "Error saving settings",
-        description: errorMessage(error) || "Failed to update settings.",
-        variant: "destructive",
-      });
+      toast.error("Error saving settings", { description: errorMessage(error) || "Failed to update settings." });
     } finally {
       setIsLoading(false);
     }
@@ -104,20 +88,12 @@ const Settings = () => {
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      toast({
-        title: "Invalid password",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
+      toast.error("Invalid password", { description: "Password must be at least 6 characters long." });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both password fields match.",
-        variant: "destructive",
-      });
+      toast.error("Passwords don't match", { description: "Please make sure both password fields match." });
       return;
     }
 
@@ -131,21 +107,14 @@ const Settings = () => {
         throw error;
       }
 
-      toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully.",
-      });
+      toast.success("Password updated", { description: "Your password has been changed successfully." });
       
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setIsPasswordDialogOpen(false);
     } catch (error) {
-      toast({
-        title: "Error changing password",
-        description: errorMessage(error) || "Failed to update password.",
-        variant: "destructive",
-      });
+      toast.error("Error changing password", { description: errorMessage(error) || "Failed to update password." });
     } finally {
       setIsLoading(false);
     }

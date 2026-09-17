@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Upload, FileText, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface UploadExamDialogProps {
   children: React.ReactNode;
@@ -40,16 +40,11 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
     questions: "",
     description: ""
   });
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!examFile) {
-      toast({
-        title: "Error",
-        description: "Please select an exam file",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Please select an exam file" });
       return;
     }
 
@@ -89,10 +84,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
 
       if (insertError) throw insertError;
 
-      toast({
-        title: "Success",
-        description: "Exam uploaded successfully!",
-      });
+      toast.success("Success", { description: "Exam uploaded successfully!" });
 
       setOpen(false);
       setFormData({
@@ -108,11 +100,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
       setSolutionFile(null);
     } catch (error) {
       console.error('Error uploading exam:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload exam",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to upload exam" });
     } finally {
       setLoading(false);
     }

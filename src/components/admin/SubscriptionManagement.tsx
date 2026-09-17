@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, CheckCircle2, XCircle, Search, Filter, Crown, Users, TrendingUp } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessage } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -36,7 +36,6 @@ export function SubscriptionManagement() {
     freeUsers: 0,
     conversionRate: 0
   });
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchProfiles();
@@ -60,11 +59,7 @@ export function SubscriptionManagement() {
       calculateStats(data || []);
     } catch (error) {
       console.error('Error:', error);
-      toast({
-        title: "خطأ في تحميل الملفات الشخصية",
-        description: errorMessage(error),
-        variant: "destructive",
-      });
+      toast.error("خطأ في تحميل الملفات الشخصية", { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
@@ -121,19 +116,12 @@ export function SubscriptionManagement() {
 
       if (error) throw error;
 
-      toast({
-        title: "تم التحديث بنجاح",
-        description: `تم تحديث حالة المستخدم إلى ${newStatus === 'premium' ? 'مميز' : 'عادي'}`,
-      });
+      toast.success("تم التحديث بنجاح", { description: `تم تحديث حالة المستخدم إلى ${newStatus === 'premium' ? 'مميز' : 'عادي'}` });
 
       await fetchProfiles();
     } catch (error) {
       console.error('Error:', error);
-      toast({
-        title: "خطأ في تحديث الحالة",
-        description: errorMessage(error),
-        variant: "destructive",
-      });
+      toast.error("خطأ في تحديث الحالة", { description: errorMessage(error) });
     } finally {
       setLoading(false);
     }

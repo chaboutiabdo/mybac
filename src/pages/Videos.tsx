@@ -11,17 +11,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Play, CheckCircle, Crown, Youtube } from "lucide-react";
+import { Play, CheckCircle, Crown, Youtube, PlayCircle } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // `watched` is derived client-side from video_progress, not a column
 type Video = Tables<"videos"> & { watched?: boolean };
+
+/** YouTube video id from a watch or youtu.be URL, or null. */
+const youtubeId = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.includes("youtube.com/watch?v=")) return url.split("v=")[1]?.split("&")[0] ?? null;
+  if (url.includes("youtu.be/")) return url.split("youtu.be/")[1]?.split("?")[0] ?? null;
+  return null;
+};
+
+const thumbnailFor = (video: Video): string | null => {
+  const id = youtubeId(video.url);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+};
 
 const Videos = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -34,7 +47,6 @@ const Videos = () => {
   const { user } = useAuth();
   const { trackVideoActivity } = useActivityTracking();
   const isMobile = useIsMobile();
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchVideos();
@@ -54,11 +66,7 @@ const Videos = () => {
       setVideos(data || []);
     } catch (error) {
       console.error("Error fetching videos:", error);
-      toast({
-        title: "خطأ",
-        description: "فشل في تحميل الفيديوهات",
-        variant: "destructive",
-      });
+      toast.error("خطأ", { description: "فشل في تحميل الفيديوهات" });
     } finally {
       setLoading(false);
     }
@@ -151,10 +159,7 @@ const Videos = () => {
               video.chapter,
             );
 
-            toast({
-              title: "نجح",
-              description: "تم فتح الفيديو وتتبع التقدم!",
-            });
+            toast.success("نجح", { description: "تم فتح الفيديو وتتبع التقدم!" });
           } catch (error) {
             console.error("Error updating video progress:", error);
           }
@@ -172,18 +177,10 @@ const Videos = () => {
         }
       } catch (error) {
         console.error("Error opening video:", error);
-        toast({
-          title: "خطأ",
-          description: "فشل في فتح الفيديو. يرجى المحاولة مرة أخرى.",
-          variant: "destructive",
-        });
+        toast.error("خطأ", { description: "فشل في فتح الفيديو. يرجى المحاولة مرة أخرى." });
       }
     } else {
-      toast({
-        title: "الفيديو غير متاح",
-        description: "هذا الفيديو غير متاح في الوقت الحالي.",
-        variant: "destructive",
-      });
+      toast.error("الفيديو غير متاح", { description: "هذا الفيديو غير متاح في الوقت الحالي." });
     }
   };
 
@@ -282,11 +279,18 @@ const Videos = () => {
                   className="group transition-all duration-300 border-primary/10 overflow-hidden"
                 >
                   <div className="relative">
-                    <img
-                      src="/placeholder.svg"
-                      alt={video.title}
-                      className="w-full h-32 sm:h-40 md:h-48 object-cover"
-                    />
+                    {thumbnailFor(video) ? (
+                      <img
+                        src={thumbnailFor(video)!}
+                        alt=""
+                        loading="lazy"
+                        className="h-32 w-full object-cover sm:h-40 md:h-48"
+                      />
+                    ) : (
+                      <div className="flex h-32 w-full items-center justify-center bg-surface-deep sm:h-40 md:h-48">
+                        <PlayCircle className="h-10 w-10 text-muted-foreground" strokeWidth={1.3} aria-hidden />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-surface-deep/20 group-hover:bg-surface-deep/30 transition-colors duration-300" />
                     <div className="absolute top-2 end-2">
                       {video.type === "premium" ? (

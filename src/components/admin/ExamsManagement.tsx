@@ -30,9 +30,8 @@ import {
   Book
 } from "lucide-react";
 import { UploadExamDialog } from "./UploadExamDialog";
-import { AddSolutionDialog } from "./AddSolutionDialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Exam = Tables<"exams">;
@@ -43,7 +42,6 @@ export function ExamsManagement() {
   const [yearFilter, setYearFilter] = useState("all");
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   // Load exams from Supabase
   const loadExams = async () => {
@@ -54,11 +52,7 @@ export function ExamsManagement() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load exams",
-          variant: "destructive",
-        });
+        toast.error("Error", { description: "Failed to load exams" });
         return;
       }
 
@@ -253,11 +247,6 @@ export function ExamsManagement() {
                           <Button variant="ghost" size="sm" title="Download exam">
                             <Download className="h-4 w-4" />
                           </Button>
-                          <AddSolutionDialog examTitle={exam.title}>
-                            <Button variant="ghost" size="sm" title="Add/Edit solution">
-                              <FileText className="h-4 w-4 text-success" />
-                            </Button>
-                          </AddSolutionDialog>
                           <Button variant="ghost" size="sm" title="Edit exam">
                             <Edit className="h-4 w-4" />
                           </Button>

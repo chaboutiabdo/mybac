@@ -5,32 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Please choose a password with at least 6 characters.",
-        variant: "destructive",
-      });
+      toast.error("Password too short", { description: "Please choose a password with at least 6 characters." });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please confirm your new password.",
-        variant: "destructive",
-      });
+      toast.error("Passwords do not match", { description: "Please confirm your new password." });
       return;
     }
 
@@ -39,18 +30,11 @@ const ResetPassword = () => {
     setLoading(false);
 
     if (error) {
-      toast({
-        title: "Password reset failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Password reset failed", { description: error.message });
       return;
     }
 
-    toast({
-      title: "Password updated",
-      description: "You can now sign in with your new password.",
-    });
+    toast.success("Password updated", { description: "You can now sign in with your new password." });
     navigate("/login");
   };
 

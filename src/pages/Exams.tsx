@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // `solved` is derived client-side from exam_progress, not a column
 type Exam = Tables<'exams'> & { solved: boolean };
@@ -26,7 +26,6 @@ const Exams = () => {
   
   const { user } = useAuth();
   const { trackExamActivity } = useActivityTracking();
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchExams();
@@ -52,11 +51,7 @@ const Exams = () => {
       setExams(examsWithSolved);
     } catch (error) {
       console.error('Error fetching exams:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load exams",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load exams" });
     } finally {
       setLoading(false);
     }
@@ -120,29 +115,18 @@ const Exams = () => {
       // Refresh exam progress to update UI
       fetchExamProgress();
 
-      toast({
-        title: "Success",
-        description: `Exam ${action.replace('_', ' ')} successfully`,
-      });
+      toast.success("Success", { description: `Exam ${action.replace('_', ' ')} successfully` });
 
     } catch (error) {
       console.error('Error handling exam action:', error);
-      toast({
-        title: "Error",
-        description: "Failed to process exam action",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to process exam action" });
     }
   };
 
   const openExamFile = async (exam: Exam, type: 'exam' | 'solution') => {
     const fileUrl = type === 'exam' ? exam.exam_url : exam.solution_url;
     if (!fileUrl) {
-      toast({
-        title: "Error",
-        description: `${type === 'exam' ? 'Exam' : 'Solution'} file not available`,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file not available` });
       return;
     }
 
@@ -173,18 +157,11 @@ const Exams = () => {
           .eq('id', exam.id);
       }
 
-      toast({
-        title: "Success",
-        description: `${type === 'exam' ? 'Exam' : 'Solution'} file opened successfully!`,
-      });
+      toast.success("Success", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file opened successfully!` });
 
     } catch (error) {
       console.error('Error opening file:', error);
-      toast({
-        title: "Error",
-        description: "Failed to open file. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to open file. Please try again." });
     }
   };
 
@@ -316,10 +293,7 @@ const Exams = () => {
                     <Button 
                       className="w-full relative overflow-hidden group text-primary-foreground transition-all duration-300"
                       onClick={() => {
-                        toast({
-                          title: "قريباً",
-                          description: "هذه الميزة ستكون متاحة قريباً",
-                        });
+                        toast.success("قريباً", { description: "هذه الميزة ستكون متاحة قريباً" });
                       }}
                     >
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

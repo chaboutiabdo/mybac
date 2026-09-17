@@ -14,11 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const Pricing = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -47,10 +46,7 @@ const Pricing = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "تم إرسال الرسالة بنجاح",
-        description: "سنقوم بالرد عليك في أقرب وقت ممكن لتأكيد اشتراكك المميز.",
-      });
+      toast.success("تم إرسال الرسالة بنجاح", { description: "سنقوم بالرد عليك في أقرب وقت ممكن لتأكيد اشتراكك المميز." });
 
       setIsContactDialogOpen(false);
       setContactForm({
@@ -60,11 +56,7 @@ const Pricing = () => {
         message: "",
       });
     } catch (error) {
-      toast({
-        title: "حدث خطأ",
-        description: "يرجى المحاولة مرة أخرى لاحقاً",
-        variant: "destructive",
-      });
+      toast.error("حدث خطأ", { description: "يرجى المحاولة مرة أخرى لاحقاً" });
     }
   };
 

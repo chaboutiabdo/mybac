@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UploadQuizDialogProps {
@@ -32,18 +32,13 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
     type: type
   });
   const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile && selectedFile.type === "text/csv") {
       setFile(selectedFile);
     } else {
-      toast({
-        title: "Invalid file type",
-        description: "Please select a CSV file",
-        variant: "destructive",
-      });
+      toast.error("Invalid file type", { description: "Please select a CSV file" });
     }
   };
 
@@ -85,11 +80,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
 
   const handleUpload = async () => {
     if (!file || !quizData.subject || !quizData.difficulty) {
-      toast({
-        title: "Missing information",
-        description: "Please fill all fields and select a CSV file",
-        variant: "destructive",
-      });
+      toast.error("Missing information", { description: "Please fill all fields and select a CSV file" });
       return;
     }
 
@@ -144,10 +135,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
 
       if (importError) throw importError;
 
-      toast({
-        title: "Success",
-        description: `Quiz uploaded successfully with ${questions.length} questions`,
-      });
+      toast.success("Success", { description: `Quiz uploaded successfully with ${questions.length} questions` });
 
       onQuizUploaded();
       onOpenChange(false);
@@ -155,11 +143,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
       setQuizData({ subject: "", chapter: "", difficulty: "", type: type });
     } catch (error) {
       console.error('Error uploading quiz:', error);
-      toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload quiz",
-        variant: "destructive",
-      });
+      toast.error("Upload failed", { description: error instanceof Error ? error.message : "Failed to upload quiz" });
     } finally {
       setUploading(false);
     }

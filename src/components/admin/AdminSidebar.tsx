@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AdminSection } from "@/pages/AdminDashboard";
+import type { AdminSection } from "@/types/admin";
 import {
   Sidebar,
   SidebarContent,
@@ -14,37 +14,35 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { 
-  BarChart3, 
-  School, 
-  Users, 
-  FileText, 
-  Settings,
+import {
+  BarChart3,
+  School,
+  Users,
+  FileText,
   GraduationCap,
   Shield,
-  Calendar,
   Video,
   BookOpen,
   Lightbulb,
-  TrendingUp
+  Pin,
+  TrendingUp,
 } from "lucide-react";
 
 interface AdminSidebarProps {
-  activeSection: string;
+  activeSection: AdminSection;
   onSectionChange: (section: AdminSection) => void;
 }
 
 const menuItems: { id: AdminSection; title: string; icon: LucideIcon }[] = [
-  { id: "overview", title: "Overview", icon: BarChart3 },
-  { id: "schools", title: "Schools", icon: School },
-  { id: "students", title: "Students", icon: Users },
-  { id: "videos", title: "Videos", icon: Video },
-  { id: "exams", title: "Exams", icon: FileText },
-  { id: "quizzes", title: "Quizzes", icon: BookOpen },
-  { id: "sessions", title: "Sessions", icon: Calendar },
-  { id: "tips", title: "Advice Tips", icon: Lightbulb },
-  { id: "subscriptions", title: "Subscriptions", icon: TrendingUp },
-  { id: "settings", title: "Settings", icon: Settings },
+  { id: "overview", title: "نظرة عامة", icon: BarChart3 },
+  { id: "students", title: "الطلاب", icon: Users },
+  { id: "schools", title: "الثانويات", icon: School },
+  { id: "videos", title: "الدروس", icon: Video },
+  { id: "exams", title: "الامتحانات", icon: FileText },
+  { id: "quizzes", title: "الاختبارات", icon: BookOpen },
+  { id: "advice", title: "نصيحة اليوم", icon: Pin },
+  { id: "tips", title: "النصائح", icon: Lightbulb },
+  { id: "subscriptions", title: "الاشتراكات", icon: TrendingUp },
 ];
 
 export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarProps) {

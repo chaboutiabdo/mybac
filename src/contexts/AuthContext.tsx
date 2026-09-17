@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // the generated row type, not a hand-rolled copy: the local interface omitted
 // subscription_status/subscription_tier and narrowed `role` to its own union,
@@ -40,7 +40,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -95,11 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // reported the user as signed in — an unexplained redirect loop.
       console.error("Error fetching user profile:", error);
       setProfile(null);
-      toast({
-        title: "Couldn't load your profile",
-        description: error instanceof Error ? error.message : "Please try signing in again.",
-        variant: "destructive",
-      });
+      toast.error("Couldn't load your profile", { description: error instanceof Error ? error.message : "Please try signing in again." });
     }
   };
 
@@ -127,31 +122,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        toast({
-          title: "Sign up failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast.error("Sign up failed", { description: error.message });
         return { error };
       }
 
       if (plan === "free") {
-        toast({
-          title: "Account created!",
-          description:
-            "Please check your email to verify your account. Your Free Plan will be activated after verification.",
-        });
+        toast.success("Account created!", { description: "Please check your email to verify your account. Your Free Plan will be activated after verification." });
       } else if (plan === "premium") {
-        toast({
-          title: "Account created!",
-          description:
-            "Please check your email to verify your account. We'll process your premium subscription request shortly.",
-        });
+        toast.success("Account created!", { description: "Please check your email to verify your account. We'll process your premium subscription request shortly." });
       } else {
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
-        });
+        toast.success("Account created!", { description: "Please check your email to verify your account." });
       }
 
       return { error: null };
@@ -169,34 +149,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        toast({
-          title: "Sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast.error("Sign in failed", { description: error.message });
         return { error };
       }
 
       // Check if there's a selected plan in sessionStorage
       const plan = sessionStorage.getItem("selectedPlan");
       if (plan === "free") {
-        toast({
-          title: "Welcome!",
-          description: "Your Free Plan has been activated successfully",
-        });
+        toast.success("Welcome!", { description: "Your Free Plan has been activated successfully" });
         sessionStorage.removeItem("selectedPlan");
       } else if (plan === "premium") {
         // For premium, we'll handle it separately through support requests
-        toast({
-          title: "Welcome!",
-          description: "Your premium subscription request is being processed",
-        });
+        toast.success("Welcome!", { description: "Your premium subscription request is being processed" });
         sessionStorage.removeItem("selectedPlan");
       } else {
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
-        });
+        toast.success("Welcome back!", { description: "You have successfully signed in." });
       }
 
       return { error: null };
@@ -211,16 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Sign out error:", error);
-        toast({
-          title: "Sign out failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast.error("Sign out failed", { description: error.message });
       } else {
-        toast({
-          title: "Signed out",
-          description: "You have been successfully signed out.",
-        });
+        toast.success("Signed out", { description: "You have been successfully signed out." });
       }
     } catch (error) {
       console.error("Sign out error:", error);

@@ -50,7 +50,7 @@ import {
   Eye,
   Download
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -63,7 +63,6 @@ export function VideosManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   // Load videos from Supabase
   const loadVideos = async () => {
@@ -74,11 +73,7 @@ export function VideosManagement() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load videos",
-          variant: "destructive",
-        });
+        toast.error("Error", { description: "Failed to load videos" });
         return;
       }
 
@@ -119,20 +114,12 @@ export function VideosManagement() {
 
   const handleCreateVideo = async () => {
     if (!formData.title || !formData.subject || !formData.chapter) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Please fill in all required fields" });
       return;
     }
 
     if (!formData.url) {
-      toast({
-        title: "Error",
-        description: "Please provide a valid video URL",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Please provide a valid video URL" });
       return;
     }
 
@@ -150,11 +137,7 @@ export function VideosManagement() {
         });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to create video",
-          variant: "destructive",
-        });
+        toast.error("Error", { description: "Failed to create video" });
         return;
       }
 
@@ -173,17 +156,10 @@ export function VideosManagement() {
       });
       setIsCreateDialogOpen(false);
       
-      toast({
-        title: "Success",
-        description: "Video created successfully",
-      });
+      toast.success("Success", { description: "Video created successfully" });
     } catch (error) {
       console.error("Error creating video:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create video",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to create video" });
     }
   };
 

@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -65,8 +65,6 @@ export function AdviceTipsManagement() {
     priority: 1,
     expiry_date: "",
   });
-  
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchTips();
@@ -93,11 +91,7 @@ export function AdviceTipsManagement() {
 
       setIsLoading(false);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load advice tips.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load advice tips." });
     }
   };
 
@@ -137,10 +131,7 @@ export function AdviceTipsManagement() {
         throw error;
       }
 
-      toast({
-        title: "Success",
-        description: `Tip ${editingTip ? "updated" : "added"} successfully.`,
-      });
+      toast.success("Success", { description: `Tip ${editingTip ? "updated" : "added"} successfully.` });
 
       setShowAddDialog(false);
       setEditingTip(null);
@@ -155,11 +146,7 @@ export function AdviceTipsManagement() {
       fetchTips();
     } catch (error) {
       console.error("Error details:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}`,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}` });
     }
   };
 
@@ -172,18 +159,11 @@ export function AdviceTipsManagement() {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Tip deleted successfully.",
-      });
+      toast.success("Success", { description: "Tip deleted successfully." });
 
       fetchTips();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete tip.",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to delete tip." });
     }
   };
 

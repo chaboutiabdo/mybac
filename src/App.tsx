@@ -15,7 +15,6 @@ import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import LazyLoad from "./components/LazyLoad";
 import ProtectedRoute from "./components/ProtectedRoute";
-import PerformanceMonitor from "./components/PerformanceMonitor";
 
 // Lazy load heavy components for better performance
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -32,7 +31,6 @@ const App = () => (
     <AuthProvider>
         <LanguageProvider>
           <TooltipProvider>
-            <PerformanceMonitor />
             <Sonner />
             <BrowserRouter>
               <Routes>
@@ -49,7 +47,8 @@ const App = () => (
                 } />
                 <Route path="/login" element={<Login />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/admin" element={
+                {/* :section is URL-backed so refresh and Back work inside the panel */}
+                <Route path="/admin/:section?" element={
                   <LazyLoad>
                     <ProtectedRoute requiredRole="admin">
                       <AdminDashboard />

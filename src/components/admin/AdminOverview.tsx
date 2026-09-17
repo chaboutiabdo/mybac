@@ -16,9 +16,7 @@ import {
 import StatsCard from "@/components/dashboard/StatsCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
-import { AddStudentDialog } from "./AddStudentDialog";
 import { UploadExamDialog } from "./UploadExamDialog";
-import { AddSolutionDialog } from "./AddSolutionDialog";
 import { UploadQuizDialog } from "./UploadQuizDialog";
 import { EmptyState, Loading } from "@/components/ui/states";
 import { formatDateDZ } from "@/lib/bac";
@@ -105,7 +103,7 @@ export function AdminOverview() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatsCard
           title="Total Students"
           value={stats.students}
@@ -217,15 +215,7 @@ export function AdminOverview() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <AddStudentDialog>
-              <Button 
-                className="w-full h-20 hover:from-blue-700 hover:to-blue-800 text-primary-foreground"
-              >
-                <Plus className="h-5 w-5 me-2" />
-                Add Student
-              </Button>
-            </AddStudentDialog>
+          <div className="grid gap-4 sm:grid-cols-2">
             <UploadExamDialog>
               <Button 
                 className="w-full h-20 hover:from-green-700 hover:to-green-800 text-primary-foreground"
@@ -234,14 +224,6 @@ export function AdminOverview() {
                 Upload Exam
               </Button>
             </UploadExamDialog>
-            <AddSolutionDialog examTitle="Select Exam">
-              <Button 
-                className="w-full h-20 hover:from-yellow-700 hover:to-yellow-800 text-primary-foreground"
-              >
-                <FileText className="h-5 w-5 me-2" />
-                Add Solution
-              </Button>
-            </AddSolutionDialog>
             <Button 
               className="w-full h-20 hover:from-purple-700 hover:to-purple-800 text-primary-foreground"
               onClick={() => setShowUploadQuiz(true)}

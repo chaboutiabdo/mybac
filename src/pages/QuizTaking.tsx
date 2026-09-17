@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,6 @@ const QuizTaking = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, isRTL } = useLanguage();
-  const { toast } = useToast();
   const { trackQuizQuestion } = useActivityTracking();
 
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
@@ -85,11 +84,7 @@ const QuizTaking = () => {
       setQuestions(Array.isArray(quizData.questions) ? (quizData.questions as unknown as Question[]) : []);
     } catch (error) {
       console.error('Error fetching quiz:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load quiz",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: "Failed to load quiz" });
       navigate('/quizzes');
     } finally {
       setLoading(false);
@@ -141,11 +136,7 @@ const QuizTaking = () => {
     
     // Check if quiz was already submitted by checking if answers is populated
     if (attempt && attempt.answers && Object.keys(attempt.answers).length > 0) {
-      toast({
-        title: "Quiz already submitted",
-        description: "This attempt has already been finalized.",
-        variant: "destructive",
-      });
+      toast.error("Quiz already submitted", { description: "This attempt has already been finalized." });
       return;
     }
     setIsSubmitting(true);
@@ -211,21 +202,14 @@ const QuizTaking = () => {
         // Continue even if tracking fails - the quiz is already submitted
       }
 
-      toast({
-        title: "Quiz completed!",
-        description: isRetake 
+      toast.success("Quiz completed!", { description: isRetake 
           ? `Practice completed! Your score: ${calculatedScore}/${quiz?.max_score || 100}`
-          : `Your score: ${calculatedScore}/${quiz?.max_score || 100}`,
-      });
+          : `Your score: ${calculatedScore}/${quiz?.max_score || 100}` });
 
       navigate('/quizzes');
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit quiz",
-        variant: "destructive",
-      });
+      toast.error("Error", { description: error instanceof Error ? error.message : "Failed to submit quiz" });
     } finally {
       setIsSubmitting(false);
     }

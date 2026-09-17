@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
@@ -17,7 +17,6 @@ const Login = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const { signIn, signUp, user, profile } = useAuth();
-  const { toast } = useToast();
 
   const selectedPlan = sessionStorage.getItem("selectedPlan");
 
@@ -42,11 +41,7 @@ const Login = () => {
 
   const handlePasswordReset = async () => {
     if (!email) {
-      toast({
-        title: "أدخل بريدك الإلكتروني",
-        description: "اكتب البريد المرتبط بحسابك أولًا.",
-        variant: "destructive",
-      });
+      toast.error("أدخل بريدك الإلكتروني", { description: "اكتب البريد المرتبط بحسابك أولًا." });
       return;
     }
 
@@ -58,15 +53,12 @@ const Login = () => {
     setResettingPassword(false);
 
     if (error) {
-      toast({ title: "تعذّر الإرسال", description: error.message, variant: "destructive" });
+      toast.error("تعذّر الإرسال", { description: error.message });
       return;
     }
 
     setResetEmailSent(true);
-    toast({
-      title: "تم إرسال الرابط",
-      description: "تحقّق من بريدك لتعيين كلمة مرور جديدة.",
-    });
+    toast.success("تم إرسال الرابط", { description: "تحقّق من بريدك لتعيين كلمة مرور جديدة." });
   };
 
   const facts = [
