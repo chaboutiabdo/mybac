@@ -1,15 +1,15 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "the-smart",
+  "version": "1.0.0",
+  "description": "منصة التحضير لبكالوريا الجزائر — مواضيع سابقة، اختبارات يومية، دروس، وأستاذ بالذكاء الاصطناعي",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
-    "build:dev": "vite build --mode development",
-    "build:optimized": "vite build --mode production",
-    "analyze": "vite build --mode production && npx vite-bundle-analyzer dist",
-    "optimize": "node scripts/optimize.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "check": "npm run typecheck && npm run lint",

@@ -1,116 +1,81 @@
-# Development
+# Development notes
 
-The app runs against a **local** Supabase stack. The original cloud project
-(`mkzgenjziliwkcdbcecc`) no longer exists.
+Setup, scripts and deployment live in [README.md](README.md). This file records
+decisions and the things deliberately left undone.
 
-## Running it
+## Invariants worth keeping
 
-```bash
-npx supabase start     # needs Docker; applies all migrations and seeds users
-npm run dev
-```
+- **`npm run typecheck` stays at 0 and `npm run lint` stays at 0 errors.**
+  `npm run build` runs the typecheck first, so a regression cannot ship.
+- **TypeScript is in full `strict` mode.** Keep it there.
+- **`src/integrations/supabase/types.ts` is generated.** Run `npm run types:gen`
+  after any schema change. When it went stale, five tables and a column were
+  missing from it and every query against them collapsed to the `never`
+  overload — that was the root cause of ~40 type errors.
+- **`src/lib/bac.ts` is the single source for streams, subjects, chapters,
+  coefficients and the exam date.** Do not reintroduce a local list. The admin
+  forms and the student filters once disagreed (`Mathematics` vs `Math`,
+  `Sciences` vs `Sciences Expérimentales`), which made uploaded content
+  invisible to the filters meant to find it.
+- **Grading is server-side.** `submit_quiz_attempt` is the only thing that may
+  write `quiz_attempts.score` or `quiz_question_results`. The client reads
+  `quizzes_public`, which strips the answer key.
+- **RTL uses logical properties** (`ms-`/`me-`/`ps-`/`pe-`, `text-start`), not
+  `ml-`/`mr-`. The one exception is the `left-1/2 + translate-x` centring idiom,
+  which must stay physical or dialogs land off-centre.
+- **One toast system: Sonner.** The shadcn toast was removed. Reintroducing it
+  means mounting its `<Toaster />`, and forgetting that is exactly how ~97
+  toast calls once rendered nothing at all.
 
-`.env` is gitignored — copy `.env.example` and fill in the anon key that
-`npx supabase status` prints.
+## Coefficients need confirming
 
-### Test accounts
+`COEFFICIENTS` in `src/lib/bac.ts` carries per-stream subject coefficients for
+Sciences Expérimentales, Mathématiques and Technique Mathématiques. **Check them
+against the current ONEC grid before relying on them.** A wrong معامل is
+immediately obvious to a student and costs more credibility than the feature
+buys.
 
-Seeded automatically by `supabase/seed.sql` on every `supabase db reset`.
-Password for all three: `Test1234!`
+`BAC_DATE` is set to the June 2026 session and needs updating each year.
 
-| Role    | Email                |
-| ------- | -------------------- |
-| Student | `student@mybac.test` |
-| Premium | `premium@mybac.test` |
-| Admin   | `admin@mybac.test`   |
+## Deliberately not done
 
-## Checks
-
-```bash
-npm run typecheck                       # tsc --noEmit, must stay at 0
-npm run lint
-npm run check                           # both of the above
-npm run build                           # runs typecheck first, then vite build
-node --test scripts/check-security.mjs  # RLS assertions, needs the stack up
-npm run types:gen                       # regenerate src/integrations/supabase/types.ts
-```
-
-`src/integrations/supabase/types.ts` is **generated**. Never hand-edit it — run
-`npm run types:gen` after any schema change, or the hand-written types drift out
-of sync with the database (which is how ~40 of the original type errors arose).
-
-TypeScript is in full `strict` mode. Keep it there.
-
-## Known limitation: quiz scoring is client-trusted
-
-Quiz `questions` jsonb still contains the `correct` index for each question, it
-is sent to the browser, and `QuizTaking.tsx` computes the score locally and
-writes it to `quiz_attempts`. A determined student can read the answer key or
-post an arbitrary score for their own attempt.
-
-This was left in place deliberately — the app is a demo/portfolio piece.
-**Before any real-student launch**, close it with:
-
-1. A `quizzes_public` view that strips `correct` from `questions`, with the
-   `quizzes` table itself restricted to admins.
-2. A `submit_quiz_attempt(attempt_id, answers)` SECURITY DEFINER RPC that scores
-   server-side, and dropping the client's UPDATE policy on `quiz_attempts` so
-   `score` is no longer writable from the browser.
-3. Tightening the `quiz_attempts` INSERT policy to `score = 0 AND submitted = false`,
-   otherwise the insert path replaces the update path.
-
-Note `supabase/migrations/20251120115708_secure_quiz_scoring.sql` is an empty
-file — the migration its name promises was never written. It has already been
-applied, so add new migrations rather than editing it.
-
-## Things deliberately not done
-
-- **The 28 remaining eslint warnings.** All `react-hooks/exhaustive-deps`
+- **The 19 remaining eslint warnings.** All `react-hooks/exhaustive-deps`
   ("fetch on mount, `fetchX` not in deps") or `react-refresh/only-export-components`.
-  The structural fix is react-query (already a dependency), but converting ~30
-  components carries real regression risk and no user-visible benefit. Convert a
-  component when you are already editing it.
-- **No shared `<CrudTable>` abstraction** across the admin screens. They look
-  80% alike and differ in exactly the 20% that matters.
-- **`VideosManagement.tsx` (531 lines) and `SessionsManagement.tsx` (508)** were
-  left whole. A long admin CRUD screen is not a bug, and there are no component
-  tests to catch what a split would break.
+  The structural fix is React Query, which is already a dependency and already
+  mounted; convert a component when you are next editing it.
+- **React Query migration.** 24 files still hand-roll `loading` state and the
+  same Supabase reads are duplicated across 3-8 files each (`profiles` in 8,
+  the leaderboard view in 3). The shared read hooks are the place to start:
+  `useDashboardStats`, `useQuizStats`, `useUserScore`, `useUserRank`. Two of
+  those open a realtime channel with the same name on the same page.
+- **Splitting the big admin screens.** `VideosManagement` (531) and
+  `AdviceTipsManagement` (428) each hold a table, a form dialog and their own
+  fetching. Not a bug; split when you next need to change one.
+- **No shared `<CrudTable>`.** The admin screens look 80% alike and differ in
+  exactly the 20% that matters.
+- **Schools.** `SchoolsManagement` works, but `school_students` is never
+  populated by the app, so the student count would be 0 for every school. Keep
+  the screen only if the schools offer on `/pricing` is real.
+- **`support_requests` has no admin view.** `/pricing` writes payment receipts
+  into it and nothing reads them back, so receipts are invisible to admins. It
+  also accepts anonymous inserts by design (the public contact form), which
+  means an attacker can file an upgrade request naming someone else's email —
+  worth adding a `requester_id uuid DEFAULT auth.uid()` column and keying the
+  admin action off that instead of the free-text email.
+- **`/pricing` still shows a placeholder bank account** (`XXXX-XXXX-XXXX`) and
+  the landing footer has placeholder contact details, marked in amber.
 
-## Security testing
+## Things that were fixed and are easy to break again
 
-```bash
-npx supabase start
-npm run seed:testusers   # 55 users: 40 student, 10 premium, 5 admin
-npm run security         # 88 assertions; every test PASSES when an attack is blocked
-```
-
-`scripts/attack-suite.mjs` runs real attacks as real signed-in users: privilege
-escalation, IDOR across the cohort, points and score forgery, an anonymous read
-sweep over all 24 tables, premium bypass, storage, and the edge function.
-
-**Reseed before every run.** A failing run can leave escalated roles behind — a
-broken guard once left 7 admins where there should have been 5, and the stale
-roles then made later tests pass for the wrong reason.
-
-### Remaining known gap: quiz grading is client-side
-
-A signed-in student can still:
-
-- read `quizzes.questions`, which carries the `correct` index for each question
-- `INSERT` into `quiz_question_results` with `is_correct: true`
-- `PATCH quiz_attempts.score` directly
-
-`20260917000000` closed the *unauthenticated* version of this (the answer key
-was readable with only the publishable key), and `20260917000001` added
-`UNIQUE (quiz_attempt_id, question_id)` so an answer cannot be banked twice.
-Closing it fully needs:
-
-1. a `quizzes_public` view that strips `correct`, with `quizzes` itself
-   restricted to admins;
-2. a `submit_quiz_attempt(attempt_id, answers)` SECURITY DEFINER RPC that grades
-   server-side and is the only writer of `quiz_attempts.score` and
-   `quiz_question_results`;
-3. dropping the client UPDATE policy on `quiz_attempts` and the INSERT policy on
-   `quiz_question_results`, then pointing `QuizTaking.tsx` at the RPC.
-
-The two `known gap` lines the suite prints are this, recorded deliberately.
+- `completed_at` must be set when a quiz is submitted. Five queries filter on
+  it; when it was never written, every completed-quiz count and the day streak
+  were permanently zero.
+- `ProtectedRoute` must use `isPremium` (role **or** `subscription_status`), not
+  `profile.role` alone, or paying users are locked out.
+- Premium videos store their path in `file_path`, free ones in `url`.
+- `video_progress` is only written on `completed`. Writing it on `started` too
+  reset watched videos to unwatched.
+- The profile guard trigger keys on `auth.role()` and `pg_trigger_depth()`, not
+  `current_user` — inside a `SECURITY DEFINER` trigger `current_user` is always
+  `postgres`. Getting this wrong once disabled the guard entirely and let test
+  students promote themselves to admin.

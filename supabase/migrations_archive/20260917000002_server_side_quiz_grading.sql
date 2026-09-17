@@ -145,11 +145,18 @@ BEGIN
     -- Points only on a first pass, and only for a correct answer. The amount
     -- is decided inside record_points_transaction, not here.
     IF v_is_right AND NOT v_is_retake THEN
-      PERFORM public.record_points_transaction(
-        auth.uid(), v_per_q, 'quiz', v_attempt.quiz_id,
-        'Quiz: ' || COALESCE(v_quiz.subject, '') || ' - Q' || v_ord,
-        v_quiz.subject, v_quiz.chapter, v_quiz.type::text, v_qid
-      );
+      BEGIN
+        PERFORM public.record_points_transaction(
+          auth.uid(), v_per_q, 'quiz', v_attempt.quiz_id,
+          'Quiz: ' || COALESCE(v_quiz.subject, '') || ' - Q' || v_ord,
+          v_quiz.subject, v_quiz.chapter, v_quiz.type::text, v_qid
+        );
+      EXCEPTION WHEN unique_violation THEN
+        -- points_transactions_unique_award already holds this award, so the
+        -- student has been paid for this question. Skip it rather than abort
+        -- the whole submission.
+        NULL;
+      END;
     END IF;
   END LOOP;
 

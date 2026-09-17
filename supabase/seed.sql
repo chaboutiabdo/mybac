@@ -60,3 +60,61 @@ where email like '%@mybac.test';
 
 select p.email, p.role, p.name from public.profiles p
  where p.email like '%@mybac.test' order by p.role;
+
+
+-- ============================================================================
+-- Sample content for local development
+--
+-- This used to live inside a migration, which meant it would have been
+-- inserted into production too. Seed data belongs here: `supabase db reset`
+-- runs it locally and nothing runs it on a deployed project.
+--
+-- Values use the canonical vocabulary from src/lib/bac.ts.
+-- ============================================================================
+
+INSERT INTO public.quizzes (type, subject, chapter, date, questions, max_score) VALUES
+('daily', 'Math', 'limits', CURRENT_DATE, '[
+  {
+    "id": "q_1",
+    "question": "ما هي نهاية (x²-1)/(x-1) عندما يؤول x إلى 1؟",
+    "options": ["0", "1", "2", "غير معرّفة"],
+    "correct": 2
+  },
+  {
+    "id": "q_2",
+    "question": "مشتقة الدالة x³ هي:",
+    "options": ["3x²", "x²", "3x", "x³"],
+    "correct": 0
+  }
+]'::jsonb, 50),
+('practice', 'Physics', 'electrical_phenomena', CURRENT_DATE, '[
+  {
+    "id": "q_1",
+    "question": "وحدة شدة التيار الكهربائي هي:",
+    "options": ["V", "A", "Ω", "W"],
+    "correct": 1
+  }
+]'::jsonb, 8)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.exams (title, subject, stream, year, difficulty, questions) VALUES
+('الرياضيات — بكالوريا 2025', 'Math',    'Sciences Expérimentales', 2025, 'hard',   4),
+('الرياضيات — بكالوريا 2024', 'Math',    'Sciences Expérimentales', 2024, 'medium', 4),
+('الفيزياء — بكالوريا 2024',  'Physics', 'Sciences Expérimentales', 2024, 'medium', 4),
+('الرياضيات — بكالوريا 2023', 'Math',    'Mathématiques',           2023, 'easy',   4)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.videos (title, subject, chapter, type, url, description) VALUES
+('مقدّمة إلى الدوال اللوغاريتمية', 'Math',    'logarithmic',          'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الدرس الأول'),
+('الاشتقاقية والمشتقات',           'Math',    'derivatives',          'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الدرس الأول'),
+('دراسة ظواهر كهربائية',           'Physics', 'electrical_phenomena', 'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الوحدة الثالثة')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.advice_tips (title, content, category, priority, is_public, active) VALUES
+('راجع التمارين المحلولة', 'ابدأ بمواضيع السنوات الثلاث الأخيرة قبل الانتقال إلى ما قبلها.', 'study', 3, true, true),
+('نظّم وقتك',              'جلسات من 45 دقيقة مع استراحة 10 دقائق أفضل من ساعات متواصلة.',   'study', 1, true, true)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.admin_advice (title, content, is_pinned) VALUES
+('نصيحة الإدارة اليومية', 'راجعوا التمارين المحلولة لدورة 2023 قبل الاختبار اليومي.', true)
+ON CONFLICT DO NOTHING;
