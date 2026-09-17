@@ -1,33 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- lang/dir are set here, not by a React effect, so the first paint is RTL -->
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>THE SMART - AI-Powered Learning Platform</title>
-    <meta name="description" content="THE SMART - Master your exams with AI-powered quizzes, expert solutions, and personalized learning paths." />
-    <meta name="author" content="THE SMART Team" />
-    <meta name="keywords" content="smart learning, AI education, online quizzes, exam preparation, personalized learning" />
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1a1a1a" />
-    <link rel="icon" href="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
+    <title>THE SMART — منصة التحضير لبكالوريا الجزائر</title>
+    <meta name="description" content="مواضيع بكالوريا سابقة مع حلولها، اختبار يومي مصحّح فورًا، دروس مصوّرة حسب فصول المنهاج، وأستاذ بالذكاء الاصطناعي — للرياضيات والفيزياء." />
+    <meta name="author" content="THE SMART" />
+    <meta name="keywords" content="بكالوريا, بكالوريا الجزائر, مواضيع بكالوريا, رياضيات, فيزياء, اختبارات, دروس" />
 
-    <meta property="og:title" content="THE SMART - AI-Powered Learning Platform" />
-    <meta property="og:description" content="Master your exams with AI-powered quizzes and personalized learning paths." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Rubik:wght@500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0B2A22" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:title" content="THE SMART — منصة التحضير لبكالوريا الجزائر" />
+    <meta property="og:description" content="كل مواضيع البكالوريا وحلولها، اختبار يومي مصحّح، ودروس حسب فصول المنهاج." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
+    <meta property="og:locale" content="ar_DZ" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@thesmart" />
-    <meta name="twitter:image" content="/lovable-uploads/2473f7f5-d49d-4abd-8426-94b1d4b3646e.png" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
+
     <!-- PWA Service Worker -->
     <script>
       if ('serviceWorker' in navigator) {

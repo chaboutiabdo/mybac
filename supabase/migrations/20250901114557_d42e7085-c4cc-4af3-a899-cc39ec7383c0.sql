@@ -24,24 +24,33 @@ END;
 $$;
 
 -- Create triggers to update scores
+DROP TRIGGER IF EXISTS update_score_on_quiz ON public.quiz_attempts;
 CREATE TRIGGER update_score_on_quiz
   AFTER INSERT OR UPDATE ON public.quiz_attempts
   FOR EACH ROW EXECUTE FUNCTION public.update_user_score();
 
+DROP TRIGGER IF EXISTS update_score_on_video ON public.video_progress;
 CREATE TRIGGER update_score_on_video
   AFTER INSERT OR UPDATE ON public.video_progress
   FOR EACH ROW EXECUTE FUNCTION public.update_user_score();
 
+DROP TRIGGER IF EXISTS update_score_on_exam ON public.exam_progress;
 CREATE TRIGGER update_score_on_exam
   AFTER INSERT OR UPDATE ON public.exam_progress
   FOR EACH ROW EXECUTE FUNCTION public.update_user_score();
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_schools_updated_at ON public.schools;
 CREATE TRIGGER update_schools_updated_at BEFORE UPDATE ON public.schools FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_exams_updated_at ON public.exams;
 CREATE TRIGGER update_exams_updated_at BEFORE UPDATE ON public.exams FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_videos_updated_at ON public.videos;
 CREATE TRIGGER update_videos_updated_at BEFORE UPDATE ON public.videos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_alumni_updated_at ON public.alumni;
 CREATE TRIGGER update_alumni_updated_at BEFORE UPDATE ON public.alumni FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON public.bookings;
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON public.bookings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Insert sample data for testing

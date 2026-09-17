@@ -2,159 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
-/* BAC Ace AI Design System - Educational Learning Platform */
+@import "./styles/ornament.css";
+
+/* ==========================================================================
+   THE SMART — Emerald Academy
+
+   Deep emerald surfaces, brass gold as the jewel, warm cream text.
+   Prestigious and collegiate: leather, brass and green baize.
+
+   Gold is the ACCENT, not a second primary. It marks the one thing on a
+   screen that matters most — a countdown, a score, the premium tier.
+   ========================================================================== */
 
 @layer base {
   :root {
-    /* Professional Black Theme - Base colors */
-    --background: 0 0% 5%;
-    --foreground: 0 0% 95%;
+    --background: 164 59% 10%;        /* #0B2A22  deep emerald page       */
+    --surface-deep: 166 55% 8%;       /* #08211B  wells, inputs, insets   */
+    --foreground: 45 32% 93%;         /* #F2EFE6  warm cream              */
 
-    /* Card & surface colors */
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    --card: 162 53% 15%;              /* #123A2E  lifted card             */
+    --card-foreground: 45 32% 93%;
+    --card-raised: 162 45% 19%;       /* #18473A  reading + hover surface */
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 162 45% 17%;
+    --popover-foreground: 45 32% 93%;
 
-    /* Primary - Professional Electric Blue */
-    --primary: 210 100% 60%;
-    --primary-foreground: 0 0% 5%;
-    --primary-hover: 210 100% 65%;
-    --primary-light: 210 100% 15%;
+    --primary: 160 60% 32%;           /* #20825F  emerald actions         */
+    --primary-foreground: 45 32% 96%;
+    --primary-hover: 160 60% 38%;
+    --primary-light: 162 45% 20%;     /* DARK tint — not a pale wash      */
 
-    /* Secondary - Professional Cyan */
-    --secondary: 180 100% 50%;
-    --secondary-foreground: 0 0% 5%;
-    --secondary-hover: 180 100% 55%;
-    --secondary-light: 180 100% 15%;
+    --secondary: 162 40% 20%;
+    --secondary-foreground: 45 32% 93%;
+    --secondary-hover: 162 40% 25%;
+    --secondary-light: 162 40% 17%;
 
-    /* Accent - Professional Gold */
-    --accent: 45 100% 60%;
-    --accent-foreground: 0 0% 5%;
-    --accent-hover: 45 100% 65%;
-    --accent-light: 45 100% 15%;
+    --accent: 38 61% 56%;             /* #D4A24C  brass gold              */
+    --accent-foreground: 164 59% 10%;
+    --accent-hover: 38 61% 64%;
+    --accent-light: 38 40% 20%;
 
-    /* Muted colors */
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 162 40% 17%;
+    --muted-foreground: 160 15% 68%;  /* #A2B8AF                          */
 
-    /* Status colors */
-    --success: 120 100% 50%;
-    --success-foreground: 0 0% 5%;
-    
-    --warning: 45 100% 60%;
-    --warning-foreground: 0 0% 5%;
-    
-    --destructive: 0 100% 60%;
-    --destructive-foreground: 0 0% 95%;
+    --success: 145 55% 48%;
+    --success-foreground: 164 59% 10%;
+    --success-light: 145 40% 18%;
 
-    /* Border & input */
-    --border: 0 0% 20%;
-    --input: 0 0% 12%;
-    --ring: 210 100% 60%;
+    --warning: 38 61% 56%;
+    --warning-foreground: 164 59% 10%;
+    --warning-light: 38 40% 20%;
 
-    /* Professional Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 100% 60%), hsl(210 100% 70%));
-    --gradient-secondary: linear-gradient(135deg, hsl(180 100% 50%), hsl(180 100% 60%));
-    --gradient-accent: linear-gradient(135deg, hsl(45 100% 60%), hsl(45 100% 70%));
-    --gradient-hero: linear-gradient(135deg, hsl(210 100% 60%), hsl(180 100% 50%));
-    --gradient-card: linear-gradient(135deg, hsl(0 0% 8%), hsl(0 0% 12%));
+    --destructive: 4 65% 55%;
+    --destructive-foreground: 45 32% 96%;
+    --destructive-light: 4 45% 20%;
 
-    /* Professional Shadows */
-    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.4);
-    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.5);
-    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.6);
-    --shadow-glow: 0 0 30px hsl(210 100% 60% / 0.4);
+    --border: 162 30% 22%;
+    --border-gold: 38 45% 38%;
+    --input: 166 55% 8%;
+    --ring: 38 61% 56%;               /* gold focus ring                  */
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;               /* 10px                             */
 
-    --sidebar-background: 0 0% 5%;
+    /* Dark themes need deeper, softer shadows than light ones. */
+    --shadow-raised: 0 2px 10px -3px hsl(166 60% 3% / 0.55);
+    --shadow-overlay: 0 18px 50px -14px hsl(166 60% 3% / 0.75),
+                      0 4px 14px -5px hsl(166 60% 3% / 0.5);
 
-    --sidebar-foreground: 0 0% 95%;
-
-    --sidebar-primary: 210 100% 60%;
-
-    --sidebar-primary-foreground: 0 0% 5%;
-
-    --sidebar-accent: 0 0% 12%;
-
-    --sidebar-accent-foreground: 0 0% 95%;
-
-    --sidebar-border: 0 0% 20%;
-
-    --sidebar-ring: 210 100% 60%;
-  }
-
-  .dark {
-    /* Base colors */
-    --background: 230 20% 8%;
-    --foreground: 220 15% 95%;
-
-    /* Card & surface colors */
-    --card: 230 20% 10%;
-    --card-foreground: 220 15% 95%;
-
-    --popover: 230 20% 10%;
-    --popover-foreground: 220 15% 95%;
-
-    /* Primary - Bright Blue for dark mode */
-    --primary: 220 85% 65%;
-    --primary-foreground: 230 20% 8%;
-    --primary-hover: 220 85% 70%;
-    --primary-light: 220 85% 15%;
-
-    /* Secondary - Bright Green */
-    --secondary: 145 65% 55%;
-    --secondary-foreground: 230 20% 8%;
-    --secondary-hover: 145 65% 60%;
-    --secondary-light: 145 65% 15%;
-
-    /* Accent - Bright Orange */
-    --accent: 25 95% 65%;
-    --accent-foreground: 230 20% 8%;
-    --accent-hover: 25 95% 70%;
-    --accent-light: 25 95% 15%;
-
-    /* Muted colors */
-    --muted: 230 20% 15%;
-    --muted-foreground: 220 15% 65%;
-
-    /* Status colors */
-    --success: 145 65% 55%;
-    --success-foreground: 230 20% 8%;
-    
-    --warning: 45 95% 65%;
-    --warning-foreground: 230 20% 8%;
-    
-    --destructive: 0 75% 65%;
-    --destructive-foreground: 230 20% 8%;
-
-    /* Border & input */
-    --border: 230 20% 20%;
-    --input: 230 20% 15%;
-    --ring: 220 85% 65%;
-
-    /* Gradients for dark mode */
-    --gradient-primary: linear-gradient(135deg, hsl(220 85% 65%), hsl(220 85% 75%));
-    --gradient-secondary: linear-gradient(135deg, hsl(145 65% 55%), hsl(145 65% 65%));
-    --gradient-accent: linear-gradient(135deg, hsl(25 95% 65%), hsl(25 95% 75%));
-    --gradient-hero: linear-gradient(135deg, hsl(220 85% 65%), hsl(145 65% 55%));
-    --gradient-card: linear-gradient(135deg, hsl(230 20% 10%), hsl(230 20% 12%));
-
-    /* Shadows for dark mode */
-    --shadow-sm: 0 2px 4px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
-    --shadow-lg: 0 8px 25px hsl(0 0% 0% / 0.5);
-    --shadow-glow: 0 0 20px hsl(220 85% 65% / 0.3);
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Admin sidebar — the deepest surface in the app */
+    --sidebar-background: 166 60% 7%;
+    --sidebar-foreground: 160 15% 72%;
+    --sidebar-primary: 38 61% 56%;
+    --sidebar-primary-foreground: 164 59% 10%;
+    --sidebar-accent: 162 45% 16%;
+    --sidebar-accent-foreground: 45 32% 96%;
+    --sidebar-border: 162 30% 18%;
+    --sidebar-ring: 38 61% 56%;
   }
 }
 
@@ -163,43 +86,53 @@
     @apply border-border;
   }
 
+  html {
+    font-size: 16px;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* Performance optimizations */
+    /* Arabic needs more leading than Latin at the same size. */
+    line-height: 1.8;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  /* Custom scrollbar with better performance */
+  h1, h2, h3, h4 {
+    @apply font-display;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  /* Digits stop jittering in scores, timers, tables and the leaderboard. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: hsl(var(--accent) / 0.3);
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 12px;
+    height: 12px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-muted;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full;
+    @apply rounded-full;
+    background: hsl(var(--border));
+    border: 3px solid hsl(var(--background));
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    background: hsl(var(--border-gold) / 0.7);
   }
 
-  /* Optimize animations for better performance */
-  * {
-    will-change: auto;
-  }
-
-  .animate-fade-in,
-  .animate-slide-up,
-  .animate-bounce-subtle {
-    will-change: transform, opacity;
-  }
-
-  /* Reduce motion for users who prefer it */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -208,164 +141,5 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-  }
-}
-
-@layer components {
-  /* Educational app specific utilities */
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
-  
-  .gradient-secondary {
-    background: var(--gradient-secondary);
-  }
-  
-  .gradient-accent {
-    background: var(--gradient-accent);
-  }
-  
-  .gradient-hero {
-    background: var(--gradient-hero);
-  }
-  
-  .gradient-card {
-    background: var(--gradient-card);
-  }
-
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.6s ease-out;
-  }
-
-  .animate-bounce-subtle {
-    animation: bounce-subtle 3s ease-in-out infinite;
-  }
-
-  .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
-  }
-
-  .story-link {
-    @apply relative inline-block after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left;
-  }
-
-  /* RTL Support */
-  .rtl {
-    direction: rtl;
-  }
-
-  .rtl .space-x-2 > :not([hidden]) ~ :not([hidden]) {
-    --tw-space-x-reverse: 1;
-    margin-right: calc(0.5rem * var(--tw-space-x-reverse));
-    margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
-  }
-
-  .rtl .space-x-4 > :not([hidden]) ~ :not([hidden]) {
-    --tw-space-x-reverse: 1;
-    margin-right: calc(1rem * var(--tw-space-x-reverse));
-    margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
-  }
-
-  .rtl .gap-2 {
-    gap: 0.5rem;
-  }
-
-  .rtl .flex-row-reverse {
-    flex-direction: row-reverse;
-  }
-
-  /* RTL text alignment */
-  .rtl .text-left {
-    text-align: right;
-  }
-
-  .rtl .text-right {
-    text-align: left;
-  }
-
-  /* RTL margins and padding adjustments */
-  .rtl .mr-2 {
-    margin-right: 0;
-    margin-left: 0.5rem;
-  }
-
-  .rtl .ml-2 {
-    margin-left: 0;
-    margin-right: 0.5rem;
-  }
-
-  .rtl .pr-4 {
-    padding-right: 0;
-    padding-left: 1rem;
-  }
-
-  .rtl .pl-4 {
-    padding-left: 0;
-    padding-right: 1rem;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes bounce-subtle {
-  0%, 85%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
   }
 }

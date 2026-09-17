@@ -10,7 +10,7 @@ BEGIN
         AND column_name='subscription_status') 
     THEN
         ALTER TABLE profiles 
-        ADD COLUMN subscription_status TEXT DEFAULT 'free' 
+        ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free' 
         CHECK (subscription_status IN ('free', 'pending', 'premium'));
     END IF;
 END $$;
@@ -24,7 +24,7 @@ SET subscription_status =
     END
 WHERE subscription_status IS NULL;
 
--- Create index for better query performance
+-- Create index IF NOT EXISTS for better query performance
 CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status 
 ON profiles(subscription_status);
 
@@ -50,6 +50,7 @@ TO authenticated
 USING (auth.uid() = id)
 WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles" 
 ON profiles FOR SELECT 
 TO authenticated 
@@ -60,6 +61,7 @@ USING (
     )
 );
 
+DROP POLICY IF EXISTS "Admins can update all profiles" ON profiles;
 CREATE POLICY "Admins can update all profiles" 
 ON profiles FOR UPDATE 
 TO authenticated 

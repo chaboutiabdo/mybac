@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { useCountUp } from "@/hooks/useCountUp";
 
 interface StatsCardProps {
   title: string;
@@ -14,63 +16,53 @@ interface StatsCardProps {
   };
 }
 
-const StatsCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  variant = "default",
-  trend 
-}: StatsCardProps) => {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case "success":
-        return "bg-success-light border-success/20";
-      case "warning":
-        return "bg-warning-light border-warning/20";
-      case "accent":
-        return "bg-accent-light border-accent/20";
-      default:
-        return "bg-primary-light border-primary/20";
-    }
-  };
+const iconTone: Record<NonNullable<StatsCardProps["variant"]>, string> = {
+  default: "text-muted-foreground",
+  success: "text-success",
+  warning: "text-accent",
+  accent: "text-accent",
+};
 
-  const getIconColor = () => {
-    switch (variant) {
-      case "success":
-        return "text-success";
-      case "warning":
-        return "text-warning";
-      case "accent":
-        return "text-accent";
-      default:
-        return "text-primary";
-    }
-  };
+const StatsCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  variant = "default",
+  trend,
+}: StatsCardProps) => {
+  // Numeric values count up on mount; "…" and marks like "14.5 / 20" do not.
+  const numeric = typeof value === "number" ? value : null;
+  const counted = useCountUp(numeric ?? 0);
+  const shown = numeric === null ? value : counted.toLocaleString("ar-DZ");
 
   return (
-    <Card className={`gradient-card border ${getVariantStyles()} hover:shadow-md transition-shadow`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className={`h-4 w-4 ${getIconColor()}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {subtitle}
-          </p>
-        )}
-        {trend && (
-          <Badge
-            variant={trend.isPositive ? "default" : "destructive"}
-            className="mt-2 text-xs"
-          >
-            {trend.isPositive ? "↗" : "↘"} {trend.value}
-          </Badge>
-        )}
+    <Card className="h-full">
+      <CardContent className="flex h-full flex-col p-5">
+        <div className="flex items-start justify-between gap-3">
+          <span className="rule-gold text-sm text-muted-foreground">{title}</span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-gold/25 bg-surface-deep/60">
+            <Icon className={cn("h-5 w-5", iconTone[variant])} strokeWidth={1.6} aria-hidden />
+          </span>
+        </div>
+
+        <div className="mt-auto pt-4">
+          <div className="font-display text-[38px] font-bold leading-none tracking-tight tabular">
+            {shown}
+          </div>
+          {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
+          {trend && (
+            <p
+              className={cn(
+                "mt-2 text-sm font-medium tabular",
+                trend.isPositive ? "text-success" : "text-destructive"
+              )}
+            >
+              {trend.isPositive ? "+" : "−"}
+              {trend.value}
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,11 +1,11 @@
 {
-  "name": "THE SMART",
+  "name": "THE SMART — منصة التحضير لبكالوريا الجزائر",
   "short_name": "THE SMART",
-  "description": "AI-Powered BAC Exam Preparation Platform",
+  "description": "مواضيع بكالوريا سابقة مع حلولها، اختبار يومي مصحّح، ودروس حسب فصول المنهاج.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a1a1a",
+  "background_color": "#0B2A22",
+  "theme_color": "#0B2A22",
   "orientation": "portrait",
   "icons": [
     {
@@ -22,6 +22,6 @@
     }
   ],
   "categories": ["education", "productivity"],
-  "lang": "en",
-  "dir": "ltr"
+  "lang": "ar",
+  "dir": "rtl"
 }

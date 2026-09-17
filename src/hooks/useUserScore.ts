@@ -10,6 +10,29 @@ export const useUserScore = () => {
   useEffect(() => {
     if (user) {
       fetchUserScore();
+      
+      // Set up real-time subscription to profiles to get score updates
+      const subscription = supabase
+        .channel(`profile_${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            if (payload.new.total_score !== undefined) {
+              setScore(payload.new.total_score);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [user]);
 
@@ -17,72 +40,41 @@ export const useUserScore = () => {
     if (!user) return;
 
     try {
-      // Manually calculate score to ensure accuracy
-      const [videoData, examData, dailyQuizData, practiceQuizData, bookingData] = await Promise.all([
-        supabase.from('video_progress').select('*').eq('student_id', user.id).eq('watched', true),
-        supabase.from('exam_progress').select('*').eq('student_id', user.id),
-        supabase.from('quiz_question_results')
-          .select('*, quiz_attempts!inner(quiz_id, quizzes!inner(type))')
-          .eq('student_id', user.id)
-          .eq('is_correct', true)
-          .eq('quiz_attempts.quizzes.type', 'daily'),
-        supabase.from('quiz_question_results')
-          .select('*, quiz_attempts!inner(quiz_id, quizzes!inner(type))')
-          .eq('student_id', user.id)
-          .eq('is_correct', true)
-          .eq('quiz_attempts.quizzes.type', 'practice'),
-        supabase.from('bookings').select('*').eq('student_id', user.id)
-      ]);
-
-      let totalScore = 0;
-
-      // Video score: 5 points per watched video
-      if (videoData.data) {
-        totalScore += videoData.data.length * 5;
-      }
-
-      // Exam score: 10 points per exam interaction
-      if (examData.data) {
-        const examScore = examData.data.filter(exam => 
-          exam.viewed_solution || exam.solved_with_ai
-        ).length * 10;
-        totalScore += examScore;
-      }
-
-      // Daily quiz score: 25 points per correct answer
-      if (dailyQuizData.data) {
-        totalScore += dailyQuizData.data.length * 25;
-      }
-
-      // Practice quiz score: 8 points per correct answer
-      if (practiceQuizData.data) {
-        totalScore += practiceQuizData.data.length * 8;
-      }
-
-      // Booking score: 70 points per alumni booking
-      if (bookingData.data) {
-        totalScore += bookingData.data.length * 70;
-      }
-
-      // Update the profile with calculated score
-      await supabase
+      // Get total_score directly from profiles table
+      // This is automatically updated by triggers when points_transactions are added
+      const { data, error } = await supabase
         .from('profiles')
-        .update({ total_score: totalScore })
-        .eq('user_id', user.id);
+        .select('total_score')
+        .eq('user_id', user.id)
+        .single();
 
-      setScore(totalScore);
+      if (error) {
+        console.error('Error fetching profile score:', error);
+        throw error;
+      }
+
+      setScore(data?.total_score || 0);
     } catch (error) {
-      console.error('Error fetching/calculating user score:', error);
-      // Fallback to stored score
+      console.error('Error fetching user score:', error);
+      
+      // Fallback: Calculate from points_transactions
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('total_score')
-          .eq('user_id', user.id)
-          .single();
-        setScore(data?.total_score || 0);
+        const { data: transactions, error: transError } = await supabase
+          .from('points_transactions')
+          .select('points')
+          .eq('student_id', user.id);
+
+        if (transError) throw transError;
+
+        const totalScore = transactions?.reduce((sum, t) => sum + t.points, 0) || 0;
+
+        // display only — total_score is owned by the update_student_total_score
+        // trigger. The client used to write it back here, which was a second
+        // path for inflating the leaderboard; the profiles guard trigger now
+        // reverts any such write anyway.
+        setScore(totalScore);
       } catch (fallbackError) {
-        console.error('Error fetching fallback score:', fallbackError);
+        console.error('Error calculating fallback score:', fallbackError);
         setScore(0);
       }
     } finally {

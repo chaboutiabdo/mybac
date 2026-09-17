@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from '@/integrations/supabase/types';
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useActivityTracking = () => {
@@ -11,21 +12,70 @@ export const useActivityTracking = () => {
     studentAnswer: string,
     correctAnswer: string,
     isCorrect: boolean,
-    timeSpent?: number
+    quizId?: string | null,
+    quizType?: string | null,
+    quizSubject?: string | null,
+    quizChapter?: string | null,
+    selectedChoiceIndex?: number,
+    questionNumber?: number,
+    timeSpent?: number,
+    isRetake?: boolean
   ) => {
     if (!user) return;
 
     try {
-      await supabase.from("quiz_question_results").insert({
-        student_id: user.id,
-        quiz_attempt_id: quizAttemptId,
-        question_id: questionId,
-        question_text: questionText,
-        student_answer: studentAnswer,
-        correct_answer: correctAnswer,
-        is_correct: isCorrect,
-        time_spent: timeSpent,
-      });
+      // Insert quiz question result with enhanced metadata
+      const { data: questionResult, error: insertError } = await supabase
+        .from("quiz_question_results")
+        .insert({
+          student_id: user.id,
+          quiz_attempt_id: quizAttemptId,
+          question_id: questionId,
+          question_text: questionText,
+          student_answer: studentAnswer,
+          correct_answer: correctAnswer,
+          is_correct: isCorrect,
+          quiz_id: quizId,
+          quiz_type: quizType,
+          quiz_subject: quizSubject,
+          quiz_chapter: quizChapter,
+          selected_choice_index: selectedChoiceIndex,
+          question_number: questionNumber,
+          time_spent: timeSpent,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Error tracking quiz question:", insertError);
+        return;
+      }
+
+      // Record points transaction only for correct answers and first attempts (not retakes)
+      if (isCorrect && !isRetake) {
+        const pointsPerQuestion = quizType === 'daily' ? 25 : 8;
+        const sourceDescription = `Quiz: ${quizSubject || 'Unknown'} ${quizType === 'daily' ? 'Daily' : 'Practice'} - Q${questionNumber || '?'}`;
+        
+        const { data: transactionResult, error: transactionError } = await supabase.rpc('record_points_transaction', {
+          p_student_id: user.id,
+          p_points: pointsPerQuestion,
+          p_source_type: 'quiz',
+          // the generated Args type marks these optional, so omit them with
+          // undefined rather than passing null
+          p_source_id: quizId ?? undefined,
+          p_source_description: sourceDescription,
+          p_subject: quizSubject ?? undefined,
+          p_chapter: quizChapter ?? undefined,
+          p_quiz_type: quizType ?? undefined,
+          p_question_id: questionId ?? undefined
+        });
+        
+        if (transactionError) {
+          console.error('Error recording points transaction:', transactionError);
+        } else {
+          console.log(`Points recorded successfully: ${pointsPerQuestion} points for correct answer on Q${questionNumber}`);
+        }
+      }
     } catch (error) {
       console.error("Error tracking quiz question:", error);
     }
@@ -36,9 +86,9 @@ export const useActivityTracking = () => {
     action: "started" | "paused" | "resumed" | "completed",
     videoTitle: string,
     subject: string,
-    chapter?: string,
-    position?: number,
-    sessionId?: string
+    chapter?: string | null,
+    position?: number | null,
+    sessionId?: string | null
   ) => {
     if (!user) return;
 
@@ -96,7 +146,7 @@ export const useActivityTracking = () => {
     subject: string,
     year: number,
     stream: string,
-    difficulty?: string
+    difficulty?: string | null
   ) => {
     if (!user) return;
 
@@ -125,7 +175,7 @@ export const useActivityTracking = () => {
       if (action === "viewed" || action === "downloaded" || action === "started_solving") {
         console.log('Updating exam progress for scoring...');
         
-        const progressUpdate: any = {
+        const progressUpdate: TablesInsert<'exam_progress'> = {
           student_id: user.id,
           exam_id: examId,
         };

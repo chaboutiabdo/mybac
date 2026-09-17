@@ -3,6 +3,7 @@ insert into storage.buckets (id, name, public) values ('documents', 'documents',
 
 -- Create storage policies for documents bucket
 -- Admins can upload, view, update, and delete files
+DROP POLICY IF EXISTS "Admins can upload documents" ON storage.objects;
 create policy "Admins can upload documents" 
 on storage.objects 
 for insert 
@@ -15,6 +16,7 @@ with check (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can view all documents" ON storage.objects;
 create policy "Admins can view all documents" 
 on storage.objects 
 for select 
@@ -27,6 +29,7 @@ using (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can update documents" ON storage.objects;
 create policy "Admins can update documents" 
 on storage.objects 
 for update 
@@ -39,6 +42,7 @@ using (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can delete documents" ON storage.objects;
 create policy "Admins can delete documents" 
 on storage.objects 
 for delete 
@@ -52,6 +56,7 @@ using (
 );
 
 -- Students can view documents (for downloading exams and solutions)
+DROP POLICY IF EXISTS "Students can view documents" ON storage.objects;
 create policy "Students can view documents" 
 on storage.objects 
 for select 

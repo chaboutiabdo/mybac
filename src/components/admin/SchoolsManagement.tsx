@@ -56,7 +56,7 @@ export function SchoolsManagement() {
       } else if (data) {
         // Optionally, fetch students count for each school if needed
         setSchools(
-          data.map((s: any) => ({
+          data.map((s) => ({
             id: s.id,
             name: s.name,
             location: s.city,
@@ -119,12 +119,12 @@ export function SchoolsManagement() {
 
   return (
     <div className="space-y-6">
-      {error && <div className="text-red-500">{error}</div>}
-      {loading && <div className="text-gray-500">Loading...</div>}
+      {error && <div className="text-destructive">{error}</div>}
+      {loading && <div className="text-muted-foreground">Loading...</div>}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <School className="h-8 w-8" />
             Schools Management
           </h1>
@@ -132,8 +132,8 @@ export function SchoolsManagement() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-primary text-white">
-              <PlusCircle className="h-4 w-4 mr-2" />
+            <Button className="text-primary-foreground">
+              <PlusCircle className="h-4 w-4 me-2" />
               Add School
             </Button>
           </DialogTrigger>
@@ -164,7 +164,7 @@ export function SchoolsManagement() {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddSchool} className="gradient-primary text-white">
+                <Button onClick={handleAddSchool} className="text-primary-foreground">
                   Add School
                 </Button>
               </div>
@@ -180,8 +180,8 @@ export function SchoolsManagement() {
             <div className="flex items-center gap-2">
               <School className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{schools.length}</p>
-                <p className="text-sm text-muted-foreground">Total Schools</p>
+                <p className="text-3xl font-bold">{schools.length}</p>
+                <p className="text-base text-muted-foreground">Total Schools</p>
               </div>
             </div>
           </CardContent>
@@ -191,10 +191,10 @@ export function SchoolsManagement() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-3xl font-bold">
                   {schools.reduce((sum, school) => sum + school.studentsCount, 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">Total Students</p>
+                <p className="text-base text-muted-foreground">Total Students</p>
               </div>
             </div>
           </CardContent>
@@ -204,10 +204,10 @@ export function SchoolsManagement() {
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-3xl font-bold">
                   {new Set(schools.map(s => s.location)).size}
                 </p>
-                <p className="text-sm text-muted-foreground">Cities</p>
+                <p className="text-base text-muted-foreground">Cities</p>
               </div>
             </div>
           </CardContent>
@@ -222,12 +222,12 @@ export function SchoolsManagement() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search schools by name or location..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
           </div>

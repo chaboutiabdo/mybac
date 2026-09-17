@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.questions_import (
 ALTER TABLE public.questions_import ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for questions_import
+DROP POLICY IF EXISTS "Admins can manage questions_import" ON public.questions_import;
 CREATE POLICY "Admins can manage questions_import" 
 ON public.questions_import 
 FOR ALL 

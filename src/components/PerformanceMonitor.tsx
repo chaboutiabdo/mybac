@@ -4,7 +4,7 @@ import { useEffect } from 'react';
  * Performance Monitor Component
  * Tracks and reports performance metrics
  */
-export const PerformanceMonitor = () => {
+export const PerformanceMonitor = (): null => {
   useEffect(() => {
     // Only run in development
     if (process.env.NODE_ENV !== 'development') return;
@@ -20,7 +20,9 @@ export const PerformanceMonitor = () => {
           'Request': navigation.responseEnd - navigation.requestStart,
           'Response': navigation.responseEnd - navigation.responseStart,
           'DOM Processing': navigation.domContentLoadedEventEnd - navigation.responseEnd,
-          'Total Load Time': navigation.loadEventEnd - navigation.navigationStart,
+          // PerformanceNavigationTiming reports offsets from startTime; the old
+          // PerformanceTiming.navigationStart does not exist on it
+          'Total Load Time': navigation.loadEventEnd - navigation.startTime,
         };
 
         console.group('🚀 Performance Metrics');
@@ -41,7 +43,11 @@ export const PerformanceMonitor = () => {
     // Track memory usage (if available)
     const trackMemory = () => {
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        // non-standard, Chrome-only
+        const memory = (performance as Performance & {
+          memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number };
+        }).memory;
+        if (!memory) return;
         console.group('💾 Memory Usage');
         console.log(`Used: ${(memory.usedJSHeapSize / 1048576).toFixed(2)} MB`);
         console.log(`Total: ${(memory.totalJSHeapSize / 1048576).toFixed(2)} MB`);

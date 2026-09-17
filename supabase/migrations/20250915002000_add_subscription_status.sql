@@ -1,10 +1,10 @@
 -- Add subscription_status to profiles table
 ALTER TABLE public.profiles
-ADD COLUMN subscription_status text NOT NULL DEFAULT 'free';
+ADD COLUMN IF NOT EXISTS subscription_status text NOT NULL DEFAULT 'free';
 
 -- Add constraint for subscription_status values
-ALTER TABLE public.profiles
-ADD CONSTRAINT profiles_subscription_status_check
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_subscription_status_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_subscription_status_check
 CHECK (subscription_status IN ('free', 'pending', 'premium'));
 
 -- Update existing free users
@@ -14,18 +14,20 @@ WHERE subscription_status IS NULL;
 
 -- Add subscription_tier to profiles table for future use
 ALTER TABLE public.profiles
-ADD COLUMN subscription_tier text DEFAULT 'basic';
+ADD COLUMN IF NOT EXISTS subscription_tier text DEFAULT 'basic';
 
 -- Add constraint for subscription_tier values
-ALTER TABLE public.profiles
-ADD CONSTRAINT profiles_subscription_tier_check
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_subscription_tier_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_subscription_tier_check
 CHECK (subscription_tier IN ('basic', 'offer1', 'offer2'));
 
 -- Update RLS policies
+DROP POLICY IF EXISTS "Users can view their own profile subscription" ON public.profiles;
 CREATE POLICY "Users can view their own profile subscription" ON public.profiles
 FOR SELECT
 USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can manage all subscriptions" ON public.profiles;
 CREATE POLICY "Admins can manage all subscriptions" ON public.profiles
 FOR ALL
 USING (

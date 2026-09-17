@@ -2,10 +2,19 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// ALLOWED_ORIGIN is set per environment; '*' let any site on the internet
+// spend this project's GEMINI_API_KEY.
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? 'http://localhost:8081',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Vary': 'Origin',
 };
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -14,14 +23,32 @@ serve(async (req) => {
   }
 
   try {
-    const { question, subject, chapter } = await req.json();
-    
-    if (!question) {
-      return new Response(
-        JSON.stringify({ error: 'Question is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Authorize FIRST. /learn-ai is gated client-side only, so this function
+    // is reachable by free users and by anyone at all; nothing about the
+    // request body should be echoed back before the caller is known.
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) return json({ error: 'Authentication required' }, 401);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return json({ error: 'Invalid credentials' }, 401);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profile || !['premium', 'admin'].includes(profile.role)) {
+      return json({ error: 'This feature requires a premium subscription' }, 403);
     }
+
+    const { question, subject, chapter } = await req.json();
+    if (!question) return json({ error: 'Question is required' }, 400);
 
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (!geminiApiKey) {
@@ -95,35 +122,18 @@ serve(async (req) => {
     
     const aiAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
 
-    // Store the conversation in database
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      // Extract user ID from auth header
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
-      
-      if (user) {
-        const { error: insertError } = await supabase
-          .from('ai_learning_conversations')
-          .insert({
-            user_id: user.id,
-            question_text: question,
-            answer_text: aiAnswer,
-            subject: subject || null,
-            chapter: chapter || null
-          });
+    const { error: insertError } = await supabase
+      .from('ai_learning_conversations')
+      .insert({
+        user_id: user.id,
+        question_text: question,
+        answer_text: aiAnswer,
+        subject: subject || null,
+        chapter: chapter || null
+      });
 
-        if (insertError) {
-          console.error('Error storing conversation:', insertError);
-        } else {
-          console.log('Conversation stored successfully');
-        }
-      }
+    if (insertError) {
+      console.error('Error storing conversation:', insertError);
     }
 
     return new Response(

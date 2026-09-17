@@ -7,21 +7,71 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      admin_advice: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       advice_tips: {
         Row: {
           active: boolean | null
           category: string | null
           content: string
           created_at: string
+          expiry_date: string | null
           id: string
+          is_public: boolean
           priority: number | null
+          target_user_id: string | null
           title: string
         }
         Insert: {
@@ -29,8 +79,11 @@ export type Database = {
           category?: string | null
           content: string
           created_at?: string
+          expiry_date?: string | null
           id?: string
+          is_public?: boolean
           priority?: number | null
+          target_user_id?: string | null
           title: string
         }
         Update: {
@@ -38,8 +91,11 @@ export type Database = {
           category?: string | null
           content?: string
           created_at?: string
+          expiry_date?: string | null
           id?: string
+          is_public?: boolean
           priority?: number | null
+          target_user_id?: string | null
           title?: string
         }
         Relationships: []
@@ -115,6 +171,139 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      alumni_advice: {
+        Row: {
+          alumni_id: string
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_featured: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alumni_id: string
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_featured?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          alumni_id?: string
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_featured?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alumni_advice_alumni_id_fkey"
+            columns: ["alumni_id"]
+            isOneToOne: false
+            referencedRelation: "alumni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alumni_files: {
+        Row: {
+          alumni_id: string
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          alumni_id: string
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          alumni_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alumni_files_alumni_id_fkey"
+            columns: ["alumni_id"]
+            isOneToOne: false
+            referencedRelation: "alumni"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alumni_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      alumni_resources: {
+        Row: {
+          alumni_id: string | null
+          created_at: string | null
+          file_url: string
+          id: string
+          resource_type: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          alumni_id?: string | null
+          created_at?: string | null
+          file_url: string
+          id?: string
+          resource_type: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          alumni_id?: string | null
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          resource_type?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alumni_resources_alumni_id_fkey"
+            columns: ["alumni_id"]
+            isOneToOne: false
+            referencedRelation: "alumni"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookings: {
         Row: {
@@ -299,6 +488,56 @@ export type Database = {
         }
         Relationships: []
       }
+      points_transactions: {
+        Row: {
+          chapter: string | null
+          created_at: string
+          id: string
+          points: number
+          question_id: string | null
+          quiz_type: string | null
+          source_description: string | null
+          source_id: string | null
+          source_type: string
+          student_id: string
+          subject: string | null
+        }
+        Insert: {
+          chapter?: string | null
+          created_at?: string
+          id?: string
+          points: number
+          question_id?: string | null
+          quiz_type?: string | null
+          source_description?: string | null
+          source_id?: string | null
+          source_type: string
+          student_id: string
+          subject?: string | null
+        }
+        Update: {
+          chapter?: string | null
+          created_at?: string
+          id?: string
+          points?: number
+          question_id?: string | null
+          quiz_type?: string | null
+          source_description?: string | null
+          source_id?: string | null
+          source_type?: string
+          student_id?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_transactions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -307,6 +546,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["user_role"]
           stream: string | null
+          subscription_status: string | null
           subscription_tier:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
@@ -321,6 +561,7 @@ export type Database = {
           name: string
           role?: Database["public"]["Enums"]["user_role"]
           stream?: string | null
+          subscription_status?: string | null
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
@@ -335,6 +576,7 @@ export type Database = {
           name?: string
           role?: Database["public"]["Enums"]["user_role"]
           stream?: string | null
+          subscription_status?: string | null
           subscription_tier?:
             | Database["public"]["Enums"]["subscription_tier"]
             | null
@@ -401,29 +643,32 @@ export type Database = {
         Row: {
           answers: Json
           attempt_number: number
-          completed_at: string
+          completed_at: string | null
           id: string
           quiz_id: string
           score: number
           student_id: string
+          submitted: boolean
         }
         Insert: {
           answers?: Json
           attempt_number?: number
-          completed_at?: string
+          completed_at?: string | null
           id?: string
           quiz_id: string
           score?: number
           student_id: string
+          submitted?: boolean
         }
         Update: {
           answers?: Json
           attempt_number?: number
-          completed_at?: string
+          completed_at?: string | null
           id?: string
           quiz_id?: string
           score?: number
           student_id?: string
+          submitted?: boolean
         }
         Relationships: [
           {
@@ -449,8 +694,14 @@ export type Database = {
           id: string
           is_correct: boolean
           question_id: string
+          question_number: number | null
           question_text: string
           quiz_attempt_id: string
+          quiz_chapter: string | null
+          quiz_id: string | null
+          quiz_subject: string | null
+          quiz_type: string | null
+          selected_choice_index: number | null
           student_answer: string | null
           student_id: string
           time_spent: number | null
@@ -461,8 +712,14 @@ export type Database = {
           id?: string
           is_correct?: boolean
           question_id: string
+          question_number?: number | null
           question_text: string
           quiz_attempt_id: string
+          quiz_chapter?: string | null
+          quiz_id?: string | null
+          quiz_subject?: string | null
+          quiz_type?: string | null
+          selected_choice_index?: number | null
           student_answer?: string | null
           student_id: string
           time_spent?: number | null
@@ -473,13 +730,27 @@ export type Database = {
           id?: string
           is_correct?: boolean
           question_id?: string
+          question_number?: number | null
           question_text?: string
           quiz_attempt_id?: string
+          quiz_chapter?: string | null
+          quiz_id?: string | null
+          quiz_subject?: string | null
+          quiz_type?: string | null
+          selected_choice_index?: number | null
           student_answer?: string | null
           student_id?: string
           time_spent?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_question_results_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quizzes: {
         Row: {
@@ -619,6 +890,42 @@ export type Database = {
         }
         Relationships: []
       }
+      support_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          phone?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       video_activity_logs: {
         Row: {
           action: string
@@ -747,12 +1054,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      leaderboard: {
+        Row: {
+          id: string | null
+          name: string | null
+          total_score: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      calculate_user_score: {
-        Args: { user_id_param: string }
-        Returns: number
+      calculate_user_score: { Args: { user_id_param: string }; Returns: number }
+      is_admin: { Args: never; Returns: boolean }
+      record_points_transaction: {
+        Args: {
+          p_chapter?: string
+          p_points: number
+          p_question_id?: string
+          p_quiz_type?: string
+          p_source_description?: string
+          p_source_id?: string
+          p_source_type: string
+          p_student_id: string
+          p_subject?: string
+        }
+        Returns: string
       }
     }
     Enums: {
@@ -886,6 +1212,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
@@ -896,3 +1225,4 @@ export const Constants = {
     },
   },
 } as const
+

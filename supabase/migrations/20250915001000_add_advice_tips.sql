@@ -1,4 +1,6 @@
-create table "public"."advice_tips" (
+create extension if not exists moddatetime schema extensions;
+
+create table IF NOT EXISTS "public"."advice_tips" (
     id uuid not null default gen_random_uuid(),
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
@@ -15,12 +17,14 @@ create table "public"."advice_tips" (
 
 alter table "public"."advice_tips" enable row level security;
 
+DROP POLICY IF EXISTS "Admins have full access to advice tips" ON advice_tips;
 create policy "Admins have full access to advice tips"
 on advice_tips for all
 to authenticated
 using (auth.jwt() ->> 'role' = 'admin')
 with check (auth.jwt() ->> 'role' = 'admin');
 
+DROP POLICY IF EXISTS "Public tips are viewable by all authenticated users" ON advice_tips;
 create policy "Public tips are viewable by all authenticated users"
 on advice_tips for select
 to authenticated
@@ -36,13 +40,14 @@ using (
 );
 
 -- Create trigger to update updated_at timestamp
+DROP TRIGGER IF EXISTS handle_updated_at ON advice_tips;
 create trigger handle_updated_at before update on advice_tips
   for each row execute procedure moddatetime (updated_at);
 
 -- Create an index on commonly filtered columns
-create index advice_tips_active_public_idx on advice_tips(active, is_public);
-create index advice_tips_target_user_idx on advice_tips(target_user_id);
-create index advice_tips_expiry_date_idx on advice_tips(expiry_date);
+create index IF NOT EXISTS advice_tips_active_public_idx on advice_tips(active, is_public);
+create index IF NOT EXISTS advice_tips_target_user_idx on advice_tips(target_user_id);
+create index IF NOT EXISTS advice_tips_expiry_date_idx on advice_tips(expiry_date);
 
 -- Insert some initial tips
 insert into advice_tips (title, content, is_public, priority) values 

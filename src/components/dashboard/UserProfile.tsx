@@ -1,12 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { User, Star, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const UserProfile = () => {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
 
   if (!profile) return null;
 
@@ -33,7 +32,7 @@ const UserProfile = () => {
   };
 
   return (
-    <Card className="gradient-card">
+    <Card className="">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -44,7 +43,7 @@ const UserProfile = () => {
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-lg">{profile.name}</CardTitle>
+              <CardTitle className="text-xl">{profile.name}</CardTitle>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant={getRoleBadgeVariant(profile.role)}>
                   {getRoleDisplay(profile.role)}
@@ -52,16 +51,13 @@ const UserProfile = () => {
               </div>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut}>
-            Sign Out
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-warning" />
-            <span className="font-semibold text-xl">{profile.total_score}</span>
+            <span className="font-semibold text-2xl">{profile.total_score}</span>
             <span className="text-muted-foreground">points</span>
           </div>
           {profile.stream && (

@@ -8,16 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, CheckCircle2, XCircle, Search, Filter, Crown, Users, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { errorMessage } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface Profile {
-  user_id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'premium' | 'admin';
-  subscription_status: 'free' | 'premium' | 'admin';
-  created_at: string;
-  updated_at: string;
-}
+// exactly the columns the query below selects, taken from the generated row
+type Profile = Pick<
+  Tables<'profiles'>,
+  'user_id' | 'name' | 'email' | 'role' | 'subscription_status' | 'created_at' | 'updated_at'
+>;
 
 interface Stats {
   totalUsers: number;
@@ -60,11 +58,11 @@ export function SubscriptionManagement() {
       if (error) throw error;
       setProfiles(data || []);
       calculateStats(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error:', error);
       toast({
         title: "خطأ في تحميل الملفات الشخصية",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -129,11 +127,11 @@ export function SubscriptionManagement() {
       });
 
       await fetchProfiles();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error:', error);
       toast({
         title: "خطأ في تحديث الحالة",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -148,10 +146,10 @@ export function SubscriptionManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-blue-500" />
+              <Users className="h-4 w-4 text-primary" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">إجمالي المستخدمين</p>
-                <p className="text-2xl font-bold">{stats.totalUsers}</p>
+                <p className="text-base font-medium text-muted-foreground">إجمالي المستخدمين</p>
+                <p className="text-3xl font-bold">{stats.totalUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -159,10 +157,10 @@ export function SubscriptionManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Crown className="h-4 w-4 text-yellow-500" />
+              <Crown className="h-4 w-4 text-warning" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">المشتركين المميزين</p>
-                <p className="text-2xl font-bold">{stats.premiumUsers}</p>
+                <p className="text-base font-medium text-muted-foreground">المشتركين المميزين</p>
+                <p className="text-3xl font-bold">{stats.premiumUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -170,10 +168,10 @@ export function SubscriptionManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-gray-500" />
+              <Users className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">المستخدمين العاديين</p>
-                <p className="text-2xl font-bold">{stats.freeUsers}</p>
+                <p className="text-base font-medium text-muted-foreground">المستخدمين العاديين</p>
+                <p className="text-3xl font-bold">{stats.freeUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -181,10 +179,10 @@ export function SubscriptionManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <TrendingUp className="h-4 w-4 text-success" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">معدل التحويل</p>
-                <p className="text-2xl font-bold">{stats.conversionRate.toFixed(1)}%</p>
+                <p className="text-base font-medium text-muted-foreground">معدل التحويل</p>
+                <p className="text-3xl font-bold">{stats.conversionRate.toFixed(1)}%</p>
               </div>
             </div>
           </CardContent>
@@ -203,17 +201,17 @@ export function SubscriptionManagement() {
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="البحث بالاسم أو البريد الإلكتروني..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4 me-2" />
                 <SelectValue placeholder="فلترة حسب الحالة" />
               </SelectTrigger>
               <SelectContent>
@@ -252,7 +250,7 @@ export function SubscriptionManagement() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{profile.name}</p>
-                          <p className="text-sm text-muted-foreground">{profile.email}</p>
+                          <p className="text-base text-muted-foreground">{profile.email}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -271,8 +269,8 @@ export function SubscriptionManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(profile.created_at).toLocaleDateString('ar-SA')}
+                        <span className="text-base text-muted-foreground">
+                          {new Date(profile.created_at).toLocaleDateString('ar-DZ')}
                         </span>
                       </TableCell>
                       <TableCell>

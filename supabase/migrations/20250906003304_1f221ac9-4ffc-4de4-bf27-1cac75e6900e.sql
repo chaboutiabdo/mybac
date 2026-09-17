@@ -2,7 +2,7 @@
 CREATE TYPE subscription_tier AS ENUM ('basic', 'offer1', 'offer2');
 
 ALTER TABLE profiles 
-ADD COLUMN subscription_tier subscription_tier DEFAULT 'basic';
+ADD COLUMN IF NOT EXISTS subscription_tier subscription_tier DEFAULT 'basic';
 
 -- Update existing profiles to have basic tier
 UPDATE profiles 

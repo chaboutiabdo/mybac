@@ -3,14 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Pin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from "@/integrations/supabase/types";
 
-interface AdminAdvice {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  is_pinned: boolean;
-}
+type AdminAdvice = Tables<'admin_advice'>;
 
 const AdminAdvice = () => {
   const [advice, setAdvice] = useState<AdminAdvice | null>(null);
@@ -47,8 +42,8 @@ const AdminAdvice = () => {
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
           </div>
         </CardContent>
       </Card>
@@ -60,13 +55,13 @@ const AdminAdvice = () => {
   }
 
   return (
-    <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+    <Card className="mb-6 border-primary/20">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-full">
             <Pin className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-xl flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             نصيحة الإدارة اليومية
           </CardTitle>
@@ -76,10 +71,10 @@ const AdminAdvice = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <h3 className="font-semibold text-lg mb-2">{advice.title}</h3>
+        <h3 className="font-semibold text-xl mb-2">{advice.title}</h3>
         <p className="text-muted-foreground leading-relaxed">{advice.content}</p>
-        <div className="mt-3 text-xs text-muted-foreground">
-          {new Date(advice.created_at).toLocaleDateString('ar-SA', {
+        <div className="mt-3 text-sm text-muted-foreground">
+          {new Date(advice.created_at ?? Date.now()).toLocaleDateString('ar-DZ', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',

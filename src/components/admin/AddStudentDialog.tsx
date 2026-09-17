@@ -157,7 +157,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
       const headers = rows[0].split(",").map(h => h.trim());
       const students = rows.slice(1).map(row => {
         const values = row.split(",");
-        const obj = {} as any;
+        const obj: Record<string, string> = {};
         headers.forEach((h, i) => { obj[h] = values[i] ? values[i].trim() : ""; });
         return obj;
       });
@@ -222,7 +222,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
               {/* Basic Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Basic Information</CardTitle>
+                  <CardTitle className="text-xl">Basic Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -296,10 +296,10 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
               {/* School Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center justify-between">
+                  <CardTitle className="text-xl flex items-center justify-between">
                     School Information
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor="has-school" className="text-sm font-normal">
+                      <Label htmlFor="has-school" className="text-base font-normal">
                         Student has school
                       </Label>
                       <Switch
@@ -335,7 +335,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                     <div className="text-center py-8 text-muted-foreground">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>This student will be registered as an independent learner</p>
-                      <p className="text-sm">No school affiliation required</p>
+                      <p className="text-base">No school affiliation required</p>
                     </div>
                   )}
                 </CardContent>
@@ -344,7 +344,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
               {/* Additional Notes */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Additional Notes</CardTitle>
+                  <CardTitle className="text-xl">Additional Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -364,7 +364,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="gradient-primary text-white">
+                <Button type="submit" className="text-primary-foreground">
                   Add Student
                 </Button>
               </div>
@@ -380,10 +380,10 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                <div className="border border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
                   <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
                   <div className="space-y-2">
-                    <Label htmlFor="csv-upload" className="text-base font-medium cursor-pointer">
+                    <Label htmlFor="csv-upload" className="text-lg font-medium cursor-pointer">
                       Choose CSV File
                     </Label>
                     <Input
@@ -393,24 +393,24 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                       onChange={handleCsvUpload}
                       className="hidden"
                     />
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-base text-muted-foreground">
                       Upload a CSV file with student information
                     </p>
                     {csvFile && (
-                      <p className="text-sm text-primary font-medium">
+                      <p className="text-base text-primary font-medium">
                         Selected: {csvFile.name}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="bg-card-raised/60 rounded-lg p-4">
                   <h4 className="font-medium mb-2">CSV Format Requirements:</h4>
-                  <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="text-base text-muted-foreground space-y-1">
                     <p><strong>Required columns:</strong> name, email, password, stream</p>
                     <p><strong>Optional columns:</strong> school, phone, notes</p>
                     <p><strong>Example:</strong></p>
-                    <code className="block mt-2 p-2 bg-background rounded text-xs">
+                    <code className="block mt-2 p-2 bg-background rounded text-sm">
                       name,email,password,stream,school,phone<br/>
                       Ahmed Benali,ahmed@email.com,temp123,Sciences Expérimentales,Lycée Mohamed Boudiaf,+213123456789<br/>
                       Sara Amrani,sara@email.com,temp456,Mathématiques,,+213987654321
@@ -425,7 +425,7 @@ export function AddStudentDialog({ children }: AddStudentDialogProps) {
                   <Button 
                     onClick={processCsvFile} 
                     disabled={!csvFile}
-                    className="gradient-primary text-white"
+                    className="text-primary-foreground"
                   >
                     Upload Students
                   </Button>

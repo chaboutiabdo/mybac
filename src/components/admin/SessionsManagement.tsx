@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ interface SessionBooking {
   alumniName: string;
   alumniField: string;
   topic: string;
-  timePreference: string;
+  timePreference: string | null;
   message: string;
   status: "pending" | "confirmed" | "completed" | "cancelled";
   requestDate: string;
@@ -231,7 +232,7 @@ export function SessionsManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <Calendar className="h-8 w-8" />
             Sessions Management
           </h1>
@@ -246,8 +247,8 @@ export function SessionsManagement() {
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{pendingSessions}</p>
-                <p className="text-sm text-muted-foreground">Pending Requests</p>
+                <p className="text-3xl font-bold">{pendingSessions}</p>
+                <p className="text-base text-muted-foreground">Pending Requests</p>
               </div>
             </div>
           </CardContent>
@@ -257,8 +258,8 @@ export function SessionsManagement() {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{approvedSessions}</p>
-                <p className="text-sm text-muted-foreground">Approved Sessions</p>
+                <p className="text-3xl font-bold">{approvedSessions}</p>
+                <p className="text-base text-muted-foreground">Approved Sessions</p>
               </div>
             </div>
           </CardContent>
@@ -268,8 +269,8 @@ export function SessionsManagement() {
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{completedSessions}</p>
-                <p className="text-sm text-muted-foreground">Completed Sessions</p>
+                <p className="text-3xl font-bold">{completedSessions}</p>
+                <p className="text-base text-muted-foreground">Completed Sessions</p>
               </div>
             </div>
           </CardContent>
@@ -279,8 +280,8 @@ export function SessionsManagement() {
             <div className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-2xl font-bold">{sessions.length}</p>
-                <p className="text-sm text-muted-foreground">Total Requests</p>
+                <p className="text-3xl font-bold">{sessions.length}</p>
+                <p className="text-base text-muted-foreground">Total Requests</p>
               </div>
             </div>
           </CardContent>
@@ -296,17 +297,17 @@ export function SessionsManagement() {
           {/* Search and Filters */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by student, alumni, or topic..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4 me-2" />
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -321,9 +322,7 @@ export function SessionsManagement() {
 
           {/* Sessions Table */}
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <Loading />
           ) : (
           <div className="border rounded-lg">
             <Table>
@@ -344,13 +343,13 @@ export function SessionsManagement() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
+                          <AvatarFallback className="text-sm">
                             {session.studentName.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">{session.studentName}</p>
-                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <p className="text-base text-muted-foreground flex items-center gap-1">
                             <Phone className="h-3 w-3" />
                             {session.studentPhone}
                           </p>
@@ -360,7 +359,7 @@ export function SessionsManagement() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{session.alumniName}</p>
-                        <p className="text-sm text-muted-foreground">{session.alumniField}</p>
+                        <p className="text-base text-muted-foreground">{session.alumniField}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -369,9 +368,9 @@ export function SessionsManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1 text-base">
                         <Clock className="h-3 w-3" />
-                        {getTimeLabel(session.timePreference)}
+                        {getTimeLabel(session.timePreference ?? '')}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -425,11 +424,11 @@ export function SessionsManagement() {
                                   <h4 className="font-semibold">Session Details</h4>
                                   <div className="grid grid-cols-2 gap-4">
                                     <p><span className="font-medium">Topic:</span> {getTopicLabel(selectedSession.topic)}</p>
-                                    <p><span className="font-medium">Preferred Time:</span> {getTimeLabel(selectedSession.timePreference)}</p>
+                                    <p><span className="font-medium">Preferred Time:</span> {getTimeLabel(selectedSession.timePreference ?? '')}</p>
                                   </div>
                                   <div>
                                     <p className="font-medium mb-2">Student Message:</p>
-                                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                                    <p className="text-base text-muted-foreground bg-muted p-3 rounded">
                                       {selectedSession.message || "No additional message provided."}
                                     </p>
                                   </div>
@@ -452,14 +451,14 @@ export function SessionsManagement() {
                                       onClick={() => handleRejectSession(selectedSession.id)}
                                       className="flex-1"
                                     >
-                                      <XCircle className="h-4 w-4 mr-2" />
+                                      <XCircle className="h-4 w-4 me-2" />
                                       Reject
                                     </Button>
                                     <Button 
                                       onClick={() => handleApproveSession(selectedSession.id)}
                                       className="flex-1"
                                     >
-                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      <CheckCircle className="h-4 w-4 me-2" />
                                       Approve & Contact Alumni
                                     </Button>
                                   </div>

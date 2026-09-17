@@ -5,7 +5,7 @@ CREATE TYPE public.video_type AS ENUM ('youtube', 'premium');
 CREATE TYPE public.booking_status AS ENUM ('pending', 'confirmed', 'completed', 'cancelled');
 
 -- Create users table (profiles)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE public.profiles (
 );
 
 -- Create schools table
-CREATE TABLE public.schools (
+CREATE TABLE IF NOT EXISTS public.schools (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   city TEXT NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE public.schools (
 );
 
 -- Create school_students table
-CREATE TABLE public.school_students (
+CREATE TABLE IF NOT EXISTS public.school_students (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -38,7 +38,7 @@ CREATE TABLE public.school_students (
 );
 
 -- Create exams table
-CREATE TABLE public.exams (
+CREATE TABLE IF NOT EXISTS public.exams (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   subject TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE public.exams (
 );
 
 -- Create quizzes table
-CREATE TABLE public.quizzes (
+CREATE TABLE IF NOT EXISTS public.quizzes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   type quiz_type NOT NULL,
   subject TEXT NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE public.quizzes (
 );
 
 -- Create quiz_attempts table
-CREATE TABLE public.quiz_attempts (
+CREATE TABLE IF NOT EXISTS public.quiz_attempts (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   quiz_id UUID NOT NULL REFERENCES public.quizzes(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -77,7 +77,7 @@ CREATE TABLE public.quiz_attempts (
 );
 
 -- Create videos table
-CREATE TABLE public.videos (
+CREATE TABLE IF NOT EXISTS public.videos (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   subject TEXT NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE public.videos (
 );
 
 -- Create video_progress table
-CREATE TABLE public.video_progress (
+CREATE TABLE IF NOT EXISTS public.video_progress (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   video_id UUID NOT NULL REFERENCES public.videos(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -104,7 +104,7 @@ CREATE TABLE public.video_progress (
 );
 
 -- Create exam_progress table
-CREATE TABLE public.exam_progress (
+CREATE TABLE IF NOT EXISTS public.exam_progress (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   exam_id UUID NOT NULL REFERENCES public.exams(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -116,7 +116,7 @@ CREATE TABLE public.exam_progress (
 );
 
 -- Create alumni table
-CREATE TABLE public.alumni (
+CREATE TABLE IF NOT EXISTS public.alumni (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   bac_score DECIMAL(4,2),
@@ -131,7 +131,7 @@ CREATE TABLE public.alumni (
 );
 
 -- Create bookings table
-CREATE TABLE public.bookings (
+CREATE TABLE IF NOT EXISTS public.bookings (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   alumni_id UUID NOT NULL REFERENCES public.alumni(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -145,7 +145,7 @@ CREATE TABLE public.bookings (
 );
 
 -- Create advice tips table
-CREATE TABLE public.advice_tips (
+CREATE TABLE IF NOT EXISTS public.advice_tips (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
@@ -187,6 +187,7 @@ END;
 $$;
 
 -- Create trigger for new user registration
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

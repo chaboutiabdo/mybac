@@ -13,12 +13,14 @@ ON profiles FOR SELECT
 TO authenticated 
 USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" 
 ON profiles FOR UPDATE 
 TO authenticated 
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
 CREATE POLICY "Admins can view all profiles" 
 ON profiles FOR SELECT 
 TO authenticated 
@@ -30,6 +32,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Admins can update all profiles" ON profiles;
 CREATE POLICY "Admins can update all profiles" 
 ON profiles FOR UPDATE 
 TO authenticated 

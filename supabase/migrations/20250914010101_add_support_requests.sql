@@ -1,5 +1,5 @@
 -- Create support_requests table for handling premium subscription requests and other support inquiries
-CREATE TABLE public.support_requests (
+CREATE TABLE IF NOT EXISTS public.support_requests (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -15,16 +15,19 @@ CREATE TABLE public.support_requests (
 ALTER TABLE public.support_requests ENABLE ROW LEVEL SECURITY;
 
 -- Policies for support_requests
+DROP POLICY IF EXISTS "Users can view their own requests" ON public.support_requests;
 CREATE POLICY "Users can view their own requests"
 ON public.support_requests
 FOR SELECT
 USING (email = auth.jwt() ->> 'email');
 
+DROP POLICY IF EXISTS "Users can create support requests" ON public.support_requests;
 CREATE POLICY "Users can create support requests"
 ON public.support_requests
 FOR INSERT
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Admins can view all requests" ON public.support_requests;
 CREATE POLICY "Admins can view all requests"
 ON public.support_requests
 FOR ALL
@@ -36,7 +39,7 @@ USING (
   )
 );
 
--- Create index for better query performance
-CREATE INDEX idx_support_requests_email ON public.support_requests(email);
-CREATE INDEX idx_support_requests_type ON public.support_requests(type);
-CREATE INDEX idx_support_requests_status ON public.support_requests(status);
+-- Create index IF NOT EXISTS for better query performance
+CREATE INDEX IF NOT EXISTS idx_support_requests_email ON public.support_requests(email);
+CREATE INDEX IF NOT EXISTS idx_support_requests_type ON public.support_requests(type);
+CREATE INDEX IF NOT EXISTS idx_support_requests_status ON public.support_requests(status);

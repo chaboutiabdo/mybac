@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Loading } from "@/components/ui/states";
+import { errorMessage } from "@/lib/utils";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import {
   Card,
   CardContent,
@@ -25,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import {
   Table,
   TableBody,
@@ -43,22 +47,9 @@ import {
   Clock,
 } from "lucide-react";
 
-interface Tip {
-  id: string;
-  title: string;
-  content: string;
-  target_user_id: string | null;
-  is_public: boolean;
-  priority: number;
-  active: boolean;
-  expiry_date: string | null;
-}
+type Tip = Tables<'advice_tips'>;
 
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-}
+type Student = Pick<Tables<'profiles'>, 'user_id' | 'id' | 'name' | 'email' | 'role'>;
 
 export function AdviceTipsManagement() {
   const [tips, setTips] = useState<Tip[]>([]);
@@ -77,6 +68,10 @@ export function AdviceTipsManagement() {
   
   const { toast } = useToast();
 
+  useEffect(() => {
+    fetchTips();
+  }, []);
+
   const fetchTips = async () => {
     try {
       const { data: tipsData, error: tipsError } = await supabase
@@ -87,14 +82,14 @@ export function AdviceTipsManagement() {
       if (tipsError) throw tipsError;
       setTips(tipsData);
 
-      // Fetch students for targeting
+      // Fetch premium users for targeting (only premium users can receive personalized tips)
       const { data: studentsData, error: studentsError } = await supabase
         .from("profiles")
-        .select("id, name, email")
-        .eq("role", "student");
+        .select("id, user_id, name, email, role")
+        .in("role", ["premium", "admin"]);
 
       if (studentsError) throw studentsError;
-      setStudents(studentsData);
+      setStudents(studentsData || []);
 
       setIsLoading(false);
     } catch (error) {
@@ -109,11 +104,26 @@ export function AdviceTipsManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const tipData = {
-        ...formData,
-        target_user_id: formData.target_user_id || null,
-        expiry_date: formData.expiry_date || null,
+      // Convert datetime-local format to ISO string for database
+      let expiryDateISO = null;
+      if (formData.expiry_date) {
+        const date = new Date(formData.expiry_date);
+        expiryDateISO = date.toISOString();
+      }
+
+      const tipData: TablesInsert<'advice_tips'> = {
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        is_public: formData.is_public,
+        target_user_id: formData.is_public ? null : (formData.target_user_id || null),
+        expiry_date: expiryDateISO,
       };
+
+      // Remove null target_user_id if it's empty string to avoid any issues
+      if (tipData.target_user_id === "") {
+        tipData.target_user_id = null;
+      }
 
       const { error } = editingTip
         ? await supabase
@@ -122,7 +132,10 @@ export function AdviceTipsManagement() {
             .eq("id", editingTip.id)
         : await supabase.from("advice_tips").insert([tipData]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -141,9 +154,10 @@ export function AdviceTipsManagement() {
       });
       fetchTips();
     } catch (error) {
+      console.error("Error details:", error);
       toast({
         title: "Error",
-        description: `Failed to ${editingTip ? "update" : "add"} tip.`,
+        description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}`,
         variant: "destructive",
       });
     }
@@ -175,28 +189,48 @@ export function AdviceTipsManagement() {
 
   const handleEdit = (tip: Tip) => {
     setEditingTip(tip);
+    
+    // Convert ISO date to datetime-local format
+    let expiryDateFormatted = "";
+    if (tip.expiry_date) {
+      const date = new Date(tip.expiry_date);
+      // Format: YYYY-MM-DDTHH:mm
+      expiryDateFormatted = date.toISOString().slice(0, 16);
+    }
+    
     setFormData({
       title: tip.title,
       content: tip.content,
       target_user_id: tip.target_user_id || "",
       is_public: tip.is_public,
-      priority: tip.priority,
-      expiry_date: tip.expiry_date || "",
+      priority: tip.priority ?? 1,
+      expiry_date: expiryDateFormatted,
     });
     setShowAddDialog(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loading />
+          <p className="text-muted-foreground">Loading advice tips...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">إدارة النصائح والتنبيهات</h2>
+          <h2 className="text-4xl font-bold tracking-tight">إدارة النصائح والتنبيهات</h2>
           <p className="text-muted-foreground">
             أضف وحرر النصائح والتنبيهات للمستخدمين
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className="gradient-primary text-white">
-          <PlusCircle className="mr-2 h-4 w-4" />
+        <Button onClick={() => setShowAddDialog(true)} className="text-primary-foreground">
+          <PlusCircle className="me-2 h-4 w-4" />
           إضافة نصيحة جديدة
         </Button>
       </div>
@@ -247,7 +281,7 @@ export function AdviceTipsManagement() {
                   </TableCell>
                   <TableCell>
                     {tip.active ? (
-                      <span className="text-green-500">نشط</span>
+                      <span className="text-success">نشط</span>
                     ) : (
                       <span className="text-muted-foreground">غير نشط</span>
                     )}
@@ -351,7 +385,13 @@ export function AdviceTipsManagement() {
             </div>
             {!formData.is_public && (
               <div className="space-y-2">
-                <Label>المستخدم المستهدف</Label>
+                <div className="flex items-center gap-2">
+                  <Label>المستخدم المستهدف (مميز فقط)</Label>
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  فقط المستخدمون المميزون يمكنهم تلقي نصائح مخصصة
+                </p>
                 <Select
                   value={formData.target_user_id}
                   onValueChange={(value) =>
@@ -359,14 +399,20 @@ export function AdviceTipsManagement() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="اختر المستخدم" />
+                    <SelectValue placeholder="اختر مستخدم مميز" />
                   </SelectTrigger>
                   <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name} ({student.email})
+                    {students.length > 0 ? (
+                      students.map((student) => (
+                        <SelectItem key={student.user_id} value={student.user_id}>
+                          {student.name} ({student.email}) - {student.role === 'premium' ? 'مميز' : 'مدير'}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        لا يوجد مستخدمون مميزون
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { Loading } from "@/components/ui/states";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
@@ -9,25 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Loader2 } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 
-interface QuizAttempt {
-  id: string;
-  quiz_id: string;
-  score: number;
-  answers: any[];
-  attempt_number: number;
-}
-
-interface Quiz {
-  id: string;
-  subject: string;
-  chapter?: string;
-  questions: any[];
-  max_score: number;
-  type: string;
-}
+type QuizAttempt = Tables<'quiz_attempts'>;
+type Quiz = Tables<'quizzes'>;
 
 interface Question {
   id: string;
@@ -73,6 +61,8 @@ const QuizTaking = () => {
   }, [timeLeft]);
 
   const fetchQuizAttempt = async () => {
+    if (!attemptId) return;
+
     try {
       const { data: attemptData, error: attemptError } = await supabase
         .from('quiz_attempts')
@@ -147,58 +137,85 @@ const QuizTaking = () => {
   };
 
   const handleSubmitQuiz = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !attemptId) return;
+    
+    // Check if quiz was already submitted by checking if answers is populated
+    if (attempt && attempt.answers && Object.keys(attempt.answers).length > 0) {
+      toast({
+        title: "Quiz already submitted",
+        description: "This attempt has already been finalized.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const finalScore = calculateScore();
+      const calculatedScore = calculateScore();
       
-      // Check if this is a retake (not the first attempt)
-      const { data: previousAttempts } = await supabase
-        .from('quiz_attempts')
-        .select('completed_at')
-        .eq('quiz_id', attempt?.quiz_id)
-        .eq('student_id', user!.id)
-        .not('completed_at', 'is', null)
-        .neq('id', attemptId);
-      
-      const isRetake = previousAttempts && previousAttempts.length > 0;
-      const scoreToRecord = isRetake ? 0 : finalScore; // Don't record score for retakes
-      
-      // Update quiz attempt
+      // Update quiz attempt with calculated score FIRST
       const { error: updateError } = await supabase
         .from('quiz_attempts')
         .update({
-          score: scoreToRecord,
           answers: selectedAnswers,
-          completed_at: new Date().toISOString()
+          score: calculatedScore
         })
-        .eq('id', attemptId);
+        .eq('id', attemptId)
+        .eq('student_id', user!.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
+      }
 
-      // Track individual question results
-      for (const question of questions) {
-        const studentAnswer = selectedAnswers[question.id] || '';
-        const selectedIndex = ['A', 'B', 'C', 'D'].indexOf(studentAnswer);
-        const isCorrect = selectedIndex === question.correct;
-        const correctAnswer = ['A', 'B', 'C', 'D'][question.correct];
-        
-        await trackQuizQuestion(
-          attemptId!,
-          question.id,
-          question.question,
-          studentAnswer,
-          correctAnswer,
-          isCorrect
-        );
+      // Check if this is a retake (has previous attempts)
+      const { data: previousAttempts, error: prevError } = await supabase
+        .from('quiz_attempts')
+        .select('id')
+        .eq('quiz_id', attempt?.quiz_id ?? '')
+        .eq('student_id', user!.id)
+        .neq('id', attemptId);
+      
+      if (prevError) console.error('Previous attempts error:', prevError);
+      
+      const isRetake = (previousAttempts?.length ?? 0) > 0;
+      
+      // Track individual question results - but don't fail submission if this fails
+      try {
+        for (let i = 0; i < questions.length; i++) {
+          const question = questions[i];
+          const studentAnswer = selectedAnswers[question.id] || '';
+          const selectedIndex = ['A', 'B', 'C', 'D'].indexOf(studentAnswer);
+          const isCorrect = selectedIndex === question.correct;
+          const correctAnswer = ['A', 'B', 'C', 'D'][question.correct];
+          
+          await trackQuizQuestion(
+            attemptId,
+            question.id,
+            question.question,
+            studentAnswer,
+            correctAnswer,
+            isCorrect,
+            attempt?.quiz_id,
+            quiz?.type,
+            quiz?.subject,
+            quiz?.chapter,
+            selectedIndex >= 0 ? selectedIndex : undefined,
+            i + 1,
+            undefined,
+            isRetake
+          );
+        }
+      } catch (trackError) {
+        console.error('Error tracking quiz questions (non-critical):', trackError);
+        // Continue even if tracking fails - the quiz is already submitted
       }
 
       toast({
         title: "Quiz completed!",
         description: isRetake 
-          ? `Practice completed! Actual score: ${finalScore}/${quiz?.max_score || 100} (No points awarded for retakes)`
-          : `Your score: ${finalScore}/${quiz?.max_score || 100}`,
+          ? `Practice completed! Your score: ${calculatedScore}/${quiz?.max_score || 100}`
+          : `Your score: ${calculatedScore}/${quiz?.max_score || 100}`,
       });
 
       navigate('/quizzes');
@@ -206,7 +223,7 @@ const QuizTaking = () => {
       console.error('Error submitting quiz:', error);
       toast({
         title: "Error",
-        description: "Failed to submit quiz",
+        description: error instanceof Error ? error.message : "Failed to submit quiz",
         variant: "destructive",
       });
     } finally {
@@ -222,9 +239,7 @@ const QuizTaking = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Loading />
     );
   }
 
@@ -247,7 +262,7 @@ const QuizTaking = () => {
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   return (
-    <div className={`min-h-screen bg-background ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className="min-h-screen bg-background">
       <Navigation />
       
       <div className="container py-8 max-w-4xl mx-auto">
@@ -279,7 +294,7 @@ const QuizTaking = () => {
 
         {/* Progress */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+          <div className="flex justify-between text-base text-muted-foreground mb-2">
             <span>{quiz.subject} - {quiz.chapter || 'General'}</span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
@@ -289,12 +304,12 @@ const QuizTaking = () => {
         {/* Question Card */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-lg">
+            <CardTitle className="text-xl">
               Question {currentQuestionIndex + 1}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-lg mb-4">{currentQuestion.question}</p>
+            <p className="text-xl mb-4">{currentQuestion.question}</p>
             
             <div className="space-y-3">
               {currentQuestion.options.map((optionText, index) => {
@@ -306,14 +321,14 @@ const QuizTaking = () => {
                 const isWrongSelection = isAnswered && isSelected && !isCorrect;
                 const isCorrectAnswer = isAnswered && isCorrect;
                 
-                let buttonClass = 'w-full text-left p-4 rounded-lg border transition-colors ';
+                let buttonClass = 'w-full text-start p-4 rounded-md border transition-colors ';
                 if (isAnswered) {
                   if (isCorrectAnswer) {
-                    buttonClass += 'border-green-500 bg-green-100 dark:bg-green-900/20';
+                    buttonClass += 'border-green-500 bg-success-light dark:bg-green-900/20';
                   } else if (isWrongSelection) {
-                    buttonClass += 'border-red-500 bg-red-100 dark:bg-red-900/20';
+                    buttonClass += 'border-red-500 bg-destructive-light dark:bg-red-900/20';
                   } else {
-                    buttonClass += 'border-border bg-muted/50';
+                    buttonClass += 'border-border bg-card-raised/60';
                   }
                 } else {
                   buttonClass += isSelected 
@@ -329,12 +344,12 @@ const QuizTaking = () => {
                     className={buttonClass}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${
                         isAnswered 
                           ? isCorrectAnswer 
-                            ? 'border-green-500 bg-green-500 text-white'
+                            ? 'border-green-500 bg-success-light0 text-primary-foreground'
                             : isWrongSelection
-                            ? 'border-red-500 bg-red-500 text-white'
+                            ? 'border-red-500 bg-destructive-light0 text-primary-foreground'
                             : 'border-muted-foreground'
                           : isSelected 
                             ? 'border-primary bg-primary text-primary-foreground' 
@@ -345,9 +360,9 @@ const QuizTaking = () => {
                       <span className={
                         isAnswered 
                           ? isCorrectAnswer 
-                            ? 'text-green-700 dark:text-green-300 font-medium'
+                            ? 'text-success dark:text-green-300 font-medium'
                             : isWrongSelection
-                            ? 'text-red-700 dark:text-red-300'
+                            ? 'text-destructive dark:text-destructive'
                             : ''
                           : ''
                       }>
@@ -379,10 +394,10 @@ const QuizTaking = () => {
                 className="min-w-[120px]"
               >
                 {isSubmitting ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <CheckCircle className="me-2 h-4 w-4" />
                     Submit Quiz
                   </>
                 )}

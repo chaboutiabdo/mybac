@@ -1,4 +1,5 @@
 import Navigation from "@/components/layout/Navigation";
+import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,21 +17,20 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuizStats } from "@/hooks/useQuizStats";
 
-interface Quiz {
-  id: string;
-  subject: string;
-  chapter?: string;
-  type: 'daily' | 'practice';
-  questions: any[];
-  max_score: number;
-  date: string;
-}
+type Quiz = Tables<'quizzes'>;
+
+// `questions` is a jsonb column: typed Json, and nullable. Dereferencing
+// .length directly crashed the whole quiz list on a quiz with no questions.
+const questionCount = (questions: Quiz['questions']): number =>
+  Array.isArray(questions) ? questions.length : 0;
 
 const Quizzes = () => {
   const { t, isRTL } = useLanguage();
@@ -41,6 +41,7 @@ const Quizzes = () => {
   const [practiceQuizzes, setPracticeQuizzes] = useState<Quiz[]>([]);
   const [dailyQuizzes, setDailyQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
+  const quizStats = useQuizStats();
 
   useEffect(() => {
     fetchQuizzes();
@@ -81,15 +82,16 @@ const Quizzes = () => {
     }
 
     try {
-      // Check if quiz was already completed for scoring purposes
-      const { data: completedAttempts } = await supabase
+      // Check if quiz was already completed (by checking if previous attempts have answers)
+      const { data: allAttempts } = await supabase
         .from('quiz_attempts')
-        .select('completed_at, attempt_number')
+        .select('answers')
         .eq('quiz_id', quiz.id)
-        .eq('student_id', user.id)
-        .not('completed_at', 'is', null);
+        .eq('student_id', user.id);
 
-      const hasCompletedBefore = completedAttempts && completedAttempts.length > 0;
+      const hasCompletedBefore = allAttempts?.some(attempt => 
+        attempt.answers && Object.keys(attempt.answers).length > 0
+      );
       
       if (hasCompletedBefore) {
         toast({
@@ -119,7 +121,7 @@ const Quizzes = () => {
           student_id: user.id,
           quiz_id: quiz.id,
           score: 0,
-          answers: [],
+          answers: {},
           attempt_number: nextAttemptNumber
         })
         .select()
@@ -129,7 +131,7 @@ const Quizzes = () => {
 
       toast({
         title: "Quiz started",
-        description: `Starting ${quiz.subject} quiz with ${quiz.questions.length} questions`,
+        description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions`,
       });
 
       // Navigate to the quiz taking page
@@ -145,21 +147,21 @@ const Quizzes = () => {
   };
   
   return (
-    <div className={`min-h-screen bg-background ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className="pattern-field min-h-screen bg-background">
       <Navigation />
       
       <div className="container py-8">
         <div className="space-y-8">
           {/* Header */}
           <div className="space-y-4">
-            <h1 className="text-3xl font-bold">{t("quizCenter")}</h1>
+            <h1 className="font-display text-[34px] font-bold tracking-tight">{t("quizCenter")}</h1>
             <p className="text-muted-foreground">
               {t("quizCenterDescription")}
             </p>
           </div>
 
           {/* Daily Quiz Progress */}
-          <Card className="gradient-card border-primary/20">
+          <Card className="border-primary/20">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -172,46 +174,58 @@ const Quizzes = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{t("overallProgress")}</span>
-                    <span className="font-medium">12/20</span>
+              {quizStats.loading ? (
+                <Loading />
+              ) : (
+                <>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-base">
+                        <span>{t("overallProgress")}</span>
+                        <span className="font-medium">
+                          {quizStats.overallProgress.completed}/{quizStats.overallProgress.total}
+                        </span>
+                      </div>
+                      <Progress value={quizStats.overallProgress.percentage} className="h-3" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-base">
+                        <span>{t("mathQuestions")}</span>
+                        <span className="font-medium">
+                          {quizStats.subjectProgress.math.completed}/{quizStats.subjectProgress.math.total}
+                        </span>
+                      </div>
+                      <Progress value={quizStats.subjectProgress.math.percentage} className="h-3" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-base">
+                        <span>{t("physicsQuestions")}</span>
+                        <span className="font-medium">
+                          {quizStats.subjectProgress.physics.completed}/{quizStats.subjectProgress.physics.total}
+                        </span>
+                      </div>
+                      <Progress value={quizStats.subjectProgress.physics.percentage} className="h-3" />
+                    </div>
                   </div>
-                  <Progress value={60} className="h-3" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{t("mathQuestions")}</span>
-                    <span className="font-medium">6/10</span>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-base text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span>{quizStats.questionsRemaining} {t("questionsRemaining")}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Trophy className="h-4 w-4" />
+                        <span>{t("maxPoints")}</span>
+                      </div>
+                    </div>
+                    <Button variant="hero" size="lg">
+                      <PlayCircle className="me-2 h-4 w-4" />
+                      {t("continueQuiz")}
+                    </Button>
                   </div>
-                  <Progress value={60} className="h-3" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{t("physicsQuestions")}</span>
-                    <span className="font-medium">6/10</span>
-                  </div>
-                  <Progress value={60} className="h-3" />
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>8 {t("questionsRemaining")}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Trophy className="h-4 w-4" />
-                    <span>{t("maxPoints")}</span>
-                  </div>
-                </div>
-                <Button variant="hero" size="lg">
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  {t("continueQuiz")}
-                </Button>
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -224,9 +238,7 @@ const Quizzes = () => {
             
             <TabsContent value="daily" className="space-y-6">
               {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <Loading />
               ) : dailyQuizzes.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">No daily quizzes available yet.</p>
@@ -234,17 +246,17 @@ const Quizzes = () => {
               ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {dailyQuizzes.map((quiz) => (
-                  <Card key={quiz.id} className="gradient-card hover:shadow-lg transition-shadow">
+                  <Card key={quiz.id} className="transition-shadow">
                     <CardHeader>
-                      <CardTitle className="text-lg">{quiz.subject}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{quiz.chapter || "General Topics"}</p>
+                      <CardTitle className="text-xl">{quiz.subject}</CardTitle>
+                      <p className="text-base text-muted-foreground">{quiz.chapter || "General Topics"}</p>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{quiz.questions.length} {t("questions")}</span>
+                      <div className="flex items-center justify-between text-base">
+                        <span>{questionCount(quiz.questions)} {t("questions")}</span>
                         <Badge variant="default">Daily</Badge>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center justify-between text-base">
                         <span>Max Score: {quiz.max_score} pts</span>
                         <span>25 pts per question</span>
                       </div>
@@ -252,7 +264,7 @@ const Quizzes = () => {
                         className="w-full"
                         onClick={() => startQuiz(quiz)}
                       >
-                        <Brain className="mr-2 h-4 w-4" />
+                        <Brain className="me-2 h-4 w-4" />
                         {t("startQuiz")}
                       </Button>
                     </CardContent>
@@ -262,7 +274,7 @@ const Quizzes = () => {
               )}
 
               {/* Weekly Stats */}
-              <Card className="gradient-card">
+              <Card className="">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-secondary" />
@@ -270,33 +282,37 @@ const Quizzes = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <div className="text-center space-y-1">
-                      <p className="text-2xl font-bold text-primary">6/7</p>
-                      <p className="text-sm text-muted-foreground">{t("quizzesCompleted")}</p>
+                  {quizStats.loading ? (
+                    <Loading />
+                  ) : (
+                    <div className="grid md:grid-cols-4 gap-4">
+                      <div className="text-center space-y-1">
+                        <p className="text-3xl font-bold text-primary">{quizStats.completedQuizzes}</p>
+                        <p className="text-base text-muted-foreground">{t("quizzesCompleted")}</p>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <p className="text-3xl font-bold text-secondary">
+                          {quizStats.averageScore > 0 ? `${Math.round(quizStats.averageScore)}%` : '0%'}
+                        </p>
+                        <p className="text-base text-muted-foreground">{t("averageScore")}</p>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <p className="text-3xl font-bold text-accent">+{quizStats.pointsEarned}</p>
+                        <p className="text-base text-muted-foreground">{t("weeklyPointsEarned")}</p>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <p className="text-3xl font-bold text-warning">{quizStats.dayStreak}</p>
+                        <p className="text-base text-muted-foreground">{t("dayStreak")}</p>
+                      </div>
                     </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-2xl font-bold text-secondary">82%</p>
-                      <p className="text-sm text-muted-foreground">{t("averageScore")}</p>
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-2xl font-bold text-accent">+420</p>
-                      <p className="text-sm text-muted-foreground">{t("weeklyPointsEarned")}</p>
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-2xl font-bold text-warning">12</p>
-                      <p className="text-sm text-muted-foreground">{t("dayStreak")}</p>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
             
             <TabsContent value="practice" className="space-y-6">
               {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <Loading />
               ) : practiceQuizzes.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">No practice quizzes available yet.</p>
@@ -304,17 +320,17 @@ const Quizzes = () => {
               ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {practiceQuizzes.map((quiz) => (
-                  <Card key={quiz.id} className="gradient-card hover:shadow-lg transition-shadow">
+                  <Card key={quiz.id} className="transition-shadow">
                     <CardHeader>
-                      <CardTitle className="text-lg">{quiz.subject}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{quiz.chapter || "General Topics"}</p>
+                      <CardTitle className="text-xl">{quiz.subject}</CardTitle>
+                      <p className="text-base text-muted-foreground">{quiz.chapter || "General Topics"}</p>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{quiz.questions.length} {t("questions")}</span>
+                      <div className="flex items-center justify-between text-base">
+                        <span>{questionCount(quiz.questions)} {t("questions")}</span>
                         <Badge variant="outline">Practice</Badge>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center justify-between text-base">
                         <span>Max Score: {quiz.max_score} pts</span>
                         <span>8 pts per question</span>
                       </div>
@@ -322,7 +338,7 @@ const Quizzes = () => {
                         className="w-full"
                         onClick={() => startQuiz(quiz)}
                       >
-                        <Brain className="mr-2 h-4 w-4" />
+                        <Brain className="me-2 h-4 w-4" />
                         {t("startQuiz")}
                       </Button>
                     </CardContent>

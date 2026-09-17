@@ -6,10 +6,11 @@ import { Trophy, Medal, Award } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 
+// the leaderboard view drops NOT NULL, so these arrive nullable
 interface LeaderboardEntry {
-  id: string;
-  name: string;
-  score: number;
+  id: string | null;
+  name: string | null;
+  score: number | null;
   avatar?: string;
   rank: number;
 }
@@ -25,10 +26,12 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     try {
+      // reads the `leaderboard` view, not `profiles` — the view exposes only
+      // id/name/total_score, so ranking no longer requires read access to
+      // every student's email
       const { data, error } = await supabase
-        .from('profiles')
+        .from('leaderboard')
         .select('id, name, total_score')
-        .order('total_score', { ascending: false })
         .limit(5);
 
       if (error) {
@@ -60,7 +63,7 @@ const Leaderboard = () => {
       case 3:
         return <Award className="h-5 w-5 text-accent" />;
       default:
-        return <span className="text-sm font-bold text-muted-foreground">#{rank}</span>;
+        return <span className="text-base font-bold text-muted-foreground">#{rank}</span>;
     }
   };
 
@@ -78,7 +81,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <Card className={`gradient-card ${isRTL ? 'rtl' : 'ltr'}`}>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-warning" />
@@ -94,26 +97,26 @@ const Leaderboard = () => {
           leaderboard.map((student) => (
           <div
             key={student.id}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-card-raised/60 transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-8">
                 {getRankIcon(student.rank)}
               </div>
               <Avatar className="h-8 w-8">
-                <AvatarImage src={student.avatar} alt={student.name} />
-                <AvatarFallback className="text-xs">
-                  {student.name.split(" ").map(n => n[0]).join("")}
+                <AvatarImage src={student.avatar} alt={student.name ?? undefined} />
+                <AvatarFallback className="text-sm">
+                  {(student.name ?? "?").split(" ").map(n => n[0]).join("")}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{student.name}</p>
+                <p className="text-base font-medium truncate">{student.name}</p>
               </div>
             </div>
             <Badge 
               className={`${getRankBadgeVariant(student.rank)} font-semibold`}
             >
-              {student.score.toLocaleString()} {t("pts")}
+              {(student.score ?? 0).toLocaleString()} {t("pts")}
             </Badge>
           </div>
         ))

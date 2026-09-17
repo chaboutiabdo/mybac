@@ -93,15 +93,15 @@ export function ExamsManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <FileText className="h-8 w-8" />
             Exams Management
           </h1>
           <p className="text-muted-foreground">Upload and manage BAC examination papers</p>
         </div>
         <UploadExamDialog>
-          <Button className="gradient-primary text-white">
-            <Upload className="h-4 w-4 mr-2" />
+          <Button className="text-primary-foreground">
+            <Upload className="h-4 w-4 me-2" />
             Upload Exam
           </Button>
         </UploadExamDialog>
@@ -114,8 +114,8 @@ export function ExamsManagement() {
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{totalExams}</p>
-                <p className="text-sm text-muted-foreground">Total Exams</p>
+                <p className="text-3xl font-bold">{totalExams}</p>
+                <p className="text-base text-muted-foreground">Total Exams</p>
               </div>
             </div>
           </CardContent>
@@ -125,8 +125,8 @@ export function ExamsManagement() {
             <div className="flex items-center gap-2">
               <Download className="h-5 w-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{totalDownloads.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Total Downloads</p>
+                <p className="text-3xl font-bold">{totalDownloads.toLocaleString()}</p>
+                <p className="text-base text-muted-foreground">Total Downloads</p>
               </div>
             </div>
           </CardContent>
@@ -136,8 +136,8 @@ export function ExamsManagement() {
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-2xl font-bold">{new Date().getFullYear()}</p>
-                <p className="text-sm text-muted-foreground">Current Year</p>
+                <p className="text-3xl font-bold">{new Date().getFullYear()}</p>
+                <p className="text-base text-muted-foreground">Current Year</p>
               </div>
             </div>
           </CardContent>
@@ -153,17 +153,17 @@ export function ExamsManagement() {
           {/* Search and Filters */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search exams by title or subject..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4 me-2" />
                 <SelectValue placeholder="Filter by subject" />
               </SelectTrigger>
               <SelectContent>
@@ -224,7 +224,7 @@ export function ExamsManagement() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{exam.title}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-base text-muted-foreground">
                             Uploaded {new Date(exam.created_at).toLocaleDateString()}
                           </p>
                         </div>
@@ -232,7 +232,7 @@ export function ExamsManagement() {
                       <TableCell>{exam.subject}</TableCell>
                       <TableCell>{exam.year}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-sm">
                           {exam.stream}
                         </Badge>
                       </TableCell>

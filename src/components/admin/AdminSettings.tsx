@@ -39,7 +39,7 @@ export function AdminSettings() {
     maintenanceMode: false
   });
 
-  const handleSettingChange = (key: string, value: any) => {
+  const handleSettingChange = (key: string, value: string | boolean) => {
     setSettings(prev => ({
       ...prev,
       [key]: value
@@ -56,14 +56,14 @@ export function AdminSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <Settings className="h-8 w-8" />
             Admin Settings
           </h1>
           <p className="text-muted-foreground">Configure platform settings and preferences</p>
         </div>
-        <Button onClick={handleSaveSettings} className="gradient-primary text-white">
-          <Save className="h-4 w-4 mr-2" />
+        <Button onClick={handleSaveSettings} className="text-primary-foreground">
+          <Save className="h-4 w-4 me-2" />
           Save Changes
         </Button>
       </div>
@@ -221,15 +221,15 @@ export function AdminSettings() {
               <h4 className="font-medium mb-3">System Actions</h4>
               <div className="space-y-2">
                 <Button variant="outline" className="w-full justify-start">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="h-4 w-4 me-2" />
                   Clear Cache
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
-                  <Database className="h-4 w-4 mr-2" />
+                  <Database className="h-4 w-4 me-2" />
                   Backup Database
                 </Button>
                 <Button variant="destructive" className="w-full justify-start">
-                  <Shield className="h-4 w-4 mr-2" />
+                  <Shield className="h-4 w-4 me-2" />
                   Reset System
                 </Button>
               </div>
@@ -246,15 +246,15 @@ export function AdminSettings() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm text-muted-foreground">Version</p>
+              <p className="text-base text-muted-foreground">Version</p>
               <p className="font-medium">1.0.0</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Last Backup</p>
+              <p className="text-base text-muted-foreground">Last Backup</p>
               <p className="font-medium">Today, 3:00 AM</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Uptime</p>
+              <p className="text-base text-muted-foreground">Uptime</p>
               <p className="font-medium">15 days, 7 hours</p>
             </div>
           </div>

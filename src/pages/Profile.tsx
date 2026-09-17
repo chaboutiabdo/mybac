@@ -1,293 +1,124 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { User, Mail, School, Trophy, BookOpen, Play, Award, Crown, Settings, LogOut } from "lucide-react";
+import { Trophy, BookOpen, Award, Flame, Settings, GraduationCap } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-interface UserStats {
-  totalScore: number;
-  quizzesCompleted: number;
-  examsSolved: number;
-  videosWatched: number;
-  rank: number;
-  streak: number;
-}
-
-const mockUserStats: UserStats = {
-  totalScore: 1,
-  quizzesCompleted: 15,
-  examsSolved: 8,
-  videosWatched: 23,
-  rank: 12,
-  streak: 5
-};
+import UserProfile from "@/components/dashboard/UserProfile";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useQuizStats } from "@/hooks/useQuizStats";
+import { useUserRank } from "@/hooks/useUserRank";
+import { Link, Navigate } from "react-router-dom";
+import { EmptyState } from "@/components/ui/states";
+import { COEFFICIENTS, streamLabel, subjectLabel } from "@/lib/bac";
 
 const Profile = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoginMode, setIsLoginMode] = useState(true);
-  const { t, isRTL } = useLanguage();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: ""
-  });
+  const { profile } = useAuth();
+  const { t } = useLanguage();
+  const stats = useDashboardStats();
+  const { dayStreak, averageScore } = useQuizStats();
+  const rank = useUserRank();
 
-  const handleLogin = () => {
-    // TODO: Implement actual authentication
-    setIsLoggedIn(true);
-  };
+  if (!profile) return <Navigate to="/" replace />;
 
-  const handleSignup = () => {
-    // TODO: Implement actual registration
-    setIsLoggedIn(true);
-  };
+  const fmt = (n: number) => n.toLocaleString("ar-DZ");
+  // averageScore is a percentage; the BAC is marked out of 20.
+  const mark = averageScore ? (averageScore / 5).toFixed(2).replace(/\.?0+$/, "") : null;
+  const coefficients = profile.stream ? COEFFICIENTS[profile.stream] : undefined;
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setFormData({ name: "", email: "", password: "", confirmPassword: "" });
-  };
+  const tiles = [
+    { icon: Trophy, label: t("totalScore"), value: fmt(stats.totalScore), tone: "text-accent" },
+    { icon: Award, label: t("rank"), value: rank === null ? "—" : `#${rank}`, tone: "text-muted-foreground" },
+    { icon: Flame, label: t("dayStreak"), value: fmt(dayStreak), tone: "text-accent" },
+    { icon: GraduationCap, label: "المعدّل", value: mark ? `${mark} / 20` : "—", tone: "text-success" },
+  ];
 
-  if (!isLoggedIn) {
-    return (
-      <div className={`min-h-screen bg-gradient-to-br from-background to-secondary/20 ${isRTL ? 'rtl' : 'ltr'}`}>
-        <Navigation />
-        
-        <main className="container mx-auto px-4 py-8">
-          <div className="max-w-md mx-auto">
-            <Card className="border-2 border-primary/20">
-              <CardHeader className="text-center space-y-2">
-                <div className="h-16 w-16 mx-auto bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
-                  <User className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl">
-                  {isLoginMode ? "Welcome Back!" : "Join BAC AI"}
-                </CardTitle>
-                <CardDescription>
-                  {isLoginMode ? "Sign in to continue your learning journey" : "Create your account to start learning"}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {!isLoginMode && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Full Name</label>
-                    <Input
-                      placeholder="Enter your full name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  />
-                </div>
-                
-                {!isLoginMode && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Confirm Password</label>
-                    <Input
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    />
-                  </div>
-                )}
-                
-                <Button 
-                  onClick={isLoginMode ? handleLogin : handleSignup}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isLoginMode ? "Sign In" : "Create Account"}
-                </Button>
-                
-                <div className="text-center">
-                  <Button 
-                    variant="ghost"
-                    onClick={() => setIsLoginMode(!isLoginMode)}
-                    className="text-sm"
-                  >
-                    {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const progress = [
+    { label: t("quizzesCompleted"), value: stats.completedQuizzes },
+    { label: t("examsSolved"), value: stats.examsSolved },
+    { label: t("videosWatched"), value: stats.videosWatched },
+  ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-background to-secondary/20 ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className="min-h-screen bg-background">
       <Navigation />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Card className="border-2 border-primary/20">
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-primary/20 to-accent/20">
-                    JD
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold">John Doe</h1>
-                    <Badge variant="default" className="gap-1">
-                      <User className="h-3 w-3" />
-                      {t("student")}
-                    </Badge>
-                  </div>
-                  <p className="text-muted-foreground flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    john.doe@example.com
-                  </p>
-                  <p className="text-muted-foreground flex items-center gap-2">
-                    <School className="h-4 w-4" />
-                    Sciences Stream
-                  </p>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    {t("settings")}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t("logout")}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full">
-                  <Trophy className="h-6 w-6 text-primary" />
-                </div>
-                <div className="text-2xl font-bold text-primary">{mockUserStats.totalScore}</div>
-                <div className="text-sm text-muted-foreground">{t("totalScore")}</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-accent/20 to-accent/10 rounded-full">
-                  <Award className="h-6 w-6 text-accent" />
-                </div>
-                <div className="text-2xl font-bold text-accent">#{mockUserStats.rank}</div>
-                <div className="text-sm text-muted-foreground">{t("rank")}</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-success/20 to-success/10 rounded-full">
-                  <BookOpen className="h-6 w-6 text-success" />
-                </div>
-                <div className="text-2xl font-bold text-success">{mockUserStats.streak}</div>
-                <div className="text-sm text-muted-foreground">{t("dayStreak")}</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-warning/20 to-warning/10 rounded-full">
-                  <Crown className="h-6 w-6 text-warning" />
-                </div>
-                <div className="text-2xl font-bold text-warning">{t("bronze")}</div>
-                <div className="text-sm text-muted-foreground">{t("level")}</div>
-              </CardContent>
-            </Card>
+      <main className="container py-7">
+        <div className="mx-auto max-w-4xl space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <UserProfile />
+            <Link to="/settings">
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 me-2" />
+                {t("settings")}
+              </Button>
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+            {tiles.map((tile) => (
+              <Card key={tile.label}>
+                <CardContent className="px-4 py-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{tile.label}</span>
+                    <tile.icon className={`h-4 w-4 ${tile.tone}`} strokeWidth={1.6} aria-hidden />
+                  </div>
+                  <div className="mt-2 text-3xl font-semibold tracking-tight tabular">{tile.value}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  {t("learningProgress")}
-                </CardTitle>
+              <CardHeader className="border-b border-border px-4 py-3">
+                <CardTitle className="text-base font-semibold">{t("learningProgress")}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{t("quizzesCompleted")}</span>
-                  <Badge variant="secondary">{mockUserStats.quizzesCompleted}</Badge>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{t("examsSolved")}</span>
-                  <Badge variant="secondary">{mockUserStats.examsSolved}</Badge>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{t("videosWatched")}</span>
-                  <Badge variant="secondary">{mockUserStats.videosWatched}</Badge>
-                </div>
+              <CardContent className="p-0">
+                {progress.map((row) => (
+                  <div
+                    key={row.label}
+                    className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0"
+                  >
+                    <span className="text-base text-muted-foreground">{row.label}</span>
+                    <span className="text-base font-semibold tabular">{fmt(row.value)}</span>
+                  </div>
+                ))}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-accent" />
-                  {t("achievements")}
+              <CardHeader className="border-b border-border px-4 py-3">
+                <CardTitle className="text-base font-semibold">
+                  المعاملات — {streamLabel(profile.stream)}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <Trophy className="h-8 w-8 mx-auto mb-2 text-warning" />
-                    <div className="text-xs font-medium">{t("firstQuiz")}</div>
-                    <div className="text-xs text-muted-foreground">{t("completed")}</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <BookOpen className="h-8 w-8 mx-auto mb-2 text-primary" />
-                    <div className="text-xs font-medium">5 {t("dayStreak")}</div>
-                    <div className="text-xs text-muted-foreground">{t("achieved")}</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <Play className="h-8 w-8 mx-auto mb-2 text-success" />
-                    <div className="text-xs font-medium">{t("videoWatcher")}</div>
-                    <div className="text-xs text-muted-foreground">20+ {t("videos")}</div>
-                  </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg opacity-50">
-                    <Award className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <div className="text-xs font-medium">{t("topTen")}</div>
-                    <div className="text-xs text-muted-foreground">{t("locked")}</div>
-                  </div>
-                </div>
+              <CardContent className="p-0">
+                {/* Replaces four hard-coded fake achievements. Coefficients are
+                    real information a BAC student actually looks up. */}
+                {coefficients ? (
+                  Object.entries(coefficients).map(([subject, coef]) => (
+                    <div
+                      key={subject}
+                      className="flex items-center justify-between border-b border-border px-4 py-2.5 last:border-0"
+                    >
+                      <span className="text-base text-muted-foreground">{subjectLabel(subject)}</span>
+                      <span className="text-base font-semibold tabular">{coef}</span>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState
+                    icon={BookOpen}
+                    title="لم تحدّد شعبتك بعد"
+                    description="اختر شعبتك من الإعدادات لعرض معاملات موادّك."
+                    action={
+                      <Link to="/settings">
+                        <Button variant="outline" size="sm">اذهب إلى الإعدادات</Button>
+                      </Link>
+                    }
+                    className="border-0"
+                  />
+                )}
               </CardContent>
             </Card>
           </div>

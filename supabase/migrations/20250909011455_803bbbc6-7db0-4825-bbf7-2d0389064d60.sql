@@ -51,34 +51,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create triggers to automatically update scores
-DROP TRIGGER IF EXISTS update_score_on_video_progress ON video_progress;
-CREATE TRIGGER update_score_on_video_progress
-    AFTER INSERT OR UPDATE ON video_progress
-    FOR EACH ROW
-    WHEN (NEW.watched = true)
-    EXECUTE FUNCTION trigger_update_user_score();
-
-DROP TRIGGER IF EXISTS update_score_on_exam_progress ON exam_progress;
-CREATE TRIGGER update_score_on_exam_progress
-    AFTER INSERT OR UPDATE ON exam_progress
-    FOR EACH ROW
-    WHEN (NEW.solved_with_ai = true OR NEW.viewed_solution = true)
-    EXECUTE FUNCTION trigger_update_user_score();
-
-DROP TRIGGER IF EXISTS update_score_on_quiz_question_results ON quiz_question_results;
-CREATE TRIGGER update_score_on_quiz_question_results
-    AFTER INSERT ON quiz_question_results
-    FOR EACH ROW
-    WHEN (NEW.is_correct = true)
-    EXECUTE FUNCTION trigger_update_user_score();
-
-DROP TRIGGER IF EXISTS update_score_on_bookings ON bookings;
-CREATE TRIGGER update_score_on_bookings
-    AFTER INSERT ON bookings
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_update_user_score();
-
 -- Create the trigger function
 CREATE OR REPLACE FUNCTION trigger_update_user_score()
 RETURNS TRIGGER AS $$

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { PendingStudent } from "@/components/admin/StudentApprovalDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +128,7 @@ export function StudentsManagement() {
   }, []);
 
   // Mock pending students - TODO: implement proper pending system
-  const pendingStudents: any[] = [];
+  const pendingStudents: PendingStudent[] = [];
 
   const schools = ["Lycée Mohamed Boudiaf", "Lycée Ibn Khaldoun", "Lycée El Houria"];
 
@@ -151,15 +152,15 @@ export function StudentsManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <Users className="h-8 w-8" />
             Students Management
           </h1>
           <p className="text-muted-foreground">View and manage student accounts</p>
         </div>
         <AddStudentDialog>
-          <Button className="gradient-primary text-white">
-            <UserPlus className="h-4 w-4 mr-2" />
+          <Button className="text-primary-foreground">
+            <UserPlus className="h-4 w-4 me-2" />
             Add Student
           </Button>
         </AddStudentDialog>
@@ -172,8 +173,8 @@ export function StudentsManagement() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{students.length}</p>
-                <p className="text-sm text-muted-foreground">Total Students</p>
+                <p className="text-3xl font-bold">{students.length}</p>
+                <p className="text-base text-muted-foreground">Total Students</p>
               </div>
             </div>
           </CardContent>
@@ -183,8 +184,8 @@ export function StudentsManagement() {
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{activeStudents}</p>
-                <p className="text-sm text-muted-foreground">Active Students</p>
+                <p className="text-3xl font-bold">{activeStudents}</p>
+                <p className="text-base text-muted-foreground">Active Students</p>
               </div>
             </div>
           </CardContent>
@@ -194,8 +195,8 @@ export function StudentsManagement() {
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-2xl font-bold">{avgScore}</p>
-                <p className="text-sm text-muted-foreground">Avg Score</p>
+                <p className="text-3xl font-bold">{avgScore}</p>
+                <p className="text-base text-muted-foreground">Avg Score</p>
               </div>
             </div>
           </CardContent>
@@ -205,8 +206,8 @@ export function StudentsManagement() {
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{pendingStudents.length}</p>
-                <p className="text-sm text-muted-foreground">Pending Approvals</p>
+                <p className="text-3xl font-bold">{pendingStudents.length}</p>
+                <p className="text-base text-muted-foreground">Pending Approvals</p>
               </div>
             </div>
           </CardContent>
@@ -240,17 +241,17 @@ export function StudentsManagement() {
           {/* Search and Filters */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search students by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
             <Select value={schoolFilter} onValueChange={setSchoolFilter}>
               <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4 me-2" />
                 <SelectValue placeholder="Filter by school" />
               </SelectTrigger>
               <SelectContent>
@@ -312,22 +313,22 @@ export function StudentsManagement() {
                         <TableCell>
                           <div>
                             <p className="font-medium">{student.name}</p>
-                            <p className="text-sm text-muted-foreground">{student.email}</p>
+                            <p className="text-base text-muted-foreground">{student.email}</p>
                           </div>
                         </TableCell>
                         <TableCell>
                           {student.stream ? (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-sm">
                               {student.stream}
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-sm">
                               No Stream
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-sm">
                             {student.role}
                           </Badge>
                         </TableCell>
@@ -381,27 +382,27 @@ export function StudentsManagement() {
                         <TableCell>
                           <div>
                             <p className="font-medium">{student.name}</p>
-                            <p className="text-sm text-muted-foreground">{student.email}</p>
+                            <p className="text-base text-muted-foreground">{student.email}</p>
                           </div>
                         </TableCell>
                         <TableCell>
                           {student.school ? (
                             <span>{student.school}</span>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-sm">
                               Independent
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-sm">
                             {student.stream}
                           </Badge>
                         </TableCell>
                         <TableCell>{new Date(student.registrationDate).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <StudentApprovalDialog student={student}>
-                            <Button size="sm" className="gradient-primary text-white">
+                            <Button size="sm" className="text-primary-foreground">
                               Review Application
                             </Button>
                           </StudentApprovalDialog>

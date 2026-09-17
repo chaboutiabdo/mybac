@@ -1,49 +1,27 @@
 import { useState, useEffect } from "react";
+import { MATH_CHAPTERS, PHYSICS_CHAPTERS } from "@/lib/bac";
+import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Play, CheckCircle, Crown, Youtube } from "lucide-react";
 import Navigation from "@/components/layout/Navigation";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 
-interface Video {
-  id: string;
-  title: string;
-  subject: string;
-  chapter?: string;
-  type: "youtube" | "premium";
-  url?: string;
-  file_path?: string;
-  duration?: number;
-  watched?: boolean;
-}
-
-const mathChapters = [
-  { value: "derivatives", label: "الاشتقاقية والمشتقات" },
-  { value: "exponential", label: "الدوال الأسية" },
-  { value: "logarithmic", label: "الدوال اللوغاريتمية" },
-  { value: "limits", label: "النهايات والمستقيمات المقاربة" },
-  { value: "sequences", label: "المتتاليات العددية" },
-  { value: "integration", label: "التكامل والحساب التكاملي" },
-  { value: "integers", label: "الحساب في مجموعة الأعداد الصحيحة ℤ" },
-  { value: "probability", label: "الاحتمالات والإحصاء" },
-  { value: "complex", label: "الأعداد المركبة والتحويلات" },
-  { value: "geometry", label: "الهندسة في الفضاء" }
-];
-
-const physicsChapters = [
-  { value: "chemical_tracking", label: "المتابعة الزمنية لتحول كيميائي" },
-  { value: "mechanical_evolution", label: "تطور جملة ميكانيكياً" },
-  { value: "electrical_phenomena", label: "دراسة ظواهر كهربائية" },
-  { value: "chemical_equilibrium", label: "تطور جملة كيميائية نحو حالة التوازن" },
-  { value: "nuclear_transformations", label: "دراسة التحولات النووية" },
-  { value: "chemical_monitoring", label: "مراقبة تطور جملة كيميائية" }
-];
+// `watched` is derived client-side from video_progress, not a column
+type Video = Tables<"videos"> & { watched?: boolean };
 
 const Videos = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -52,7 +30,7 @@ const Videos = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [videoProgress, setVideoProgress] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  
+
   const { user } = useAuth();
   const { trackVideoActivity } = useActivityTracking();
   const isMobile = useIsMobile();
@@ -68,14 +46,14 @@ const Videos = () => {
   const fetchVideos = async () => {
     try {
       const { data, error } = await supabase
-        .from('videos')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("videos")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setVideos(data || []);
     } catch (error) {
-      console.error('Error fetching videos:', error);
+      console.error("Error fetching videos:", error);
       toast({
         title: "خطأ",
         description: "فشل في تحميل الفيديوهات",
@@ -88,118 +66,112 @@ const Videos = () => {
 
   const fetchVideoProgress = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
-        .from('video_progress')
-        .select('video_id, watched')
-        .eq('student_id', user.id);
+        .from("video_progress")
+        .select("video_id, watched")
+        .eq("student_id", user.id);
 
       if (error) throw error;
-      
+
       const progressMap: Record<string, boolean> = {};
-      data?.forEach(progress => {
-        progressMap[progress.video_id] = progress.watched;
+      data?.forEach((progress) => {
+        progressMap[progress.video_id] = progress.watched ?? false;
       });
       setVideoProgress(progressMap);
     } catch (error) {
-      console.error('Error fetching video progress:', error);
+      console.error("Error fetching video progress:", error);
     }
   };
 
   const handleWatchVideo = async (video: Video) => {
     if (!user) return;
 
-    console.log('User watching video:', video.title);
+    console.log("User watching video:", video.title);
 
     // Track video activity first
     try {
-      await trackVideoActivity(
-        video.id,
-        "started",
-        video.title,
-        video.subject,
-        video.chapter
-      );
+      await trackVideoActivity(video.id, "started", video.title, video.subject, video.chapter);
     } catch (error) {
-      console.error('Error tracking video activity:', error);
+      console.error("Error tracking video activity:", error);
     }
 
     // Open video based on device and type
     if (video.url) {
       try {
         // For YouTube videos, create an embedded player or open in popup
-        if (video.type === 'youtube') {
+        if (video.type === "youtube") {
           // Extract video ID from URL
-          let videoId = '';
-          if (video.url.includes('youtube.com/watch?v=')) {
-            videoId = video.url.split('v=')[1]?.split('&')[0];
-          } else if (video.url.includes('youtu.be/')) {
-            videoId = video.url.split('youtu.be/')[1]?.split('?')[0];
+          let videoId = "";
+          if (video.url.includes("youtube.com/watch?v=")) {
+            videoId = video.url.split("v=")[1]?.split("&")[0];
+          } else if (video.url.includes("youtu.be/")) {
+            videoId = video.url.split("youtu.be/")[1]?.split("?")[0];
           }
-          
+
           if (videoId) {
             // Direct link to YouTube without embedding to avoid blocking
             const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-            window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+            window.open(youtubeUrl, "_blank", "noopener,noreferrer");
           } else {
             // Fallback: just open the URL
-            window.open(video.url, '_blank', 'noopener,noreferrer');
+            window.open(video.url, "_blank", "noopener,noreferrer");
           }
-          
+
           // Update video progress after opening
           try {
-            const { error } = await supabase
-              .from('video_progress')
-              .upsert({
+            const { error } = await supabase.from("video_progress").upsert(
+              {
                 student_id: user.id,
                 video_id: video.id,
                 watched: true,
-                completed_at: new Date().toISOString()
-              }, {
-                onConflict: 'student_id,video_id'
-              });
+                completed_at: new Date().toISOString(),
+              },
+              {
+                onConflict: "student_id,video_id",
+              },
+            );
 
             if (error) throw error;
-            
+
             // Update local state
-            setVideoProgress(prev => ({
+            setVideoProgress((prev) => ({
               ...prev,
-              [video.id]: true
+              [video.id]: true,
             }));
 
             // Track video completion for scoring
-            console.log('Marking video as completed:', video.title);
+            console.log("Marking video as completed:", video.title);
             await trackVideoActivity(
               video.id,
               "completed",
               video.title,
               video.subject,
-              video.chapter
+              video.chapter,
             );
 
             toast({
               title: "نجح",
               description: "تم فتح الفيديو وتتبع التقدم!",
             });
-
           } catch (error) {
-            console.error('Error updating video progress:', error);
+            console.error("Error updating video progress:", error);
           }
         } else {
           // For premium videos, handle file storage
           const { data } = await supabase.storage
-            .from('videos')
-            .createSignedUrl(video.file_path || '', 3600);
+            .from("videos")
+            .createSignedUrl(video.file_path || "", 3600);
 
           if (data?.signedUrl) {
-            window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+            window.open(data.signedUrl, "_blank", "noopener,noreferrer");
           } else {
-            throw new Error('Failed to get video URL');
+            throw new Error("Failed to get video URL");
           }
         }
       } catch (error) {
-        console.error('Error opening video:', error);
+        console.error("Error opening video:", error);
         toast({
           title: "خطأ",
           description: "فشل في فتح الفيديو. يرجى المحاولة مرة أخرى.",
@@ -215,37 +187,37 @@ const Videos = () => {
     }
   };
 
-  const formatDuration = (seconds?: number) => {
+  const formatDuration = (seconds?: number | null) => {
     if (!seconds) return "غير معروف";
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  const filteredVideos = videos.filter(video => {
-    return (!selectedSubject || selectedSubject === "all" || video.subject === selectedSubject) &&
-           (!selectedChapter || selectedChapter === "all" || video.chapter === selectedChapter) &&
-           (!selectedType || selectedType === "all" || video.type === selectedType);
+  const filteredVideos = videos.filter((video) => {
+    return (
+      (!selectedSubject || selectedSubject === "all" || video.subject === selectedSubject) &&
+      (!selectedChapter || selectedChapter === "all" || video.chapter === selectedChapter) &&
+      (!selectedType || selectedType === "all" || video.type === selectedType)
+    );
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+    <div className="pattern-field min-h-screen bg-background">
       <Navigation />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              فيديوهات تعليمية
-            </h1>
-            <p className="text-muted-foreground text-base md:text-lg">
+          <div className="space-y-2">
+            <h1 className="font-display text-[34px] font-bold tracking-tight">فيديوهات تعليمية</h1>
+            <p className="text-lg text-muted-foreground">
               تعلم من محتوى فيديو منظم وشروحات الخبراء
             </p>
           </div>
 
-          <Card className="border-2 border-primary/20">
+          <Card className="border border-primary/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+              <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
                 <Play className="h-5 w-5 text-primary" />
                 تصفية الفيديوهات
               </CardTitle>
@@ -257,27 +229,33 @@ const Videos = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع المواد</SelectItem>
-                  <SelectItem value="Math">📘 الرياضيات</SelectItem>
-                  <SelectItem value="Physics">⚡ الفيزياء</SelectItem>
+                  <SelectItem value="Math">الرياضيات</SelectItem>
+                  <SelectItem value="Physics">الفيزياء</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value={selectedChapter} onValueChange={setSelectedChapter} disabled={!selectedSubject || selectedSubject === "all"}>
+              <Select
+                value={selectedChapter}
+                onValueChange={setSelectedChapter}
+                disabled={!selectedSubject || selectedSubject === "all"}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="اختر الفصل" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">جميع الفصول</SelectItem>
-                  {selectedSubject === "Math" && mathChapters.map((chapter) => (
-                    <SelectItem key={chapter.value} value={chapter.value}>
-                      {chapter.label}
-                    </SelectItem>
-                  ))}
-                  {selectedSubject === "Physics" && physicsChapters.map((chapter) => (
-                    <SelectItem key={chapter.value} value={chapter.value}>
-                      {chapter.label}
-                    </SelectItem>
-                  ))}
+                  {selectedSubject === "Math" &&
+                    MATH_CHAPTERS.map((chapter) => (
+                      <SelectItem key={chapter.value} value={chapter.value}>
+                        {chapter.label}
+                      </SelectItem>
+                    ))}
+                  {selectedSubject === "Physics" &&
+                    PHYSICS_CHAPTERS.map((chapter) => (
+                      <SelectItem key={chapter.value} value={chapter.value}>
+                        {chapter.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
 
@@ -295,60 +273,68 @@ const Videos = () => {
           </Card>
 
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <Loading />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredVideos.map((video) => (
-                <Card key={video.id} className="group hover:shadow-lg transition-all duration-300 border-primary/10 overflow-hidden">
+                <Card
+                  key={video.id}
+                  className="group transition-all duration-300 border-primary/10 overflow-hidden"
+                >
                   <div className="relative">
-                    <img 
+                    <img
                       src="/placeholder.svg"
                       alt={video.title}
                       className="w-full h-32 sm:h-40 md:h-48 object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors duration-300" />
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute inset-0 bg-surface-deep/20 group-hover:bg-surface-deep/30 transition-colors duration-300" />
+                    <div className="absolute top-2 end-2">
                       {video.type === "premium" ? (
-                        <Badge variant="default" className="gap-1 bg-gradient-to-r from-warning to-accent text-white text-xs">
+                        <Badge variant="default" className="gap-1 text-primary-foreground text-sm">
                           <Crown className="h-3 w-3" />
                           مميز
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-background/80 gap-1 text-xs">
+                        <Badge variant="outline" className="bg-background/80 gap-1 text-sm">
                           <Youtube className="h-3 w-3" />
                           مجاني
                         </Badge>
                       )}
                     </div>
-                    <div className="absolute bottom-2 right-2">
-                      <Badge variant="secondary" className="bg-black/70 text-white text-xs">
+                    <div className="absolute bottom-2 end-2">
+                      <Badge
+                        variant="secondary"
+                        className="bg-surface-deep/85 text-primary-foreground text-sm"
+                      >
                         {formatDuration(video.duration)}
                       </Badge>
                     </div>
                     {videoProgress[video.id] && (
-                      <div className="absolute top-2 left-2">
+                      <div className="absolute top-2 start-2">
                         <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-success bg-background rounded-full" />
                       </div>
                     )}
                   </div>
-                  
+
                   <CardHeader className="pb-3 p-3 md:p-6">
-                    <CardTitle className="text-sm md:text-lg line-clamp-2">{video.title}</CardTitle>
-                    <CardDescription className="text-xs md:text-sm">
+                    <CardTitle className="text-base md:text-xl line-clamp-2">
+                      {video.title}
+                    </CardTitle>
+                    <CardDescription className="text-sm md:text-base">
                       {video.subject} • {video.chapter || "عام"}
                     </CardDescription>
                   </CardHeader>
-                  
+
                   <CardContent className="pt-0 p-3 md:p-6">
-                    <Button 
+                    <Button
                       onClick={() => handleWatchVideo(video)}
-                      className={`w-full text-sm md:text-base ${video.type === "premium" ? "bg-gradient-to-r from-warning to-accent text-white" : ""}`}
+                      className={`w-full text-sm md:text-base ${video.type === "premium" ? "text-primary-foreground" : ""}`}
                       variant="default"
-                      disabled={video.type === "premium" && false} // TODO: Check user premium status
+                      // No premium check needed: the "Premium users can view
+                      // premium videos"RLS policy means type === 'premium'
+                      // rows never reach a free user's query in the first place.
                     >
-                      <Play className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+                      <Play className="h-3 w-3 md:h-4 md:w-4 me-2" />
                       {videoProgress[video.id] ? "شاهد مرة أخرى" : "شاهد الفيديو"}
                     </Button>
                   </CardContent>

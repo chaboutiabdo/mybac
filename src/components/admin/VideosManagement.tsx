@@ -198,7 +198,7 @@ export function VideosManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <Video className="h-8 w-8" />
             Videos Management
           </h1>
@@ -206,8 +206,8 @@ export function VideosManagement() {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-primary text-white">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="text-primary-foreground">
+              <Plus className="h-4 w-4 me-2" />
               Add Video
             </Button>
           </DialogTrigger>
@@ -312,7 +312,7 @@ export function VideosManagement() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateVideo} className="gradient-primary text-white">
+              <Button onClick={handleCreateVideo} className="text-primary-foreground">
                 Create Video
               </Button>
             </div>
@@ -327,8 +327,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-2xl font-bold">{totalVideos}</p>
-                <p className="text-sm text-muted-foreground">Total Videos</p>
+                <p className="text-3xl font-bold">{totalVideos}</p>
+                <p className="text-base text-muted-foreground">Total Videos</p>
               </div>
             </div>
           </CardContent>
@@ -338,8 +338,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Link className="h-5 w-5 text-success" />
               <div>
-                <p className="text-2xl font-bold">{youtubeVideos}</p>
-                <p className="text-sm text-muted-foreground">YouTube</p>
+                <p className="text-3xl font-bold">{youtubeVideos}</p>
+                <p className="text-base text-muted-foreground">YouTube</p>
               </div>
             </div>
           </CardContent>
@@ -349,8 +349,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-accent" />
               <div>
-                <p className="text-2xl font-bold">{premiumVideos}</p>
-                <p className="text-sm text-muted-foreground">Premium</p>
+                <p className="text-3xl font-bold">{premiumVideos}</p>
+                <p className="text-base text-muted-foreground">Premium</p>
               </div>
             </div>
           </CardContent>
@@ -360,8 +360,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Eye className="h-5 w-5 text-warning" />
               <div>
-                <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Total Views</p>
+                <p className="text-3xl font-bold">{totalViews.toLocaleString()}</p>
+                <p className="text-base text-muted-foreground">Total Views</p>
               </div>
             </div>
           </CardContent>
@@ -371,8 +371,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-info" />
               <div>
-                <p className="text-2xl font-bold">{avgDuration}min</p>
-                <p className="text-sm text-muted-foreground">Avg Duration</p>
+                <p className="text-3xl font-bold">{avgDuration}min</p>
+                <p className="text-base text-muted-foreground">Avg Duration</p>
               </div>
             </div>
           </CardContent>
@@ -413,17 +413,17 @@ export function VideosManagement() {
           {/* Search and Filters */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search videos by title, description, or subject..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="ps-10"
               />
             </div>
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="h-4 w-4 me-2" />
                 <SelectValue placeholder="Filter by subject" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
@@ -468,13 +468,13 @@ export function VideosManagement() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{video.title}</p>
-                          <p className="text-sm text-muted-foreground line-clamp-2">
+                          <p className="text-base text-muted-foreground line-clamp-2">
                             {video.description}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-sm">
                           {video.subject}
                         </Badge>
                       </TableCell>
@@ -482,7 +482,7 @@ export function VideosManagement() {
                       <TableCell>
                         <Badge 
                           variant={video.type === "premium" ? "default" : "secondary"}
-                          className="text-xs"
+                          className="text-sm"
                         >
                           <div className="flex items-center gap-1">
                             {video.type === "premium" ? (

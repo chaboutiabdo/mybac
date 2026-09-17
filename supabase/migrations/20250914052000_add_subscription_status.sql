@@ -11,13 +11,14 @@ UPDATE profiles
 SET subscription_status = 'premium' 
 WHERE role = 'premium' AND subscription_status IS NULL;
 
--- Create index for faster queries
+-- Create index IF NOT EXISTS for faster queries
 CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status ON profiles(subscription_status);
 
 -- Add policies for subscription status
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Allow admins to update subscription status
+DROP POLICY IF EXISTS "Admins can update subscription status" ON profiles;
 CREATE POLICY "Admins can update subscription status"
 ON profiles
 FOR UPDATE
@@ -33,6 +34,7 @@ WITH CHECK (
 );
 
 -- Allow users to view their own subscription status
+DROP POLICY IF EXISTS "Users can view own subscription status" ON profiles;
 CREATE POLICY "Users can view own subscription status"
 ON profiles
 FOR SELECT

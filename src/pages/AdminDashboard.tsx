@@ -10,12 +10,11 @@ import { StudentsManagement } from "@/components/admin/StudentsManagement";
 import { ExamsManagement } from "@/components/admin/ExamsManagement";
 import { SessionsManagement } from "@/components/admin/SessionsManagement";
 import { AdminSettings } from "@/components/admin/AdminSettings";
-import { AlumniManagement } from "@/components/admin/AlumniManagement";
 import { VideosManagement } from "@/components/admin/VideosManagement";
 import { QuizzesManagement } from "@/components/admin/QuizzesManagement";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
-type AdminSection = "overview" | "schools" | "students" | "alumni" | "videos" | "exams" | "quizzes" | "sessions" | "settings" | "tips" | "subscriptions" | "advice";
+export type AdminSection = "overview" | "schools" | "students" | "videos" | "exams" | "quizzes" | "sessions" | "settings" | "tips" | "subscriptions" | "advice";
 
 const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState<AdminSection>("overview");
@@ -28,8 +27,6 @@ const AdminDashboard = () => {
         return <SchoolsManagement />;
       case "students":
         return <StudentsManagement />;
-      case "alumni":
-        return <AlumniManagement />;
       case "videos":
         return <VideosManagement />;
       case "exams":

@@ -1,15 +1,14 @@
 import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import LandingPage from "./pages/LandingPage";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -24,7 +23,6 @@ const Videos = lazy(() => import("./pages/Videos"));
 const Exams = lazy(() => import("./pages/Exams"));
 const Quizzes = lazy(() => import("./pages/Quizzes"));
 const QuizTaking = lazy(() => import("./pages/QuizTaking"));
-const Alumni = lazy(() => import("./pages/Alumni"));
 const LearnAI = lazy(() => import("./pages/LearnAI"));
 
 const queryClient = new QueryClient();
@@ -32,11 +30,9 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <ThemeProvider>
         <LanguageProvider>
           <TooltipProvider>
             <PerformanceMonitor />
-            <Toaster />
             <Sonner />
             <BrowserRouter>
               <Routes>
@@ -52,6 +48,7 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/admin" element={
                   <LazyLoad>
                     <ProtectedRoute requiredRole="admin">
@@ -94,13 +91,6 @@ const App = () => (
                     </ProtectedRoute>
                   </LazyLoad>
                 } />
-                <Route path="/alumni" element={
-                  <LazyLoad>
-                    <ProtectedRoute>
-                      <Alumni />
-                    </ProtectedRoute>
-                  </LazyLoad>
-                } />
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
@@ -118,7 +108,6 @@ const App = () => (
             </BrowserRouter>
           </TooltipProvider>
         </LanguageProvider>
-      </ThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

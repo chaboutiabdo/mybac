@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Loading } from "@/components/ui/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,19 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Edit, Trash2, Calendar, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { UploadQuizDialog } from "./UploadQuizDialog";
 
-interface Quiz {
-  id: string;
-  subject: string;
-  chapter?: string;
-  type: 'daily' | 'practice' | 'normal';
-  questions: any[];
-  max_score: number;
-  date: string;
-  created_at: string;
-}
+type Quiz = Tables<'quizzes'>;
 
 export function QuizzesManagement() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -70,9 +63,13 @@ export function QuizzesManagement() {
   });
 
   const subjects = [...new Set(quizzes.map(quiz => quiz.subject))];
+  // `questions` is a jsonb column, so it is typed Json rather than an array
+  const questionCount = (questions: unknown): number =>
+    Array.isArray(questions) ? questions.length : 0;
+
   const practiceQuizzes = quizzes.filter(q => q.type === 'practice');
   const dailyQuizzes = quizzes.filter(q => q.type === 'daily');
-  const totalQuestions = quizzes.reduce((acc, quiz) => acc + quiz.questions.length, 0);
+  const totalQuestions = quizzes.reduce((acc, quiz) => acc + questionCount(quiz.questions), 0);
 
   const deleteQuiz = async (quizId: string) => {
     if (!confirm('Are you sure you want to delete this quiz?')) return;
@@ -105,18 +102,18 @@ export function QuizzesManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Quizzes Management</h1>
+          <h1 className="text-4xl font-bold">Quizzes Management</h1>
           <p className="text-muted-foreground">
             Manage practice and daily quizzes for students
           </p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setDailyUploadDialogOpen(true)}>
-            <Calendar className="mr-2 h-4 w-4" />
+            <Calendar className="me-2 h-4 w-4" />
             Upload Daily Quiz
           </Button>
           <Button onClick={() => setUploadDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="me-2 h-4 w-4" />
             Upload Practice Quiz
           </Button>
         </div>
@@ -126,38 +123,38 @@ export function QuizzesManagement() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Quizzes</CardTitle>
+            <CardTitle className="text-base font-medium">Total Quizzes</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{quizzes.length}</div>
+            <div className="text-3xl font-bold">{quizzes.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Practice Quizzes</CardTitle>
-            <BookOpen className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-base font-medium">Practice Quizzes</CardTitle>
+            <BookOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{practiceQuizzes.length}</div>
+            <div className="text-3xl font-bold">{practiceQuizzes.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Daily Quizzes</CardTitle>
-            <Calendar className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-base font-medium">Daily Quizzes</CardTitle>
+            <Calendar className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dailyQuizzes.length}</div>
+            <div className="text-3xl font-bold">{dailyQuizzes.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
+            <CardTitle className="text-base font-medium">Total Questions</CardTitle>
             <BookOpen className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalQuestions}</div>
+            <div className="text-3xl font-bold">{totalQuestions}</div>
           </CardContent>
         </Card>
       </div>
@@ -171,12 +168,12 @@ export function QuizzesManagement() {
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by subject or chapter..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+                  className="ps-8"
                 />
               </div>
             </div>
@@ -204,9 +201,7 @@ export function QuizzesManagement() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <Loading />
           ) : (
             <Table>
               <TableHeader>
@@ -237,7 +232,7 @@ export function QuizzesManagement() {
                           {quiz.type === 'daily' ? 'Daily' : 'Practice'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{quiz.questions.length}</TableCell>
+                      <TableCell>{questionCount(quiz.questions)}</TableCell>
                       <TableCell>{quiz.max_score} pts</TableCell>
                       <TableCell>{new Date(quiz.date).toLocaleDateString()}</TableCell>
                       <TableCell>

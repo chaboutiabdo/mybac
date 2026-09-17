@@ -13,5 +13,6 @@ UPDATE public.quiz_attempts SET attempt_number = 1 WHERE attempt_number IS NULL;
 ALTER TABLE public.quiz_attempts ALTER COLUMN attempt_number SET NOT NULL;
 
 -- Create new unique constraint allowing multiple attempts
+ALTER TABLE public.quiz_attempts DROP CONSTRAINT IF EXISTS quiz_attempts_unique_attempt;
 ALTER TABLE public.quiz_attempts ADD CONSTRAINT quiz_attempts_unique_attempt 
 UNIQUE (quiz_id, student_id, attempt_number);

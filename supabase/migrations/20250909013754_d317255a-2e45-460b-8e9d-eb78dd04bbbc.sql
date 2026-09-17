@@ -6,6 +6,7 @@ DROP TRIGGER IF EXISTS update_quiz_results_score ON public.quiz_question_results
 DROP TRIGGER IF EXISTS update_booking_score ON public.bookings;
 
 -- Recreate the updated_at trigger for profiles
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { MessageSquare, Pin, Edit, Trash2, Plus, Calendar } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { errorMessage } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
 
-interface AdminAdvice {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  is_pinned: boolean;
-}
+type AdminAdvice = Tables<'admin_advice'>;
 
 export function AdminAdviceManagement() {
   const [adviceList, setAdviceList] = useState<AdminAdvice[]>([]);
@@ -43,11 +40,11 @@ export function AdminAdviceManagement() {
 
       if (error) throw error;
       setAdviceList(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching advice:', error);
       toast({
         title: "خطأ في تحميل النصائح",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -98,11 +95,11 @@ export function AdminAdviceManagement() {
       setEditingAdvice(null);
       setFormData({ title: '', content: '', is_pinned: false });
       await fetchAdvice();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving advice:', error);
       toast({
         title: "خطأ في الحفظ",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     }
@@ -113,7 +110,7 @@ export function AdminAdviceManagement() {
     setFormData({
       title: advice.title,
       content: advice.content,
-      is_pinned: advice.is_pinned
+      is_pinned: advice.is_pinned ?? false
     });
     setShowDialog(true);
   };
@@ -135,11 +132,11 @@ export function AdminAdviceManagement() {
       });
 
       await fetchAdvice();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting advice:', error);
       toast({
         title: "خطأ في الحذف",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     }
@@ -168,9 +165,7 @@ export function AdminAdviceManagement() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            </div>
+            <Loading />
           ) : adviceList.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               لا توجد نصائح متاحة
@@ -178,7 +173,7 @@ export function AdminAdviceManagement() {
           ) : (
             <div className="space-y-4">
               {adviceList.map((advice) => (
-                <Card key={advice.id} className="border-l-4 border-l-primary">
+                <Card key={advice.id} className="border-s-4 border-s-primary">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -186,15 +181,15 @@ export function AdminAdviceManagement() {
                           <h3 className="font-semibold">{advice.title}</h3>
                           {advice.is_pinned && (
                             <Badge variant="secondary" className="bg-primary/10 text-primary">
-                              <Pin className="h-3 w-3 mr-1" />
+                              <Pin className="h-3 w-3 me-1" />
                               مثبت
                             </Badge>
                           )}
                         </div>
                         <p className="text-muted-foreground mb-2">{advice.content}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-base text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {new Date(advice.created_at).toLocaleDateString('ar-SA', {
+                          {new Date(advice.created_at ?? Date.now()).toLocaleDateString('ar-DZ', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -215,7 +210,7 @@ export function AdminAdviceManagement() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(advice.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -242,7 +237,7 @@ export function AdminAdviceManagement() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">عنوان النصيحة</label>
+              <label className="text-base font-medium mb-2 block">عنوان النصيحة</label>
               <Input
                 placeholder="أدخل عنوان النصيحة..."
                 value={formData.title}
@@ -251,7 +246,7 @@ export function AdminAdviceManagement() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">محتوى النصيحة</label>
+              <label className="text-base font-medium mb-2 block">محتوى النصيحة</label>
               <Textarea
                 placeholder="أدخل محتوى النصيحة..."
                 value={formData.content}
@@ -268,7 +263,7 @@ export function AdminAdviceManagement() {
                 onChange={(e) => setFormData({ ...formData, is_pinned: e.target.checked })}
                 className="rounded"
               />
-              <label htmlFor="is_pinned" className="text-sm font-medium">
+              <label htmlFor="is_pinned" className="text-base font-medium">
                 تثبيت هذه النصيحة (ستظهر في أعلى الصفحة الرئيسية)
               </label>
             </div>

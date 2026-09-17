@@ -1,9 +1,9 @@
 import { Navigate } from "react-router-dom";
+import { Loading } from "@/components/ui/states";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Crown, Lock } from "lucide-react";
+import { Check, Crown } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface ProtectedRouteProps {
@@ -21,11 +21,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isPremium, isAdmin, isFree, loading: subscriptionLoading } = useSubscription();
 
   if (loading || subscriptionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <Loading full />;
   }
 
   if (!user || !profile) {
@@ -40,28 +36,42 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (!hasAccess && requiredRole === 'premium') {
       if (showUpgradeMessage) {
         return (
-          <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/10 flex items-center justify-center p-4">
-            <Card className="max-w-md w-full">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Crown className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">ميزة مميزة</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-center text-muted-foreground">
-                  هذه الميزة متاحة فقط للمشتركين المميزين. قم بالترقية الآن للوصول إلى جميع الميزات المتقدمة.
-                </p>
-                <div className="space-y-2">
-                  <Link to="/pricing" className="block">
-                    <Button className="w-full">ترقية إلى المميز</Button>
-                  </Link>
-                  <Link to="/home" className="block">
-                    <Button variant="outline" className="w-full">العودة للرئيسية</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex min-h-screen items-center justify-center bg-background px-6">
+            <div className="w-full max-w-md text-center">
+              <Crown className="mx-auto mb-5 h-7 w-7 text-accent" strokeWidth={1.5} aria-hidden />
+              <h1 className="text-3xl font-semibold tracking-tight">ميزة للمشتركين المميّزين</h1>
+              <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-muted-foreground">
+                الاختبارات غير المحدودة والأستاذ بالذكاء الاصطناعي متاحان في العرض المميّز
+                بـ<span className="font-semibold text-foreground tabular"> 700 دج </span>شهريًا.
+              </p>
+
+              <div className="mt-6 rounded-md border border-border bg-card p-4 text-start">
+                <p className="text-sm font-semibold text-muted-foreground">يشمل العرض</p>
+                <ul className="mt-2.5 space-y-2 text-base text-muted-foreground">
+                  <li className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                    اختبارات تدريب غير محدودة
+                  </li>
+                  <li className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                    الأستاذ بالذكاء الاصطناعي للرياضيات والفيزياء
+                  </li>
+                  <li className="flex gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+                    الدروس المميّزة وملخّص شهري لتقدّمك
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-2.5">
+                <Link to="/pricing">
+                  <Button size="lg" className="w-full">عرض الأسعار والاشتراك</Button>
+                </Link>
+                <Link to="/home">
+                  <Button variant="ghost" className="w-full">العودة إلى الرئيسية</Button>
+                </Link>
+              </div>
+            </div>
           </div>
         );
       } else {

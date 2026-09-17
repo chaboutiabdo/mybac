@@ -60,7 +60,7 @@ export function AddSolutionDialog({ children, examTitle }: AddSolutionDialogProp
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </div>
               {solutionFile && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base text-muted-foreground">
                   Selected: {solutionFile.name}
                 </p>
               )}
@@ -80,8 +80,8 @@ export function AddSolutionDialog({ children, examTitle }: AddSolutionDialogProp
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="gradient-primary text-white">
-              <Upload className="h-4 w-4 mr-2" />
+            <Button type="submit" className="text-primary-foreground">
+              <Upload className="h-4 w-4 me-2" />
               Upload Solution
             </Button>
           </div>

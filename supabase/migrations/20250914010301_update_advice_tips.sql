@@ -1,17 +1,18 @@
 -- Add new columns to advice_tips table
 ALTER TABLE public.advice_tips
-ADD COLUMN target_user_id UUID REFERENCES auth.users(id),
-ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN priority INTEGER NOT NULL DEFAULT 1,
-ADD COLUMN expiry_date TIMESTAMP WITH TIME ZONE;
+ADD COLUMN IF NOT EXISTS target_user_id UUID REFERENCES auth.users(id),
+ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 1,
+ADD COLUMN IF NOT EXISTS expiry_date TIMESTAMP WITH TIME ZONE;
 
--- Create index for better performance
-CREATE INDEX idx_advice_tips_target_user ON public.advice_tips(target_user_id);
-CREATE INDEX idx_advice_tips_priority ON public.advice_tips(priority);
+-- Create index IF NOT EXISTS for better performance
+CREATE INDEX IF NOT EXISTS idx_advice_tips_target_user ON public.advice_tips(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_advice_tips_priority ON public.advice_tips(priority);
 
 -- Update policies to handle user-specific tips
 DROP POLICY IF EXISTS "Anyone can view active tips" ON public.advice_tips;
 
+DROP POLICY IF EXISTS "Users can view their targeted tips" ON public.advice_tips;
 CREATE POLICY "Users can view their targeted tips" ON public.advice_tips
 FOR SELECT
 USING (
@@ -35,6 +36,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to clean expired tips daily
+DROP TRIGGER IF EXISTS clean_expired_tips_trigger ON public.advice_tips;
 CREATE TRIGGER clean_expired_tips_trigger
   AFTER INSERT OR UPDATE ON public.advice_tips
   EXECUTE FUNCTION clean_expired_tips();

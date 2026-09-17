@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Plus } from "lucide-react";
+import { Upload, FileText, Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -253,7 +253,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </div>
               {examFile && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base text-muted-foreground">
                   Selected: {examFile.name}
                 </p>
               )}
@@ -271,11 +271,11 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </div>
               {solutionFile && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-base text-muted-foreground">
                   Selected: {solutionFile.name}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Solution file is optional and can be added later
               </p>
             </div>
@@ -285,11 +285,11 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" className="gradient-primary text-white" disabled={loading}>
+            <Button type="submit" className="text-primary-foreground" disabled={loading}>
               {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <Loader2 className="h-4 w-4 animate-spin me-2" />
               ) : (
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 me-2" />
               )}
               {loading ? "Uploading..." : "Upload Exam"}
             </Button>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Info } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -108,7 +108,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
         .insert({
           subject: quizData.subject,
           chapter: quizData.chapter || null,
-          type: type as any, // Cast to any to bypass type issue
+          type,
           date: new Date().toISOString().split('T')[0],
           questions: questions.map((q, index) => ({
             id: `q_${index + 1}`,
@@ -118,7 +118,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             points: 8
           })),
           max_score: questions.length * 8
-        } as any) // Cast the entire object to bypass type validation temporarily
+        })
         .select()
         .single();
 
@@ -179,18 +179,18 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="bg-muted/50 p-4 rounded-lg">
+          <div className="bg-card-raised/60 p-4 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
               <div className="space-y-2">
-                <p className="font-medium text-sm">CSV Format Requirements:</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-medium text-base">CSV Format Requirements:</p>
+                <p className="text-base text-muted-foreground">
                   Your CSV file must have these exact column headers:
                 </p>
-                <code className="text-xs bg-background p-2 rounded block">
+                <code className="text-sm bg-background p-2 rounded block">
                   question,option_a,option_b,option_c,option_d,correct_answer
                 </code>
-                <ul className="text-xs text-muted-foreground space-y-1">
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• <strong>question:</strong> The question text</li>
                   <li>• <strong>option_a, option_b, option_c, option_d:</strong> The four answer choices</li>
                   <li>• <strong>correct_answer:</strong> Must be A, B, C, or D</li>
@@ -253,7 +253,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
               className="cursor-pointer"
             />
             {file && (
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <p className="text-base text-muted-foreground flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 {file.name}
               </p>
@@ -276,12 +276,12 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             >
               {uploading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                  <Loader2 className="h-4 w-4 animate-spin me-2" />
                   Uploading...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
+                  <Upload className="h-4 w-4 me-2" />
                   Upload Quiz
                 </>
               )}

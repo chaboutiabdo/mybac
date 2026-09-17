@@ -11,16 +11,17 @@ CREATE TABLE IF NOT EXISTS support_requests (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );
 
--- Create index on email and type
+-- Create index IF NOT EXISTS on email and type
 CREATE INDEX IF NOT EXISTS support_requests_email_type_idx ON support_requests(email, type);
 
--- Create index on status
+-- Create index IF NOT EXISTS on status
 CREATE INDEX IF NOT EXISTS support_requests_status_idx ON support_requests(status);
 
 -- Add RLS policies
 ALTER TABLE support_requests ENABLE ROW LEVEL SECURITY;
 
 -- Allow admins to see all requests
+DROP POLICY IF EXISTS "Admins can see all support requests" ON support_requests;
 CREATE POLICY "Admins can see all support requests"
 ON support_requests FOR SELECT
 TO authenticated
@@ -33,6 +34,7 @@ USING (
 );
 
 -- Allow admins to update support requests
+DROP POLICY IF EXISTS "Admins can update support requests" ON support_requests;
 CREATE POLICY "Admins can update support requests"
 ON support_requests FOR UPDATE
 TO authenticated
@@ -45,6 +47,7 @@ USING (
 );
 
 -- Allow users to see their own support requests
+DROP POLICY IF EXISTS "Users can see their own support requests" ON support_requests;
 CREATE POLICY "Users can see their own support requests"
 ON support_requests FOR SELECT
 TO authenticated
@@ -56,6 +59,7 @@ USING (
 );
 
 -- Allow users to create their own support requests
+DROP POLICY IF EXISTS "Users can create their own support requests" ON support_requests;
 CREATE POLICY "Users can create their own support requests"
 ON support_requests FOR INSERT
 TO authenticated

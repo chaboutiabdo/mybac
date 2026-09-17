@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Loading } from "@/components/ui/states";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ interface StudentActivityDialogProps {
 interface QuizResult {
   id: string;
   score: number;
-  completed_at: string;
+  completed_at: string | null;
   quiz: {
     subject: string;
     type: string;
@@ -58,9 +59,9 @@ interface ExamActivity {
 interface QuestionActivity {
   id: string;
   question_text: string;
-  subject?: string;
+  subject?: string | null;
   created_at: string;
-  ai_response?: string;
+  ai_response?: string | null;
 }
 
 export function StudentActivityDialog({ 
@@ -176,9 +177,7 @@ export function StudentActivityDialog({
             <DialogTitle>Student Activity - {studentName}</DialogTitle>
             <DialogDescription>Loading student activity data...</DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <Loading />
         </DialogContent>
       </Dialog>
     );
@@ -197,19 +196,19 @@ export function StudentActivityDialog({
         <Tabs defaultValue="quizzes" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="quizzes">
-              <BookOpen className="h-4 w-4 mr-2" />
+              <BookOpen className="h-4 w-4 me-2" />
               Quizzes ({quizResults.length})
             </TabsTrigger>
             <TabsTrigger value="videos">
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="h-4 w-4 me-2" />
               Videos ({videoActivities.length})
             </TabsTrigger>
             <TabsTrigger value="exams">
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="h-4 w-4 me-2" />
               Exams ({examActivities.length})
             </TabsTrigger>
             <TabsTrigger value="questions">
-              <MessageSquare className="h-4 w-4 mr-2" />
+              <MessageSquare className="h-4 w-4 me-2" />
               Questions ({questionActivities.length})
             </TabsTrigger>
           </TabsList>
@@ -225,8 +224,8 @@ export function StudentActivityDialog({
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">{result.quiz.subject} Quiz</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {result.quiz.type} • {formatDate(result.completed_at)}
+                          <p className="text-base text-muted-foreground">
+                            {result.quiz.type} • {formatDate(result.completed_at ?? '')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -254,7 +253,7 @@ export function StudentActivityDialog({
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">{activity.video_title}</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-base text-muted-foreground">
                             {activity.subject} • {formatDate(activity.created_at)}
                           </p>
                         </div>
@@ -280,7 +279,7 @@ export function StudentActivityDialog({
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">{activity.exam_title}</h4>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-base text-muted-foreground">
                             {activity.subject} {activity.year} • {formatDate(activity.created_at)}
                           </p>
                         </div>
@@ -306,18 +305,18 @@ export function StudentActivityDialog({
                       <div className="space-y-2">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-sm">{question.question_text}</h4>
-                            <p className="text-xs text-muted-foreground">
+                            <h4 className="font-medium text-base">{question.question_text}</h4>
+                            <p className="text-sm text-muted-foreground">
                               {question.subject || 'General'} • {formatDate(question.created_at)}
                             </p>
                           </div>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-sm">
                             AI Question
                           </Badge>
                         </div>
                         {question.ai_response && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                            <p className="text-xs text-muted-foreground mb-1">AI Response:</p>
+                          <div className="mt-2 p-2 bg-card-raised/60 rounded text-base">
+                            <p className="text-sm text-muted-foreground mb-1">AI Response:</p>
                             <p className="line-clamp-2">{question.ai_response}</p>
                           </div>
                         )}

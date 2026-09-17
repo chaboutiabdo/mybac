@@ -20,6 +20,8 @@ import { AddStudentDialog } from "./AddStudentDialog";
 import { UploadExamDialog } from "./UploadExamDialog";
 import { AddSolutionDialog } from "./AddSolutionDialog";
 import { UploadQuizDialog } from "./UploadQuizDialog";
+import { EmptyState, Loading } from "@/components/ui/states";
+import { formatDateDZ } from "@/lib/bac";
 
 export function AdminOverview() {
   const [stats, setStats] = useState({
@@ -29,10 +31,48 @@ export function AdminOverview() {
     videos: 0
   });
   const [showUploadQuiz, setShowUploadQuiz] = useState(false);
+  // These two panels used to render hard-coded fake rows (Ahmed Benali,
+  // "Lycée Mohamed Boudiaf — 87% completion"). Real data or nothing.
+  const [recentAttempts, setRecentAttempts] = useState<
+    { id: string; score: number | null; completed_at: string | null; name: string | null }[]
+  >([]);
+  const [topStudents, setTopStudents] = useState<
+    { id: string | null; name: string | null; total_score: number | null }[]
+  >([]);
+  const [panelsLoading, setPanelsLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchPanels();
   }, []);
+
+  const fetchPanels = async () => {
+    try {
+      const [attempts, leaders] = await Promise.all([
+        supabase
+          .from('quiz_attempts')
+          .select('id, score, completed_at, profiles!quiz_attempts_student_id_fkey(name)')
+          .not('completed_at', 'is', null)
+          .order('completed_at', { ascending: false })
+          .limit(5),
+        supabase.from('leaderboard').select('id, name, total_score').limit(5),
+      ]);
+
+      setRecentAttempts(
+        (attempts.data ?? []).map((a) => ({
+          id: a.id,
+          score: a.score,
+          completed_at: a.completed_at,
+          name: (a.profiles as { name: string | null } | null)?.name ?? null,
+        }))
+      );
+      setTopStudents(leaders.data ?? []);
+    } catch (error) {
+      console.error('Error fetching overview panels:', error);
+    } finally {
+      setPanelsLoading(false);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -54,25 +94,12 @@ export function AdminOverview() {
     }
   };
 
-  const recentActivities = [
-    { action: "New student registered", user: "Ahmed Benali", time: "2 minutes ago" },
-    { action: "Exam uploaded", user: "Admin", time: "1 hour ago" },
-    { action: "School added", user: "Admin", time: "3 hours ago" },
-    { action: "Student completed quiz", user: "Fatima Zohra", time: "5 hours ago" },
-  ];
-
-  const topSchools = [
-    { name: "Lycée Mohamed Boudiaf", students: 245, completion: 87 },
-    { name: "Lycée Ibn Khaldoun", students: 198, completion: 92 },
-    { name: "Lycée El Houria", students: 156, completion: 79 },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold text-foreground">Admin Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your platform.</p>
         </div>
       </div>
@@ -112,62 +139,74 @@ export function AdminOverview() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Recent Activity
+          <CardHeader className="border-b border-border px-4 py-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+              آخر الاختبارات المكتملة
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-start justify-between space-x-4">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">by {activity.user}</p>
+          <CardContent className="p-0">
+            {panelsLoading ? (
+              <Loading />
+            ) : recentAttempts.length === 0 ? (
+              <EmptyState
+                icon={BookOpen}
+                title="لا توجد اختبارات مكتملة بعد"
+                description="ستظهر هنا فور أن يُنهي الطلاب اختباراتهم."
+                className="border-0"
+              />
+            ) : (
+              recentAttempts.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-medium">{a.name ?? "طالب"}</p>
+                    <p className="text-sm text-muted-foreground tabular">
+                      {a.completed_at ? formatDateDZ(a.completed_at) : "—"}
+                    </p>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {activity.time}
-                  </Badge>
+                  <span className="text-base font-semibold tabular">{a.score ?? 0}</span>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
-        {/* Top Performing Schools */}
+        {/* Top students */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
-              Top Schools
+          <CardHeader className="border-b border-border px-4 py-3">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <GraduationCap className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+              المتصدّرون
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topSchools.map((school, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{school.name}</p>
-                      <p className="text-xs text-muted-foreground">{school.students} students</p>
-                    </div>
-                    <Badge 
-                      variant={school.completion >= 85 ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {school.completion}% completion
-                    </Badge>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-success h-2 rounded-full transition-all duration-300" 
-                      style={{ width: `${school.completion}%` }}
-                    ></div>
-                  </div>
+          <CardContent className="p-0">
+            {panelsLoading ? (
+              <Loading />
+            ) : topStudents.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="لا يوجد طلاب بعد"
+                className="border-0"
+              />
+            ) : (
+              topStudents.map((student, i) => (
+                <div
+                  key={student.id ?? i}
+                  className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0"
+                >
+                  <span className="w-4 text-sm font-semibold text-muted-foreground tabular">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 truncate text-base">{student.name ?? "—"}</span>
+                  <span className="text-base font-semibold tabular">
+                    {(student.total_score ?? 0).toLocaleString("ar-DZ")}
+                  </span>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -181,33 +220,33 @@ export function AdminOverview() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <AddStudentDialog>
               <Button 
-                className="w-full h-20 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                className="w-full h-20 hover:from-blue-700 hover:to-blue-800 text-primary-foreground"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus className="h-5 w-5 me-2" />
                 Add Student
               </Button>
             </AddStudentDialog>
             <UploadExamDialog>
               <Button 
-                className="w-full h-20 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+                className="w-full h-20 hover:from-green-700 hover:to-green-800 text-primary-foreground"
               >
-                <Upload className="h-5 w-5 mr-2" />
+                <Upload className="h-5 w-5 me-2" />
                 Upload Exam
               </Button>
             </UploadExamDialog>
             <AddSolutionDialog examTitle="Select Exam">
               <Button 
-                className="w-full h-20 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white"
+                className="w-full h-20 hover:from-yellow-700 hover:to-yellow-800 text-primary-foreground"
               >
-                <FileText className="h-5 w-5 mr-2" />
+                <FileText className="h-5 w-5 me-2" />
                 Add Solution
               </Button>
             </AddSolutionDialog>
             <Button 
-              className="w-full h-20 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white"
+              className="w-full h-20 hover:from-purple-700 hover:to-purple-800 text-primary-foreground"
               onClick={() => setShowUploadQuiz(true)}
             >
-              <Upload className="h-5 w-5 mr-2" />
+              <Upload className="h-5 w-5 me-2" />
               Upload Practice Quiz
             </Button>
           </div>

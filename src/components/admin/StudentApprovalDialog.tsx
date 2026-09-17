@@ -21,12 +21,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Star, CheckCircle, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface PendingStudent {
+export interface PendingStudent {
   id: string;
   name: string;
   email: string;
   school: string;
   registrationDate: string;
+  stream?: string | null;
 }
 
 interface StudentApprovalDialogProps {
@@ -38,24 +39,42 @@ const subscriptionTiers = [
   {
     id: "basic",
     name: "Basic",
-    icon: "📚",
-    features: ["Access to basic content", "Limited AI assistance", "Community support", "Basic video library"],
-    color: "text-blue-600"
+    icon: "",
+    features: [
+      "Access to basic content",
+      "Limited AI assistance",
+      "Community support",
+      "Basic video library",
+    ],
+    color: "text-primary",
   },
   {
     id: "offer1",
     name: "Offer 1",
-    icon: "⭐",
-    features: ["Enhanced content access", "Advanced AI tutoring", "Priority support", "Extended video library", "Practice exams"],
-    color: "text-purple-600"
+    icon: "",
+    features: [
+      "Enhanced content access",
+      "Advanced AI tutoring",
+      "Priority support",
+      "Extended video library",
+      "Practice exams",
+    ],
+    color: "text-primary",
   },
   {
-    id: "offer2", 
+    id: "offer2",
     name: "Offer 2",
-    icon: "🏆",
-    features: ["Premium content access", "Unlimited AI tutoring", "1-on-1 mentoring sessions", "All video content", "Priority exam access", "Career guidance"],
-    color: "text-gold-600"
-  }
+    icon: "",
+    features: [
+      "Premium content access",
+      "Unlimited AI tutoring",
+      "1-on-1 mentoring sessions",
+      "All video content",
+      "Priority exam access",
+      "Career guidance",
+    ],
+    color: "text-gold-600",
+  },
 ];
 
 export function StudentApprovalDialog({ children, student }: StudentApprovalDialogProps) {
@@ -77,17 +96,24 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
     try {
       // Here you would typically call your API to approve the student
       // and assign them the selected subscription tier
-      console.log("Approving student:", student.name, "with tier:", selectedTier, "notes:", adminNotes);
-      
+      console.log(
+        "Approving student:",
+        student.name,
+        "with tier:",
+        selectedTier,
+        "notes:",
+        adminNotes,
+      );
+
       toast({
         title: "Success",
-        description: `Student ${student.name} approved with ${subscriptionTiers.find(t => t.id === selectedTier)?.name} subscription`,
+        description: `Student ${student.name} approved with ${subscriptionTiers.find((t) => t.id === selectedTier)?.name} subscription`,
       });
-      
+
       setOpen(false);
     } catch (error) {
       toast({
-        title: "Error", 
+        title: "Error",
         description: "Failed to approve student",
         variant: "destructive",
       });
@@ -98,29 +124,27 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
     try {
       // Here you would typically call your API to reject the student
       console.log("Rejecting student:", student.name, "notes:", adminNotes);
-      
+
       toast({
-        title: "Success", 
+        title: "Success",
         description: `Student ${student.name} application rejected`,
       });
-      
+
       setOpen(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to reject student", 
+        description: "Failed to reject student",
         variant: "destructive",
       });
     }
   };
 
-  const selectedTierData = subscriptionTiers.find(tier => tier.id === selectedTier);
+  const selectedTierData = subscriptionTiers.find((tier) => tier.id === selectedTier);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -136,22 +160,26 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
           {/* Student Information */}
           <div className="space-y-4">
             <h3 className="font-semibold">Student Information</h3>
-            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-card-raised/60 rounded-lg">
               <div>
-                <span className="text-sm font-medium text-muted-foreground">Name:</span>
+                <span className="text-base font-medium text-muted-foreground">Name:</span>
                 <p className="font-medium">{student.name}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-muted-foreground">Email:</span>
+                <span className="text-base font-medium text-muted-foreground">Email:</span>
                 <p className="font-medium">{student.email}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-muted-foreground">School:</span>
+                <span className="text-base font-medium text-muted-foreground">School:</span>
                 <p className="font-medium">{student.school}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-muted-foreground">Registration Date:</span>
-                <p className="font-medium">{new Date(student.registrationDate).toLocaleDateString()}</p>
+                <span className="text-base font-medium text-muted-foreground">
+                  Registration Date:
+                </span>
+                <p className="font-medium">
+                  {new Date(student.registrationDate).toLocaleDateString()}
+                </p>
               </div>
             </div>
           </div>
@@ -180,14 +208,14 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
               <Card className="border-primary/20">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">{selectedTierData.icon}</span>
+                    <span className="text-xl">{selectedTierData.icon}</span>
                     <h4 className={`font-semibold ${selectedTierData.color}`}>
                       {selectedTierData.name} Features
                     </h4>
                   </div>
                   <ul className="space-y-1">
                     {selectedTierData.features.map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2 text-sm">
+                      <li key={index} className="flex items-center gap-2 text-base">
                         <CheckCircle className="h-3 w-3 text-success" />
                         <span>{feature}</span>
                       </li>
@@ -200,7 +228,7 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
 
           {/* Admin Notes */}
           <div className="space-y-2">
-            <label htmlFor="notes" className="text-sm font-medium">
+            <label htmlFor="notes" className="text-base font-medium">
               Admin Notes (Optional)
             </label>
             <Textarea
@@ -217,18 +245,15 @@ export function StudentApprovalDialog({ children, student }: StudentApprovalDial
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleReject}
-            >
+            <Button variant="destructive" onClick={handleReject}>
               Reject Application
             </Button>
-            <Button 
+            <Button
               onClick={handleApprove}
-              className="gradient-primary text-white"
+              className="text-primary-foreground"
               disabled={!selectedTier}
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="h-4 w-4 me-2" />
               Approve Student
             </Button>
           </div>

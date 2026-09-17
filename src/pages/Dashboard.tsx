@@ -1,103 +1,111 @@
+import { useEffect, useMemo } from "react";
+import { BookOpen, Video, FileText, Trophy } from "lucide-react";
+
 import Navigation from "@/components/layout/Navigation";
 import StatsCard from "@/components/dashboard/StatsCard";
-import UserProfile from "@/components/dashboard/UserProfile";
-import QuickActions from "@/components/dashboard/QuickActions";
+import DailyQuizCard from "@/components/dashboard/DailyQuizCard";
+import RecentActivityCard from "@/components/dashboard/RecentActivityCard";
 import Leaderboard from "@/components/dashboard/Leaderboard";
 import AdviceTips from "@/components/dashboard/AdviceTips";
+import BacCountdown from "@/components/dashboard/BacCountdown";
 import AdminAdvice from "@/components/AdminAdvice";
-import { BookOpen, Video, FileText, Trophy } from "lucide-react";
 import { useActivityTracking } from "@/hooks/useActivityTracking";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { streamLabel } from "@/lib/bac";
 
+/**
+ * Balanced 2×2. Every row closes — nothing orphans into a half-width slot the
+ * way the old three-cards-in-a-two-column-grid did.
+ *
+ *   ┌──────────── hero ────────────┐
+ *   ├────┬────┬────┬────┤  4 stats
+ *   ├─────────┬─────────┤  quiz | leaderboard
+ *   ├─────────┴─────────┤  activity | tips
+ */
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { trackStudentQuestion } = useActivityTracking();
+  const dashboardStats = useDashboardStats();
 
-  // Example of how to track activity when the user visits the dashboard
   useEffect(() => {
     if (user) {
-      // Track that user visited dashboard (as a general activity)
-      trackStudentQuestion(
-        "User visited dashboard",
-        "navigation",
-        "general",
-        "general"
-      );
+      trackStudentQuestion("User visited dashboard", "navigation", "general", "general");
     }
   }, [user, trackStudentQuestion]);
 
-  const stats = [
-    {
-      title: "Total Score",
-      value: "2,847",
-      icon: Trophy,
-      color: "text-yellow-500" as const,
-      bgColor: "bg-yellow-100" as const
-    },
-    {
-      title: "Completed Quizzes",
-      value: "45",
-      icon: BookOpen,
-      color: "text-blue-500" as const,
-      bgColor: "bg-blue-100" as const
-    },
-    {
-      title: "Videos Watched",
-      value: "23",
-      icon: Video,
-      color: "text-green-500" as const,
-      bgColor: "bg-green-100" as const
-    },
-    {
-      title: "Exams Solved",
-      value: "12",
-      icon: FileText,
-      color: "text-purple-500" as const,
-      bgColor: "bg-purple-100" as const
-    }
-  ];
+  const stats = useMemo(
+    () => [
+      {
+        title: "مجموع النقاط",
+        value: dashboardStats.loading ? "…" : dashboardStats.totalScore,
+        icon: Trophy,
+        variant: "accent" as const,
+      },
+      {
+        title: "اختبارات مكتملة",
+        value: dashboardStats.loading ? "…" : dashboardStats.completedQuizzes,
+        icon: BookOpen,
+        variant: "default" as const,
+      },
+      {
+        title: "دروس مشاهَدة",
+        value: dashboardStats.loading ? "…" : dashboardStats.videosWatched,
+        icon: Video,
+        variant: "success" as const,
+      },
+      {
+        title: "امتحانات محلولة",
+        value: dashboardStats.loading ? "…" : dashboardStats.examsSolved,
+        icon: FileText,
+        variant: "default" as const,
+      },
+    ],
+    [dashboardStats]
+  );
+
+  const firstName = profile?.name?.split(" ")[0];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="pattern-field min-h-screen bg-background">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-6">
-          {/* Admin's Daily Advice */}
-          <AdminAdvice />
-          
-          {/* Header */}
-          <div className="flex items-center justify-between">
+
+      <main className="container space-y-6 py-8">
+        {/* ── row 1: hero, full width ─────────────────────────────── */}
+        <section className="hero-vignette edge-gold surface-raised relative overflow-hidden rounded-lg border">
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-8 px-7 py-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">لوحة التحكم</h1>
-              <p className="text-muted-foreground mt-1">
-                تتبع تقدمك في التعلم وإنجازاتك
+              <h1 className="font-display text-[34px] font-bold leading-tight">
+                {firstName ? `مرحبًا، ${firstName}` : "لوحة التحكم"}
+              </h1>
+              <p className="mt-2 text-lg text-muted-foreground">
+                {profile?.stream ? streamLabel(profile.stream) : "تتبّع تقدّمك وإنجازاتك"}
               </p>
             </div>
-            <UserProfile />
+            <BacCountdown />
           </div>
+        </section>
 
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat, index) => (
-              <StatsCard key={index} {...stat} />
-            ))}
-          </div>
+        <AdminAdvice />
 
-          {/* Main Content Grid */}
-          <div className="grid gap-6 lg:grid-cols-12">
-            {/* Left Column - Quick Actions */}
-            <div className="lg:col-span-8 space-y-6">
-              <QuickActions />
-              <Leaderboard />
-            </div>
+        {/* ── row 2: four equal stat tiles ────────────────────────── */}
+        <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <StatsCard key={stat.title} {...stat} />
+          ))}
+        </section>
 
-            {/* Right Column - Tips */}
-            <div className="lg:col-span-4">
-              <AdviceTips />
-            </div>
-          </div>
-        </div>
+        {/* ── row 3: today's quiz | leaderboard ───────────────────── */}
+        <section className="grid items-stretch gap-5 lg:grid-cols-2">
+          <DailyQuizCard />
+          <Leaderboard />
+        </section>
+
+        {/* ── row 4: recent activity | daily tips ─────────────────── */}
+        <section className="grid items-stretch gap-5 lg:grid-cols-2">
+          <RecentActivityCard />
+          <AdviceTips />
+        </section>
       </main>
     </div>
   );

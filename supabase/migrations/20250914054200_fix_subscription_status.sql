@@ -11,6 +11,6 @@ SET subscription_status =
     END;
 
 -- Add constraint
-ALTER TABLE profiles 
-ADD CONSTRAINT check_subscription_status 
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS check_subscription_status;
+ALTER TABLE profiles ADD CONSTRAINT check_subscription_status 
 CHECK (subscription_status IN ('free', 'pending', 'premium'));
