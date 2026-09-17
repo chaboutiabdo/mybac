@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SUBJECTS, chapterLabel, chaptersFor, subjectLabel } from "@/lib/bac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,8 +101,9 @@ export function VideosManagement() {
     chapter: "",
   });
 
-  const subjects = ["Mathématiques", "Physique", "Chimie", "SVT", "Histoire", "Géographie", "Français", "Anglais", "Arabe", "Philosophie"];
-  const chapters = ["Introduction", "Chapitre 1", "Chapitre 2", "Chapitre 3", "Révisions", "Examens Blancs"];
+  const subjects = SUBJECTS.map((s) => s.value);
+  // chapters follow the chosen subject, from the real curriculum
+  const chapters = chaptersFor(formData.subject);
 
   const filteredVideos = videos.filter(video => {
     const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -130,8 +132,13 @@ export function VideosManagement() {
           title: formData.title,
           description: formData.description,
           type: formData.type,
-          url: formData.url,
-          duration: parseInt(formData.duration) || null,
+          // Playback reads `url` for youtube and `file_path` for premium.
+          // Only `url` was ever written, so premium videos never opened.
+          url: formData.type === "youtube" ? formData.url : null,
+          file_path: formData.type === "premium" ? formData.url : null,
+          // the field is labelled "minutes" but the column is seconds, so a
+          // 15-minute video used to render as 0:15
+          duration: formData.duration ? parseInt(formData.duration) * 60 : null,
           subject: formData.subject,
           chapter: formData.chapter,
         });
@@ -267,13 +274,13 @@ export function VideosManagement() {
                   </SelectTrigger>
                   <SelectContent className="bg-background border z-50">
                     {chapters.map((chapter) => (
-                      <SelectItem key={chapter} value={chapter}>{chapter}</SelectItem>
+                      <SelectItem key={chapter.value} value={chapter.value}>{chapter.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="duration">المدة (بالدقائق)</Label>
                 <Input
                   id="duration"
                   type="number"
@@ -451,10 +458,10 @@ export function VideosManagement() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="text-sm">
-                          {video.subject}
+                          {subjectLabel(video.subject)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{video.chapter}</TableCell>
+                      <TableCell>{chapterLabel(video.chapter)}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={video.type === "premium" ? "default" : "secondary"}

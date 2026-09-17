@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { STREAMS, streamLabel, EXAM_YEARS } from "@/lib/bac";
+import { EXAM_YEARS, STREAMS, streamLabel } from "@/lib/bac";
 import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -256,7 +256,7 @@ const Exams = () => {
                     </Badge>
                   </div>
                   <CardDescription className="text-sm md:text-base">
-                    شعبة {exam.stream} • {exam.year}
+                    شعبة {streamLabel(exam.stream)} • {exam.year}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

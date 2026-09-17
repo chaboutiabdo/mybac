@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import LazyLoad from "./components/LazyLoad";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Lazy load heavy components for better performance
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -27,7 +28,8 @@ const LearnAI = lazy(() => import("./pages/LearnAI"));
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
         <LanguageProvider>
           <TooltipProvider>
@@ -107,8 +109,9 @@ const App = () => (
             </BrowserRouter>
           </TooltipProvider>
         </LanguageProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { STREAMS } from "@/lib/bac";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -178,10 +179,9 @@ const Settings = () => {
                     <SelectValue placeholder="Select your stream" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sciences">Sciences</SelectItem>
-                    <SelectItem value="math">Mathematics</SelectItem>
-                    <SelectItem value="letters">Letters & Philosophy</SelectItem>
-                    <SelectItem value="economics">Economics</SelectItem>
+                  {STREAMS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>

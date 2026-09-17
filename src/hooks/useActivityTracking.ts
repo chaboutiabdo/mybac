@@ -113,17 +113,17 @@ export const useActivityTracking = () => {
         console.log('Video activity logged successfully:', activityLog);
       }
 
-      // If video started or completed, track video progress for scoring
-      if (action === "started" || action === "completed") {
-        console.log('Updating video progress for scoring...');
-        
-        // Use upsert with ON CONFLICT DO UPDATE to handle duplicates
+      // Only "completed" touches progress. Writing on "started" too meant
+      // re-opening an already-watched video upserted watched:false and reset
+      // it — and for premium videos the "completed" write never fires, so they
+      // could never stay watched.
+      if (action === "completed") {
         const { data: progressData, error: progressError } = await supabase.from("video_progress").upsert({
           student_id: user.id,
           video_id: videoId,
-          watched: action === "completed",
+          watched: true,
           watch_time: position || 0,
-          completed_at: action === "completed" ? new Date().toISOString() : null
+          completed_at: new Date().toISOString()
         }, {
           onConflict: 'student_id,video_id'
         }).select().single();

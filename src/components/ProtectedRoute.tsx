@@ -18,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   showUpgradeMessage = true
 }) => {
   const { user, profile, loading } = useAuth();
-  const { isPremium, isAdmin, isFree, loading: subscriptionLoading } = useSubscription();
+  const { isPremium, isAdmin, loading: subscriptionLoading } = useSubscription();
 
   if (loading || subscriptionLoading) {
     return <Loading full />;
@@ -29,8 +29,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requiredRole) {
-    // Check if user has required role or is admin
-    const hasAccess = profile.role === requiredRole || profile.role === 'admin' || isAdmin;
+    // `isPremium` is true for role='premium' OR subscription_status='premium'.
+    // This used to test `profile.role` alone, which locked out anyone whose
+    // subscription was recorded on subscription_status.
+    const hasAccess =
+      requiredRole === 'premium'
+        ? isPremium || isAdmin
+        : profile.role === requiredRole || profile.role === 'admin' || isAdmin;
     
     // For premium features, show upgrade message or redirect
     if (!hasAccess && requiredRole === 'premium') {

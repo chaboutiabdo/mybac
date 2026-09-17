@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SUBJECTS } from "@/lib/bac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export function ExamsManagement() {
     loadExams();
   }, []);
 
-  const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Literature"];
+  const subjects = SUBJECTS.map((s) => s.value);
   const years = [2024, 2023, 2022, 2021, 2020];
 
   const filteredExams = exams.filter(exam => {

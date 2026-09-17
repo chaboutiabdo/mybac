@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { EXAM_YEARS, STREAMS, SUBJECTS } from "@/lib/bac";
 import {
   Dialog,
   DialogContent,
@@ -143,14 +144,9 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                    <SelectItem value="Physics">Physics</SelectItem>
-                    <SelectItem value="Chemistry">Chemistry</SelectItem>
-                    <SelectItem value="Biology">Biology</SelectItem>
-                    <SelectItem value="Literature">Literature</SelectItem>
-                    <SelectItem value="Philosophy">Philosophy</SelectItem>
-                    <SelectItem value="History">History</SelectItem>
-                    <SelectItem value="Geography">Geography</SelectItem>
+                  {STREAMS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>

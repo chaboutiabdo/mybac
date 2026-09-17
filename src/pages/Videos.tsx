@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MATH_CHAPTERS, PHYSICS_CHAPTERS } from "@/lib/bac";
+import { MATH_CHAPTERS, PHYSICS_CHAPTERS, chapterLabel, subjectLabel } from "@/lib/bac";
 import { Loading } from "@/components/ui/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -325,7 +325,7 @@ const Videos = () => {
                       {video.title}
                     </CardTitle>
                     <CardDescription className="text-sm md:text-base">
-                      {video.subject} • {video.chapter || "عام"}
+                      {subjectLabel(video.subject)} • {video.chapter ? chapterLabel(video.chapter) : "عام"}
                     </CardDescription>
                   </CardHeader>
 

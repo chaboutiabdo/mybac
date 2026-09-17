@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SUBJECTS } from "@/lib/bac";
 import { Info, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -192,14 +193,9 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Mathematics">Mathematics</SelectItem>
-                  <SelectItem value="Physics">Physics</SelectItem>
-                  <SelectItem value="Chemistry">Chemistry</SelectItem>
-                  <SelectItem value="Biology">Biology</SelectItem>
-                  <SelectItem value="Philosophy">Philosophy</SelectItem>
-                  <SelectItem value="Literature">Literature</SelectItem>
-                  <SelectItem value="History">History</SelectItem>
-                  <SelectItem value="Geography">Geography</SelectItem>
+                {SUBJECTS.map((s) => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
                 </SelectContent>
               </Select>
             </div>
