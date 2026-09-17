@@ -106,9 +106,10 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             question: q.question,
             options: [q.option_a, q.option_b, q.option_c, q.option_d],
             correct: ['A', 'B', 'C', 'D'].indexOf(q.correct_answer),
-            points: 8
           })),
-          max_score: questions.length * 8
+          // a daily question is worth 25, a practice one 8 — this used to be
+          // hardcoded to 8, so daily scores exceeded the max ("250/80")
+          max_score: questions.length * (type === 'daily' ? 25 : 8)
         })
         .select()
         .single();

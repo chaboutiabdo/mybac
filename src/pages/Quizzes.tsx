@@ -49,7 +49,7 @@ const Quizzes = () => {
   const fetchQuizzes = async () => {
     try {
       const { data, error } = await supabase
-        .from('quizzes')
+        .from('quizzes_public')
         .select('*')
         .order('created_at', { ascending: false });
 

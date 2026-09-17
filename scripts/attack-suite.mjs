@@ -325,16 +325,16 @@ describe("quiz answer key", () => {
       "ANSWER KEY LEAK: quizzes readable with only the publishable key");
   });
 
-  test("KNOWN GAP: a signed-in student can still read `correct`", async () => {
-    const { data } = await A.client.from("quizzes").select("questions").limit(1);
-    const q = data?.[0]?.questions;
-    const first = Array.isArray(q) ? q[0] : null;
-    const leaks = first && typeof first === "object" && "correct" in first;
-    // Documented in DEVELOPMENT.md. Closing it needs server-side scoring
-    // (a submit_quiz_attempt RPC + a view that strips `correct`).
-    // This test records the gap rather than failing the suite over it.
-    if (leaks) console.log("      ! known gap: signed-in students can read the answer key");
-    assert.ok(true);
+  test("a signed-in student cannot read the answer key either", async () => {
+    // quizzes is admin-only now; students read quizzes_public, which strips
+    // `correct` from every question.
+    const { data: base } = await A.client.from("quizzes").select("questions").limit(1);
+    assert.equal(base?.length ?? 0, 0, "ANSWER KEY LEAK: students can read quizzes");
+
+    const { data: pub } = await A.client.from("quizzes_public").select("questions").limit(1);
+    assert.ok((pub?.length ?? 0) > 0, "quizzes_public returned nothing to a student");
+    const first = Array.isArray(pub[0].questions) ? pub[0].questions[0] : null;
+    assert.ok(first && !("correct" in first), "ANSWER KEY LEAK: quizzes_public exposes `correct`");
   });
 
   test("student cannot edit a quiz's questions", async () => {
@@ -493,15 +493,50 @@ describe("audit findings — regression tests", () => {
     assert.ok(error, "STORAGE: anonymous upload to avatars accepted");
   });
 
-  test("KNOWN GAP: quiz grading is still client-side", async () => {
-    // A student can POST quiz_question_results with is_correct:true, and can
-    // PATCH quiz_attempts.score directly. Both need a server-side
-    // submit_quiz_attempt RPC to close. Recorded, not asserted.
+  test("a student cannot assert their own is_correct", async () => {
     const { error } = await A.client.from("quiz_question_results").insert({
       student_id: A.user.id, quiz_attempt_id: crypto.randomUUID(),
-      question_id: "gap-probe", question_text: "x", correct_answer: "A", is_correct: true,
+      question_id: "forge-probe", question_text: "x", correct_answer: "A", is_correct: true,
     });
-    if (!error) console.log("      ! known gap: client can still assert is_correct");
-    assert.ok(true);
+    assert.ok(error, "SCORE FORGERY: client can still write is_correct");
+  });
+
+  test("a student cannot PATCH their own quiz score", async () => {
+    const { data: quiz } = await svc.from("quizzes").select("id").limit(1).single();
+    const { data: row } = await svc.from("quiz_attempts")
+      .insert({ student_id: A.user.id, quiz_id: quiz?.id, score: 0 }).select().single();
+    if (!row) return;
+    await A.client.from("quiz_attempts").update({ score: 999999 }).eq("id", row.id);
+    const { data } = await svc.from("quiz_attempts").select("score").eq("id", row.id).single();
+    assert.notEqual(data?.score, 999999, "SCORE FORGERY: student edited quiz_attempts.score");
+    await svc.from("quiz_attempts").delete().eq("id", row.id);
+  });
+
+  test("grading is server-side and records completion", async () => {
+    const { data: quiz } = await svc.from("quizzes").select("id, questions").limit(1).single();
+    if (!quiz) return;
+    await svc.from("quiz_attempts").delete().eq("student_id", B.user.id);
+    const { data: att } = await svc.from("quiz_attempts")
+      .insert({ student_id: B.user.id, quiz_id: quiz.id, score: 0 }).select().single();
+
+    const answers = {};
+    quiz.questions.forEach((q, i) => { answers[q.id ?? `q_${i + 1}`] = "ABCD"[q.correct]; });
+
+    const { data: res, error } = await B.client.rpc("submit_quiz_attempt", {
+      p_attempt_id: att.id, p_answers: answers,
+    });
+    assert.ok(!error, `grading RPC failed: ${error?.message}`);
+    const out = Array.isArray(res) ? res[0] : res;
+    assert.equal(out.correct_count, out.total_questions, "all-correct answers were not all marked correct");
+
+    const { data: after } = await svc.from("quiz_attempts")
+      .select("completed_at, submitted").eq("id", att.id).single();
+    assert.ok(after?.completed_at, "completed_at was not recorded");
+    assert.equal(after?.submitted, true, "submitted was not recorded");
+
+    const { error: dup } = await B.client.rpc("submit_quiz_attempt", {
+      p_attempt_id: att.id, p_answers: answers,
+    });
+    assert.ok(dup, "REPLAY: the same attempt was submitted twice");
   });
 });

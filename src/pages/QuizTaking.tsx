@@ -74,7 +74,7 @@ const QuizTaking = () => {
       setAttempt(attemptData as QuizAttempt);
 
       const { data: quizData, error: quizError } = await supabase
-        .from('quizzes')
+        .from('quizzes_public')
         .select('*')
         .eq('id', attemptData.quiz_id)
         .single();
@@ -118,98 +118,36 @@ const QuizTaking = () => {
     }
   };
 
-  const calculateScore = () => {
-    let correctAnswers = 0;
-    questions.forEach((question) => {
-      const selectedIndex = ['A', 'B', 'C', 'D'].indexOf(selectedAnswers[question.id] || '');
-      if (selectedIndex === question.correct) {
-        correctAnswers++;
-      }
-    });
-    
-    const pointsPerQuestion = quiz?.type === 'daily' ? 25 : 8;
-    return correctAnswers * pointsPerQuestion;
-  };
-
   const handleSubmitQuiz = async () => {
     if (isSubmitting || !attemptId) return;
-    
-    // Check if quiz was already submitted by checking if answers is populated
-    if (attempt && attempt.answers && Object.keys(attempt.answers).length > 0) {
-      toast.error("Quiz already submitted", { description: "This attempt has already been finalized." });
+
+    if (attempt?.completed_at) {
+      toast.error("سبق إرسال هذا الاختبار");
       return;
     }
     setIsSubmitting(true);
 
     try {
-      const calculatedScore = calculateScore();
-      
-      // Update quiz attempt with calculated score FIRST
-      const { error: updateError } = await supabase
-        .from('quiz_attempts')
-        .update({
-          answers: selectedAnswers,
-          score: calculatedScore
-        })
-        .eq('id', attemptId)
-        .eq('student_id', user!.id);
+      // The database grades against the answer key, records completion and
+      // banks the points. The browser no longer computes or writes the score.
+      const { data, error } = await supabase.rpc('submit_quiz_attempt', {
+        p_attempt_id: attemptId,
+        p_answers: selectedAnswers,
+      });
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw updateError;
-      }
+      if (error) throw error;
 
-      // Check if this is a retake (has previous attempts)
-      const { data: previousAttempts, error: prevError } = await supabase
-        .from('quiz_attempts')
-        .select('id')
-        .eq('quiz_id', attempt?.quiz_id ?? '')
-        .eq('student_id', user!.id)
-        .neq('id', attemptId);
-      
-      if (prevError) console.error('Previous attempts error:', prevError);
-      
-      const isRetake = (previousAttempts?.length ?? 0) > 0;
-      
-      // Track individual question results - but don't fail submission if this fails
-      try {
-        for (let i = 0; i < questions.length; i++) {
-          const question = questions[i];
-          const studentAnswer = selectedAnswers[question.id] || '';
-          const selectedIndex = ['A', 'B', 'C', 'D'].indexOf(studentAnswer);
-          const isCorrect = selectedIndex === question.correct;
-          const correctAnswer = ['A', 'B', 'C', 'D'][question.correct];
-          
-          await trackQuizQuestion(
-            attemptId,
-            question.id,
-            question.question,
-            studentAnswer,
-            correctAnswer,
-            isCorrect,
-            attempt?.quiz_id,
-            quiz?.type,
-            quiz?.subject,
-            quiz?.chapter,
-            selectedIndex >= 0 ? selectedIndex : undefined,
-            i + 1,
-            undefined,
-            isRetake
-          );
-        }
-      } catch (trackError) {
-        console.error('Error tracking quiz questions (non-critical):', trackError);
-        // Continue even if tracking fails - the quiz is already submitted
-      }
-
-      toast.success("Quiz completed!", { description: isRetake 
-          ? `Practice completed! Your score: ${calculatedScore}/${quiz?.max_score || 100}`
-          : `Your score: ${calculatedScore}/${quiz?.max_score || 100}` });
+      const result = Array.isArray(data) ? data[0] : data;
+      toast.success("تم إرسال الاختبار", {
+        description: `نتيجتك: ${result?.correct_count ?? 0} من ${result?.total_questions ?? 0} — ${result?.score ?? 0} نقطة`,
+      });
 
       navigate('/quizzes');
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      toast.error("Error", { description: error instanceof Error ? error.message : "Failed to submit quiz" });
+      toast.error("تعذّر إرسال الاختبار", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setIsSubmitting(false);
     }
