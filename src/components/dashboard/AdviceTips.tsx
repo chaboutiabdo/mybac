@@ -107,7 +107,7 @@ const AdviceTips = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-muted-foreground">Loading tips...</div>
+          <div className="text-center text-muted-foreground">جارٍ تحميل النصائح…</div>
         </CardContent>
       </Card>
     );

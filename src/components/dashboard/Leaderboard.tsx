@@ -90,9 +90,9 @@ const Leaderboard = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
-          <div className="text-center text-muted-foreground">Loading...</div>
+          <div className="text-center text-muted-foreground">جارٍ التحميل…</div>
         ) : leaderboard.length === 0 ? (
-          <div className="text-center text-muted-foreground">No students yet</div>
+          <div className="text-center text-muted-foreground">لا يوجد طلاب بعد</div>
         ) : (
           leaderboard.map((student) => (
           <div

@@ -74,7 +74,7 @@ export function VideosManagement() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast.error("Error", { description: "Failed to load videos" });
+        toast.error("خطأ", { description: "تعذّر تحميل الدروس" });
         return;
       }
 
@@ -116,12 +116,12 @@ export function VideosManagement() {
 
   const handleCreateVideo = async () => {
     if (!formData.title || !formData.subject || !formData.chapter) {
-      toast.error("Error", { description: "Please fill in all required fields" });
+      toast.error("خطأ", { description: "Please fill in all required fields" });
       return;
     }
 
     if (!formData.url) {
-      toast.error("Error", { description: "Please provide a valid video URL" });
+      toast.error("خطأ", { description: "Please provide a valid video URL" });
       return;
     }
 
@@ -144,7 +144,7 @@ export function VideosManagement() {
         });
 
       if (error) {
-        toast.error("Error", { description: "Failed to create video" });
+        toast.error("خطأ", { description: "تعذّر إنشاء الدرس" });
         return;
       }
 
@@ -163,10 +163,10 @@ export function VideosManagement() {
       });
       setIsCreateDialogOpen(false);
       
-      toast.success("Success", { description: "Video created successfully" });
+      toast.success("تم", { description: "Video created successfully" });
     } catch (error) {
       console.error("Error creating video:", error);
-      toast.error("Error", { description: "Failed to create video" });
+      toast.error("خطأ", { description: "تعذّر إنشاء الدرس" });
     }
   };
 
@@ -244,7 +244,7 @@ export function VideosManagement() {
                 />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">الوصف</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -311,7 +311,7 @@ export function VideosManagement() {
               <Video className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-3xl font-bold">{totalVideos}</p>
-                <p className="text-base text-muted-foreground">Total Videos</p>
+                <p className="text-base text-muted-foreground">إجمالي الدروس</p>
               </div>
             </div>
           </CardContent>
@@ -333,7 +333,7 @@ export function VideosManagement() {
               <Upload className="h-5 w-5 text-accent" />
               <div>
                 <p className="text-3xl font-bold">{premiumVideos}</p>
-                <p className="text-base text-muted-foreground">Premium</p>
+                <p className="text-base text-muted-foreground">مميّز</p>
               </div>
             </div>
           </CardContent>
@@ -423,13 +423,13 @@ export function VideosManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Chapter</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Views</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>العنوان</TableHead>
+                  <TableHead>المادة</TableHead>
+                  <TableHead>الفصل</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>المدة</TableHead>
+                  <TableHead>المشاهدات</TableHead>
+                  <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -120,7 +120,7 @@ export function SchoolsManagement() {
   return (
     <div className="space-y-6">
       {error && <div className="text-destructive">{error}</div>}
-      {loading && <div className="text-muted-foreground">Loading...</div>}
+      {loading && <div className="text-muted-foreground">جارٍ التحميل…</div>}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -152,7 +152,7 @@ export function SchoolsManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="schoolLocation">Location</Label>
+                <Label htmlFor="schoolLocation">الموقع</Label>
                 <Input
                   id="schoolLocation"
                   value={newSchool.location}
@@ -194,7 +194,7 @@ export function SchoolsManagement() {
                 <p className="text-3xl font-bold">
                   {schools.reduce((sum, school) => sum + school.studentsCount, 0)}
                 </p>
-                <p className="text-base text-muted-foreground">Total Students</p>
+                <p className="text-base text-muted-foreground">إجمالي الطلاب</p>
               </div>
             </div>
           </CardContent>
@@ -238,10 +238,10 @@ export function SchoolsManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>School Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Students</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>الموقع</TableHead>
+                  <TableHead>الطلاب</TableHead>
+                  <TableHead>تاريخ الإنشاء</TableHead>
+                  <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -208,7 +208,7 @@ export function StudentsManagement() {
                       <div className="text-sm text-muted-foreground">{student.email}</div>
                     </TableCell>
                     {/* these two columns used to be swapped: "School" showed the
-                        stream and "Stream" showed the role */}
+                        stream and "الشعبة" showed the role */}
                     <TableCell className="text-muted-foreground">
                       {streamLabel(student.stream)}
                     </TableCell>

@@ -54,7 +54,7 @@ export const useActivityTracking = () => {
       // Record points transaction only for correct answers and first attempts (not retakes)
       if (isCorrect && !isRetake) {
         const pointsPerQuestion = quizType === 'daily' ? 25 : 8;
-        const sourceDescription = `Quiz: ${quizSubject || 'Unknown'} ${quizType === 'daily' ? 'Daily' : 'Practice'} - Q${questionNumber || '?'}`;
+        const sourceDescription = `Quiz: ${quizSubject || 'Unknown'} ${quizType === 'daily' ? 'يومي' : 'تدريب'} - Q${questionNumber || '?'}`;
         
         const { data: transactionResult, error: transactionError } = await supabase.rpc('record_points_transaction', {
           p_student_id: user.id,

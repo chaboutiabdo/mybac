@@ -16,12 +16,12 @@ const ResetPassword = () => {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast.error("Password too short", { description: "Please choose a password with at least 6 characters." });
+      toast.error("كلمة المرور قصيرة جدًا", { description: "اختر كلمة مرور من 6 أحرف على الأقل." });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match", { description: "Please confirm your new password." });
+      toast.error("كلمتا المرور غير متطابقتين", { description: "أكّد كلمة المرور الجديدة." });
       return;
     }
 
@@ -30,11 +30,11 @@ const ResetPassword = () => {
     setLoading(false);
 
     if (error) {
-      toast.error("Password reset failed", { description: error.message });
+      toast.error("تعذّر تغيير كلمة المرور", { description: error.message });
       return;
     }
 
-    toast.success("Password updated", { description: "You can now sign in with your new password." });
+    toast.success("تم تحديث كلمة المرور", { description: "يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة." });
     navigate("/login");
   };
 
@@ -42,7 +42,7 @@ const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl">Reset your password</CardTitle>
+          <CardTitle className="text-3xl">تعيين كلمة مرور جديدة</CardTitle>
           <CardDescription>
             Enter your new password below. This page only works from the secure email link.
           </CardDescription>
@@ -50,7 +50,7 @@ const ResetPassword = () => {
         <CardContent>
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">كلمة المرور الجديدة</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -63,7 +63,7 @@ const ResetPassword = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -76,7 +76,7 @@ const ResetPassword = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Updating..." : "Update Password"}
+              {loading ? "Updating..." : "تحديث كلمة المرور"}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground mt-4">

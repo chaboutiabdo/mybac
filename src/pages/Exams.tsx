@@ -51,7 +51,7 @@ const Exams = () => {
       setExams(examsWithSolved);
     } catch (error) {
       console.error('Error fetching exams:', error);
-      toast.error("Error", { description: "Failed to load exams" });
+      toast.error("خطأ", { description: "تعذّر تحميل الامتحانات" });
     } finally {
       setLoading(false);
     }
@@ -115,18 +115,18 @@ const Exams = () => {
       // Refresh exam progress to update UI
       fetchExamProgress();
 
-      toast.success("Success", { description: `Exam ${action.replace('_', ' ')} successfully` });
+      toast.success("تم", { description: `Exam ${action.replace('_', ' ')} successfully` });
 
     } catch (error) {
       console.error('Error handling exam action:', error);
-      toast.error("Error", { description: "Failed to process exam action" });
+      toast.error("خطأ", { description: "Failed to process exam action" });
     }
   };
 
   const openExamFile = async (exam: Exam, type: 'exam' | 'solution') => {
     const fileUrl = type === 'exam' ? exam.exam_url : exam.solution_url;
     if (!fileUrl) {
-      toast.error("Error", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file not available` });
+      toast.error("خطأ", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file not available` });
       return;
     }
 
@@ -157,11 +157,11 @@ const Exams = () => {
           .eq('id', exam.id);
       }
 
-      toast.success("Success", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file opened successfully!` });
+      toast.success("تم", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file opened successfully!` });
 
     } catch (error) {
       console.error('Error opening file:', error);
-      toast.error("Error", { description: "Failed to open file. Please try again." });
+      toast.error("خطأ", { description: "Failed to open file. Please try again." });
     }
   };
 

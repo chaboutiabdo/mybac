@@ -84,7 +84,7 @@ const QuizTaking = () => {
       setQuestions(Array.isArray(quizData.questions) ? (quizData.questions as unknown as Question[]) : []);
     } catch (error) {
       console.error('Error fetching quiz:', error);
-      toast.error("Error", { description: "Failed to load quiz" });
+      toast.error("خطأ", { description: "تعذّر تحميل الاختبار" });
       navigate('/quizzes');
     } finally {
       setLoading(false);
@@ -170,7 +170,7 @@ const QuizTaking = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
-            <p>Quiz not found or has no questions.</p>
+            <p>الاختبار غير موجود أو لا يحتوي على أسئلة.</p>
             <Button onClick={() => navigate('/quizzes')} className="mt-4">
               Back to Quizzes
             </Button>

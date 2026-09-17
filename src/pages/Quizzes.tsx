@@ -60,7 +60,7 @@ const Quizzes = () => {
       setDailyQuizzes(quizzes.filter(quiz => quiz.type === 'daily'));
     } catch (error) {
       console.error('Error fetching quizzes:', error);
-      toast.error("Error", { description: "Failed to load quizzes" });
+      toast.error("خطأ", { description: "تعذّر تحميل الاختبارات" });
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ const Quizzes = () => {
 
   const startQuiz = async (quiz: Quiz) => {
     if (!user) {
-      toast.error("Login required", { description: "Please login to take quizzes" });
+      toast.error("يلزم تسجيل الدخول", { description: "سجّل الدخول لبدء الاختبارات" });
       return;
     }
 
@@ -85,7 +85,7 @@ const Quizzes = () => {
       );
       
       if (hasCompletedBefore) {
-        toast.success("Retaking Quiz", { description: "You can practice this quiz again, but no additional score will be awarded." });
+        toast.success("إعادة المحاولة", { description: "يمكنك إعادة هذا الاختبار للتدريب، دون احتساب نقاط إضافية." });
       }
 
       // Check for existing attempts to determine attempt number
@@ -116,13 +116,13 @@ const Quizzes = () => {
 
       if (error) throw error;
 
-      toast.success("Quiz started", { description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions` });
+      toast.success("بدأ الاختبار", { description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions` });
 
       // Navigate to the quiz taking page
       navigate(`/quiz/${attempt.id}`);
     } catch (error) {
       console.error('Error starting quiz:', error);
-      toast.error("Error", { description: "Failed to start quiz" });
+      toast.error("خطأ", { description: "تعذّر بدء الاختبار" });
     }
   };
   
@@ -221,7 +221,7 @@ const Quizzes = () => {
                 <Loading />
               ) : dailyQuizzes.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">No daily quizzes available yet.</p>
+                  <p className="text-muted-foreground">لا يوجد اختبار يومي بعد.</p>
                 </div>
               ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -234,7 +234,7 @@ const Quizzes = () => {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between text-base">
                         <span>{questionCount(quiz.questions)} {t("questions")}</span>
-                        <Badge variant="default">Daily</Badge>
+                        <Badge variant="default">يومي</Badge>
                       </div>
                       <div className="flex items-center justify-between text-base">
                         <span>Max Score: {quiz.max_score} pts</span>
@@ -295,7 +295,7 @@ const Quizzes = () => {
                 <Loading />
               ) : practiceQuizzes.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">No practice quizzes available yet.</p>
+                  <p className="text-muted-foreground">لا توجد اختبارات تدريبية بعد.</p>
                 </div>
               ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -308,7 +308,7 @@ const Quizzes = () => {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between text-base">
                         <span>{questionCount(quiz.questions)} {t("questions")}</span>
-                        <Badge variant="outline">Practice</Badge>
+                        <Badge variant="outline">تدريب</Badge>
                       </div>
                       <div className="flex items-center justify-between text-base">
                         <span>Max Score: {quiz.max_score} pts</span>

@@ -1,32 +1,50 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { LogOut, Shield, User } from "lucide-react";
+import { toast } from "sonner";
+
 import { STREAMS } from "@/lib/bac";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings as SettingsIcon, Bell, Globe, User, Shield, Palette, LogOut } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Navigation from "@/components/layout/Navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessage } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 
+/**
+ * Account settings.
+ *
+ * The notifications, appearance and language cards used to live here as local
+ * state that was never read or persisted — the switches did nothing, the dark
+ * mode toggle pointed at a theme that no longer exists, and the language select
+ * was not wired to LanguageContext. They are gone, along with a "Download my
+ * data" button that had no handler.
+ */
 const Settings = () => {
-  const { profile, signOut, user } = useAuth();
+  const { profile, signOut, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("en");
-  const [emailUpdates, setEmailUpdates] = useState(true);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -34,313 +52,205 @@ const Settings = () => {
 
   useEffect(() => {
     if (profile) {
-      setName(profile.name || "");
-      setEmail(profile.email || "");
-      setStream(profile.stream || "");
+      setName(profile.name ?? "");
+      setEmail(profile.email ?? "");
+      setStream(profile.stream ?? "");
     }
   }, [profile]);
 
-  const handleSaveSettings = async () => {
-    if (!profile || !user) {
-      toast.error("Error", { description: "You must be logged in to save settings." });
-      return;
-    }
+  const handleSave = async () => {
+    if (!profile || !user) return;
 
     setIsLoading(true);
     try {
-      // Update profile in database
-      const { error: updateError } = await supabase
-        .from('profiles')
+      const { error } = await supabase
+        .from("profiles")
         .update({
-          name: name,
-          email: email,
+          name,
+          email,
           stream: stream || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id);
+        .eq("user_id", user.id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (error) throw error;
 
-      // Update email in auth if changed
       if (email !== user.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: email
-        });
-        
+        const { error: emailError } = await supabase.auth.updateUser({ email });
         if (emailError) {
-          toast.error("Email update failed", { description: "Profile updated but email update failed. Please verify your current email first." });
+          toast.error("تعذّر تحديث البريد", {
+            description: "حُفظت بقيّة البيانات. أكّد بريدك الحالي أولًا.",
+          });
         }
       }
 
-      toast.success("Settings saved", { description: "Your preferences have been updated successfully. The page will refresh to show changes." });
-      
-      // Refresh the page after a short delay to show the toast message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // used to be a full window.location.reload()
+      await refreshProfile();
+      toast.success("تم حفظ التغييرات");
     } catch (error) {
-      toast.error("Error saving settings", { description: errorMessage(error) || "Failed to update settings." });
+      toast.error("تعذّر الحفظ", { description: errorMessage(error) });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast.error("Invalid password", { description: "Password must be at least 6 characters long." });
+    if (newPassword.length < 6) {
+      toast.error("كلمة المرور قصيرة", { description: "6 أحرف على الأقل." });
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords don't match", { description: "Please make sure both password fields match." });
+      toast.error("كلمتا المرور غير متطابقتين");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
 
-      if (error) {
-        throw error;
-      }
-
-      toast.success("Password updated", { description: "Your password has been changed successfully." });
-      
-      setCurrentPassword("");
+      toast.success("تم تحديث كلمة المرور");
       setNewPassword("");
       setConfirmPassword("");
       setIsPasswordDialogOpen(false);
     } catch (error) {
-      toast.error("Error changing password", { description: errorMessage(error) || "Failed to update password." });
+      toast.error("تعذّر تغيير كلمة المرور", { description: errorMessage(error) });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/");
-  };
-
   return (
     <div className="pattern-field min-h-screen bg-background">
       <Navigation />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <h1 className="font-display text-[34px] font-bold tracking-tight">
-              Settings
-            </h1>
-            <p className="text-muted-foreground text-xl">
-              Customize your learning experience
+
+      <main className="container py-8">
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div>
+            <h1 className="font-display text-[34px] font-bold tracking-tight">الإعدادات</h1>
+            <p className="mt-1 text-lg text-muted-foreground">
+              بيانات حسابك وكلمة المرور.
             </p>
           </div>
 
-          {/* Account Settings */}
-          <Card className="border border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
-                Account Settings
+          <Card>
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center gap-2.5 font-display text-xl">
+                <User className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+                معلومات الحساب
               </CardTitle>
-              <CardDescription>
-                Manage your personal information and account preferences
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email" 
-                  />
-                </div>
+            <CardContent className="space-y-5 p-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="name">الاسم الكامل</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="stream">Stream</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email">البريد الإلكتروني</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  dir="ltr"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  تغيير البريد يتطلّب تأكيدًا من بريدك الحالي.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="stream">الشعبة</Label>
                 <Select value={stream} onValueChange={setStream}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your stream" />
+                  <SelectTrigger id="stream">
+                    <SelectValue placeholder="اختر شعبتك" />
                   </SelectTrigger>
                   <SelectContent>
-                  {STREAMS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
+                    {STREAMS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-muted-foreground">
+                  تُستعمل لعرض معاملات موادّك وتصفية المحتوى.
+                </p>
               </div>
+
+              <Button onClick={handleSave} disabled={isLoading} size="lg">
+                {isLoading ? "جارٍ الحفظ…" : "حفظ التغييرات"}
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Notification Settings */}
-          <Card className="border border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
-                Notifications
+          <Card>
+            <CardHeader className="border-b border-border">
+              <CardTitle className="flex items-center gap-2.5 font-display text-xl">
+                <Shield className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+                الأمان
               </CardTitle>
-              <CardDescription>
-                Configure how you receive updates and alerts
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Push Notifications</Label>
-                  <p className="text-base text-muted-foreground">
-                    Receive notifications about new quizzes, exams, and achievements
-                  </p>
-                </div>
-                <Switch 
-                  checked={notifications} 
-                  onCheckedChange={setNotifications}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Updates</Label>
-                  <p className="text-base text-muted-foreground">
-                    Get weekly summaries and important announcements via email
-                  </p>
-                </div>
-                <Switch 
-                  checked={emailUpdates} 
-                  onCheckedChange={setEmailUpdates}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Appearance Settings */}
-          <Card className="border border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                Appearance
-              </CardTitle>
-              <CardDescription>
-                Customize the look and feel of your learning environment
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Dark Mode</Label>
-                  <p className="text-base text-muted-foreground">
-                    Switch to dark theme for better nighttime studying
-                  </p>
-                </div>
-                <Switch 
-                  checked={darkMode} 
-                  onCheckedChange={setDarkMode}
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="ar">العربية</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Privacy & Security */}
-          <Card className="border border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                Privacy & Security
-              </CardTitle>
-              <CardDescription>
-                Manage your privacy preferences and account security
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-wrap items-center gap-3 p-6">
               <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    Change Password
-                  </Button>
+                  <Button variant="outline">تغيير كلمة المرور</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Change Password</DialogTitle>
+                    <DialogTitle>تغيير كلمة المرور</DialogTitle>
                     <DialogDescription>
-                      Enter your new password. It must be at least 6 characters long.
+                      اختر كلمة مرور جديدة من 6 أحرف على الأقل.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-password">كلمة المرور الجديدة</Label>
                       <Input
-                        id="newPassword"
+                        id="new-password"
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
                       <Input
-                        id="confirmPassword"
+                        id="confirm-password"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
-                      Cancel
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsPasswordDialogOpen(false)}
+                    >
+                      إلغاء
                     </Button>
                     <Button onClick={handleChangePassword} disabled={isLoading}>
-                      {isLoading ? "Updating..." : "Update Password"}
+                      {isLoading ? "جارٍ التحديث…" : "تحديث"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" className="w-full">
-                Download My Data
-              </Button>
-              <Button variant="destructive" className="w-full" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 me-2" />
-                Sign Out
+
+              <Button
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={async () => {
+                  await signOut();
+                  navigate("/");
+                }}
+              >
+                <LogOut className="me-2 h-4 w-4" aria-hidden />
+                تسجيل الخروج
               </Button>
             </CardContent>
           </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={handleSaveSettings} className="w-full md:w-auto" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
         </div>
       </main>
     </div>

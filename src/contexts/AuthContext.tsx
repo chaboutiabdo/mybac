@@ -23,6 +23,8 @@ interface AuthContextType {
   ) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  /** Re-reads the profile row. Settings used to window.location.reload(). */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // reported the user as signed in — an unexplained redirect loop.
       console.error("Error fetching user profile:", error);
       setProfile(null);
-      toast.error("Couldn't load your profile", { description: error instanceof Error ? error.message : "Please try signing in again." });
+      toast.error("تعذّر تحميل ملفك الشخصي", { description: error instanceof Error ? error.message : "Please try signing in again." });
     }
   };
 
@@ -122,16 +124,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        toast.error("Sign up failed", { description: error.message });
+        toast.error("تعذّر إنشاء الحساب", { description: error.message });
         return { error };
       }
 
       if (plan === "free") {
-        toast.success("Account created!", { description: "Please check your email to verify your account. Your Free Plan will be activated after verification." });
+        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك. سيُفعَّل العرض المجاني بعد التأكيد." });
       } else if (plan === "premium") {
-        toast.success("Account created!", { description: "Please check your email to verify your account. We'll process your premium subscription request shortly." });
+        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك. سنعالج طلب الاشتراك المميّز قريبًا." });
       } else {
-        toast.success("Account created!", { description: "Please check your email to verify your account." });
+        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك." });
       }
 
       return { error: null };
@@ -149,21 +151,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        toast.error("Sign in failed", { description: error.message });
+        toast.error("تعذّر تسجيل الدخول", { description: error.message });
         return { error };
       }
 
       // Check if there's a selected plan in sessionStorage
       const plan = sessionStorage.getItem("selectedPlan");
       if (plan === "free") {
-        toast.success("Welcome!", { description: "Your Free Plan has been activated successfully" });
+        toast.success("أهلًا بك", { description: "تم تفعيل العرض المجاني" });
         sessionStorage.removeItem("selectedPlan");
       } else if (plan === "premium") {
         // For premium, we'll handle it separately through support requests
-        toast.success("Welcome!", { description: "Your premium subscription request is being processed" });
+        toast.success("أهلًا بك", { description: "طلب اشتراكك المميّز قيد المعالجة" });
         sessionStorage.removeItem("selectedPlan");
       } else {
-        toast.success("Welcome back!", { description: "You have successfully signed in." });
+        toast.success("أهلًا بعودتك", { description: "تم تسجيل دخولك." });
       }
 
       return { error: null };
@@ -178,13 +180,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Sign out error:", error);
-        toast.error("Sign out failed", { description: error.message });
+        toast.error("تعذّر تسجيل الخروج", { description: error.message });
       } else {
-        toast.success("Signed out", { description: "You have been successfully signed out." });
+        toast.success("تم تسجيل الخروج", { description: "تم تسجيل خروجك." });
       }
     } catch (error) {
       console.error("Sign out error:", error);
     }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchUserProfile(user.id);
   };
 
   const value = {
@@ -195,6 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

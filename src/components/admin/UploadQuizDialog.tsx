@@ -137,7 +137,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
 
       if (importError) throw importError;
 
-      toast.success("Success", { description: `Quiz uploaded successfully with ${questions.length} questions` });
+      toast.success("تم", { description: `Quiz uploaded successfully with ${questions.length} questions` });
 
       onQuizUploaded();
       onOpenChange(false);
@@ -157,7 +157,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Upload {type === "daily" ? "Daily" : "Practice"} Quiz (CSV)
+            Upload {type === "daily" ? "يومي" : "تدريب"} Quiz (CSV)
           </DialogTitle>
           <DialogDescription>
             Upload a CSV file containing quiz questions for {type === "daily" ? "daily" : "practice"} quizzes
@@ -207,9 +207,9 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
                   <SelectValue placeholder="Select difficulty" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
+                  <SelectItem value="easy">سهل</SelectItem>
+                  <SelectItem value="medium">متوسط</SelectItem>
+                  <SelectItem value="hard">صعب</SelectItem>
                 </SelectContent>
               </Select>
             </div>

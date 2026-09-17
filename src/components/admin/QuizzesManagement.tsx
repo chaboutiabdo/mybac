@@ -38,7 +38,7 @@ export function QuizzesManagement() {
       })));
     } catch (error) {
       console.error('Error loading quizzes:', error);
-      toast.error("Error", { description: "Failed to load quizzes" });
+      toast.error("خطأ", { description: "تعذّر تحميل الاختبارات" });
     } finally {
       setLoading(false);
     }
@@ -77,12 +77,12 @@ export function QuizzesManagement() {
 
       if (error) throw error;
 
-      toast.success("Success", { description: "Quiz deleted successfully" });
+      toast.success("تم", { description: "Quiz deleted successfully" });
       
       loadQuizzes();
     } catch (error) {
       console.error('Error deleting quiz:', error);
-      toast.error("Error", { description: "Failed to delete quiz" });
+      toast.error("خطأ", { description: "Failed to delete quiz" });
     }
   };
 
@@ -138,7 +138,7 @@ export function QuizzesManagement() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Total Questions</CardTitle>
+            <CardTitle className="text-base font-medium">مجموع الأسئلة</CardTitle>
             <BookOpen className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
@@ -171,8 +171,8 @@ export function QuizzesManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="practice">Practice</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="practice">تدريب</SelectItem>
+                <SelectItem value="daily">يومي</SelectItem>
               </SelectContent>
             </Select>
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
@@ -194,13 +194,13 @@ export function QuizzesManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Chapter</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Questions</TableHead>
+                  <TableHead>المادة</TableHead>
+                  <TableHead>الفصل</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>الأسئلة</TableHead>
                   <TableHead>Max Score</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -217,7 +217,7 @@ export function QuizzesManagement() {
                       <TableCell>{quiz.chapter || "-"}</TableCell>
                       <TableCell>
                         <Badge variant={quiz.type === 'daily' ? 'default' : 'secondary'}>
-                          {quiz.type === 'daily' ? 'Daily' : 'Practice'}
+                          {quiz.type === 'daily' ? 'يومي' : 'تدريب'}
                         </Badge>
                       </TableCell>
                       <TableCell>{questionCount(quiz.questions)}</TableCell>

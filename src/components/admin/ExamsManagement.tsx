@@ -53,7 +53,7 @@ export function ExamsManagement() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast.error("Error", { description: "Failed to load exams" });
+        toast.error("خطأ", { description: "تعذّر تحميل الامتحانات" });
         return;
       }
 
@@ -110,7 +110,7 @@ export function ExamsManagement() {
               <FileText className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-3xl font-bold">{totalExams}</p>
-                <p className="text-base text-muted-foreground">Total Exams</p>
+                <p className="text-base text-muted-foreground">إجمالي الامتحانات</p>
               </div>
             </div>
           </CardContent>
@@ -172,7 +172,7 @@ export function ExamsManagement() {
             </Select>
             <Select value={yearFilter} onValueChange={setYearFilter}>
               <SelectTrigger className="w-32">
-                <SelectValue placeholder="Year" />
+                <SelectValue placeholder="السنة" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Years</SelectItem>
@@ -191,13 +191,13 @@ export function ExamsManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Exam Title</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead>Questions</TableHead>
-                  <TableHead>Downloads</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>المادة</TableHead>
+                  <TableHead>السنة</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>المستوى</TableHead>
+                  <TableHead>الأسئلة</TableHead>
+                  <TableHead>التحميلات</TableHead>
+                  <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -1,181 +1,23 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
-type Language = "en" | "ar";
+/**
+ * Arabic-only.
+ *
+ * There used to be a parallel 141-key English dictionary and a `setLanguage`
+ * switcher. The switcher was removed from the UI, so `en` became unreachable
+ * except as a stale localStorage value that would silently render the app in
+ * English with no way back. The dictionary is gone and the language is fixed.
+ *
+ * `dir="rtl"` and `lang="ar"` are set in index.html, so the first paint is
+ * already correct and no effect is needed here.
+ */
 
 interface LanguageContextType {
-  language: Language;
-  setLanguage: (language: Language) => void;
   t: (key: string) => string;
   isRTL: boolean;
 }
 
-const translations = {
-  en: {
-    // Navigation
-    home: "Home",
-    quizzes: "Quizzes",
-    exams: "Exams",
-    videos: "Videos",
-    aiLearn: "AI Learn",
-    alumni: "Alumni",
-    profile: "Profile",
-    settings: "Settings",
-    logout: "Log out",
-
-    // Hero Section
-    madeForAlgerianStudents: "Made for Algerian Students",
-    aceYourBacExam: "Ace Your BAC Exam with AI",
-    heroDescription:
-      "Master your BAC preparation with AI-powered quizzes, expert solutions, and personalized learning paths designed for Algerian curriculum.",
-    startDailyQuiz: "Start Daily Quiz",
-    watchVideos: "Watch Videos",
-    studentsCount: "10,000+ Students",
-    pastExams: "500+ Past Exams",
-    successRate: "98% Success Rate",
-
-    // Stats & Dashboard
-    totalScore: "Total Score",
-    pointsEarned: "Points earned",
-    quizzesCompleted: "Quizzes Completed",
-    dailyAndPractice: "Daily & practice",
-    examsSolved: "Exams Solved",
-    pastBacPapers: "Past BAC papers",
-    studyStreak: "Study Streak",
-    daysInARow: "Days in a row",
-    thisWeek: "this week",
-
-    // Quick Actions
-    dailyQuiz: "Daily Quiz",
-    today: "Today",
-    progress: "Progress",
-    questionsRemaining: "questions remaining",
-    continueQuiz: "Continue Quiz",
-    recommendedForYou: "Recommended for You",
-    limitsAndContinuity: "Limits and Continuity",
-    mathChapter3: "Math - Chapter 3",
-    bac2023MathExam: "BAC 2023 Math Exam",
-    practiceTest: "Practice Test",
-    study: "Study",
-    practice: "Practice",
-    recentActivity: "Recent Activity",
-    completedPhysicsQuiz: "Completed Physics Quiz",
-    watchedDerivativesVideo: "Watched Derivatives video",
-    solved2022BacExam: "Solved 2022 BAC Exam",
-    hoursAgo: "h ago",
-    daysAgo: "d ago",
-    alumniSpotlight: "Alumni Spotlight",
-    bacScore: "BAC Score",
-    medicineStudent: "Medicine Student",
-    alumniQuote:
-      '"Focus on understanding concepts, not just memorizing. The BAC tests your thinking skills!"',
-    connectWithAlumni: "Connect with Alumni",
-
-    // Leaderboard
-    topStudents: "Top Students",
-
-    // Quiz Page
-    quizCenter: "Quiz Center",
-    quizCenterDescription: "Test your knowledge with AI-generated quizzes and track your progress",
-    todaysQuiz: "Today's Quiz",
-    dailyChallenge: "Daily Challenge",
-    overallProgress: "Overall Progress",
-    mathQuestions: "Math Questions",
-    physicsQuestions: "Physics Questions",
-    maxPoints: "Max: 100 points",
-    dailyQuizzes: "Daily Quizzes",
-    practiceQuizzes: "Practice Quizzes",
-    current: "Current",
-    currentScore: "Current Score",
-    continue: "Continue",
-    yesterday: "Yesterday",
-    completed: "Completed",
-    score: "Score",
-    review: "Review",
-    weeklyPerformance: "Weekly Performance",
-    averageScore: "Average Score",
-    weeklyPointsEarned: "Points Earned",
-    dayStreak: "Day Streak",
-    mathematics: "Mathematics",
-    physics: "Physics",
-    mixedReview: "Mixed Review",
-    practiceAllSubjects: "All Subjects",
-    questions: "Questions",
-    medium: "Medium",
-    easy: "Easy",
-    hard: "Hard",
-    startQuiz: "Start Quiz",
-
-    // Exams Page
-    previousBacExams: "Previous BAC Exams",
-    previousBacExamsDescription: "Practice with official past exams and get AI-powered solutions",
-    filterExams: "Filter Exams",
-    selectStream: "Select Stream",
-    allStreams: "All Streams",
-    sciences: "Sciences",
-    math: "Math",
-    letters: "Letters",
-    selectSubject: "Select Subject",
-    examAllSubjects: "All Subjects",
-    chemistry: "Chemistry",
-    selectYear: "Select Year",
-    allYears: "All Years",
-    solved: "Solved",
-    new: "New",
-    stream: "Stream",
-    viewExam: "View Exam",
-    solution: "Solution",
-    solveWithAi: "Solve with AI",
-
-    // Videos Page
-    educationalVideos: "Educational Videos",
-    educationalVideosDescription: "Learn from structured video content and expert explanations",
-    filterVideos: "Filter Videos",
-    selectChapter: "Select Chapter",
-    allChapters: "All Chapters",
-    limits: "Limits",
-    mechanics: "Mechanics",
-    derivatives: "Derivatives",
-    videoType: "Video Type",
-    allTypes: "All Types",
-    freeYoutube: "Free (YouTube)",
-    premium: "Premium",
-    free: "Free",
-    introductionToLimits: "Introduction to Limits",
-    advancedLimitTechniques: "Advanced Limit Techniques",
-    newtonsLawsExplained: "Newton's Laws Explained",
-    problemSolvingInMechanics: "Problem Solving in Mechanics",
-    watchAgain: "Watch Again",
-    watchVideo: "Watch Video",
-
-    // Profile
-    student: "Student",
-    rank: "Rank",
-    level: "Level",
-    learningProgress: "Learning Progress",
-    achievements: "Achievements",
-    videosWatched: "Videos Watched",
-
-    // Theme & Language
-    lightMode: "Light Mode",
-    darkMode: "Dark Mode",
-    language: "Language",
-    english: "English",
-    arabic: "العربية",
-
-    // Common
-    pts: "pts",
-    bronze: "Bronze",
-    firstQuiz: "First Quiz",
-    achieved: "Achieved",
-    videoWatcher: "Video Watcher",
-    topTen: "Top 10",
-    locked: "Locked",
-    min: "min",
-    hrs: "hrs",
-    mathem: "Math",
-    chem: "Chemistry",
-  },
-  ar: {
+const translations: Record<string, string> = {
     // Navigation
     home: "الرئيسية",
     quizzes: "اختبارات",
@@ -339,43 +181,17 @@ const translations = {
     hrs: "س",
     mathem: "رياضيات",
     chem: "كيمياء",
-  },
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+/** Falls back to the key itself, which makes a missing translation visible. */
+const t = (key: string): string => translations[key] ?? key;
+
+const value: LanguageContextType = { t, isRTL: true };
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Defaults to Arabic: the landing and pricing pages have their copy
-  // hardcoded in Arabic and never call t(), so an 'en'default rendered an
-  // English shell around Arabic content.
-  const [language, setLanguage] = useState<Language>(() => {
-    const stored = localStorage.getItem("language");
-    return (stored as Language) || "ar";
-  });
-
-  // dir/lang were only applied inside handleSetLanguage, so a fresh visitor
-  // never got RTL until they toggled the switcher by hand.
-  useEffect(() => {
-    document.documentElement.lang = language;
-    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-  }, [language]);
-
-  const t = (key: string): string => {
-    return translations[language][key as keyof (typeof translations)["en"]] || key;
-  };
-
-  const handleSetLanguage = (lang: Language) => {
-    setLanguage(lang);
-    localStorage.setItem("language", lang);
-  };
-
-  const isRTL = language === "ar";
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage, t, isRTL }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

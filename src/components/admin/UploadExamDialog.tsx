@@ -45,7 +45,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!examFile) {
-      toast.error("Error", { description: "Please select an exam file" });
+      toast.error("خطأ", { description: "Please select an exam file" });
       return;
     }
 
@@ -85,7 +85,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
 
       if (insertError) throw insertError;
 
-      toast.success("Success", { description: "Exam uploaded successfully!" });
+      toast.success("تم", { description: "Exam uploaded successfully!" });
 
       setOpen(false);
       setFormData({
@@ -101,7 +101,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
       setSolutionFile(null);
     } catch (error) {
       console.error('Error uploading exam:', error);
-      toast.error("Error", { description: "Failed to upload exam" });
+      toast.error("خطأ", { description: "Failed to upload exam" });
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="subject">المادة</Label>
                 <Select value={formData.subject} onValueChange={(value) => setFormData({...formData, subject: value})} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select subject" />
@@ -152,7 +152,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="year">Year</Label>
+                <Label htmlFor="year">السنة</Label>
                 <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select year" />
@@ -170,7 +170,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="stream">Stream</Label>
+                <Label htmlFor="stream">الشعبة</Label>
                 <Select value={formData.stream} onValueChange={(value) => setFormData({...formData, stream: value})} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select stream" />
@@ -184,15 +184,15 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="difficulty">Difficulty</Label>
+                <Label htmlFor="difficulty">المستوى</Label>
                 <Select value={formData.difficulty} onValueChange={(value) => setFormData({...formData, difficulty: value})} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select difficulty" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="easy">سهل</SelectItem>
+                    <SelectItem value="medium">متوسط</SelectItem>
+                    <SelectItem value="hard">صعب</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -275,7 +275,7 @@ export function UploadExamDialog({ children }: UploadExamDialogProps) {
               ) : (
                 <Plus className="h-4 w-4 me-2" />
               )}
-              {loading ? "Uploading..." : "Upload Exam"}
+              {loading ? "جارٍ الرفع…" : "رفع امتحان"}
             </Button>
           </div>
         </form>

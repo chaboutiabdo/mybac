@@ -23,11 +23,11 @@ const UserProfile = () => {
   const getRoleDisplay = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'Admin';
+        return 'مدير';
       case 'premium':
-        return 'Premium Student';
+        return 'طالب مميّز';
       default:
-        return 'Student';
+        return 'طالب';
     }
   };
 
@@ -58,7 +58,7 @@ const UserProfile = () => {
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-warning" />
             <span className="font-semibold text-2xl">{profile.total_score}</span>
-            <span className="text-muted-foreground">points</span>
+            <span className="text-muted-foreground">نقطة</span>
           </div>
           {profile.stream && (
             <Badge variant="outline">{profile.stream}</Badge>

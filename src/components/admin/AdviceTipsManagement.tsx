@@ -91,7 +91,7 @@ export function AdviceTipsManagement() {
 
       setIsLoading(false);
     } catch (error) {
-      toast.error("Error", { description: "Failed to load advice tips." });
+      toast.error("خطأ", { description: "Failed to load advice tips." });
     }
   };
 
@@ -131,7 +131,7 @@ export function AdviceTipsManagement() {
         throw error;
       }
 
-      toast.success("Success", { description: `Tip ${editingTip ? "updated" : "added"} successfully.` });
+      toast.success("تم", { description: `Tip ${editingTip ? "updated" : "added"} successfully.` });
 
       setShowAddDialog(false);
       setEditingTip(null);
@@ -146,7 +146,7 @@ export function AdviceTipsManagement() {
       fetchTips();
     } catch (error) {
       console.error("Error details:", error);
-      toast.error("Error", { description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}` });
+      toast.error("خطأ", { description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}` });
     }
   };
 
@@ -159,11 +159,11 @@ export function AdviceTipsManagement() {
 
       if (error) throw error;
 
-      toast.success("Success", { description: "Tip deleted successfully." });
+      toast.success("تم", { description: "Tip deleted successfully." });
 
       fetchTips();
     } catch (error) {
-      toast.error("Error", { description: "Failed to delete tip." });
+      toast.error("خطأ", { description: "Failed to delete tip." });
     }
   };
 

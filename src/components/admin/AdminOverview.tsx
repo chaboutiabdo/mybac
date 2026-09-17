@@ -97,7 +97,7 @@ export function AdminOverview() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-foreground">Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold text-foreground">لوحة الإدارة</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your platform.</p>
         </div>
       </div>
@@ -105,14 +105,14 @@ export function AdminOverview() {
       {/* Stats Overview */}
       <div className="grid gap-4 sm:grid-cols-2">
         <StatsCard
-          title="Total Students"
+          title="إجمالي الطلاب"
           value={stats.students}
           subtitle="Active learners"
           icon={Users}
           variant="default"
         />
         <StatsCard
-          title="Schools"
+          title="الثانويات"
           value={stats.schools}
           subtitle="Registered schools"
           icon={GraduationCap}
@@ -126,7 +126,7 @@ export function AdminOverview() {
           variant="accent"
         />
         <StatsCard
-          title="Videos"
+          title="الدروس"
           value={stats.videos}
           subtitle="Educational content"
           icon={Video}
@@ -212,7 +212,7 @@ export function AdminOverview() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>إجراءات سريعة</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
