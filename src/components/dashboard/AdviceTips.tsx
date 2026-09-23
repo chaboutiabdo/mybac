@@ -1,166 +1,87 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Lightbulb, Clock, Crown } from "lucide-react";
+import { Clock, Crown, Lightbulb } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
+import { TONE_BG, type Tone } from "@/lib/bac";
+import { cn } from "@/lib/utils";
 
-type AdviceTip = Tables<'advice_tips'>;
+type AdviceTip = Tables<"advice_tips">;
+
+const PRIORITY: Record<number, { label: string; tone: Tone }> = {
+  3: { label: "عاجل", tone: "pink" },
+  2: { label: "مهم", tone: "peach" },
+  1: { label: "عادي", tone: "sage" },
+};
 
 const AdviceTips = () => {
-  const [tips, setTips] = useState<AdviceTip[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tips, setTips] = useState<AdviceTip[] | null>(null);
   const { user } = useAuth();
   const { isPremium } = useSubscription();
 
   useEffect(() => {
-    if (user) {
-      fetchTips();
-    }
+    if (!user) return;
+
+    let query = supabase.from("advice_tips").select("*").eq("active", true);
+    // public tips, plus a premium student's own personalised ones
+    query = isPremium
+      ? query.or(`is_public.eq.true,target_user_id.eq.${user.id}`)
+      : query.eq("is_public", true);
+
+    query
+      .order("priority", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .then(({ data, error }) => {
+        if (error) console.error("Error fetching tips:", error);
+        const now = new Date();
+        setTips((data ?? []).filter((tip) => !tip.expiry_date || new Date(tip.expiry_date) > now));
+      });
   }, [user, isPremium]);
 
-  const fetchTips = async () => {
-    if (!user) return;
-    
-    try {
-      let query = supabase
-        .from('advice_tips')
-        .select('*')
-        .eq('active', true);
-
-      // Build query: public tips OR personalized tips for current user (if premium)
-      if (isPremium) {
-        // Premium users: get public tips + their personalized tips
-        query = query.or(`is_public.eq.true,target_user_id.eq.${user.id}`);
-      } else {
-        // Regular users: only public tips
-        query = query.eq('is_public', true);
-      }
-
-      // Execute query
-      const { data, error } = await query
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error('Error fetching tips:', error);
-        return;
-      }
-
-      // Filter out expired tips on the client side
-      const now = new Date();
-      const filteredData = (data || []).filter(tip => 
-        !tip.expiry_date || new Date(tip.expiry_date) > now
-      );
-
-      setTips(filteredData);
-    } catch (error) {
-      console.error('Error fetching tips:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getPriorityIcon = (priority: number) => {
-    switch (priority) {
-      case 3:
-        return <Lightbulb className="h-4 w-4 text-destructive" />;
-      case 2:
-        return <Lightbulb className="h-4 w-4 text-warning" />;
-      default:
-        return <Lightbulb className="h-4 w-4 text-primary" />;
-    }
-  };
-
-  const getPriorityColor = (priority: number) => {
-    switch (priority) {
-      case 3:
-        return 'bg-destructive-light text-destructive';
-      case 2:
-        return 'bg-warning-light text-yellow-700';
-      default:
-        return 'bg-primary-light text-blue-700';
-    }
-  };
-
-  const getPriorityLabel = (priority: number) => {
-    switch (priority) {
-      case 3:
-        return 'عاجل';
-      case 2:
-        return 'مهم';
-      default:
-        return 'عادي';
-    }
-  };
-
-  if (loading) {
-    return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-warning" />
-            Daily Tips
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-muted-foreground">جارٍ تحميل النصائح…</div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // nothing to say is better than an empty card
+  if (!tips || tips.length === 0) return null;
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 transition-all duration-300">
-          <Lightbulb className="h-5 w-5 text-warning group- transition-transform duration-300" />
-          Daily Tips
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {tips.map((tip) => (
-          <div key={tip.id} className="border rounded-lg p-4 hover:bg-card-raised/60 transition-all duration-200 hover:shadow-md">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-2 flex-1">
-                <h4 className="font-medium text-base">{tip.title}</h4>
+    <section className="rounded-card bg-card p-5 shadow-soft">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-tone-sage">
+          <Lightbulb className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+        </span>
+        <h2 className="text-lg font-medium">نصائح للمراجعة</h2>
+      </div>
+
+      <ul className="mt-4 space-y-2">
+        {tips.map((tip) => {
+          const priority = PRIORITY[tip.priority ?? 1] ?? PRIORITY[1];
+          return (
+            <li key={tip.id} className="rounded-2xl bg-card-raised p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="flex-1 text-[15px] font-medium">{tip.title}</h3>
                 {!tip.is_public && tip.target_user_id && (
-                  <Badge variant="outline" className="text-sm flex items-center gap-1">
-                    <Crown className="h-3 w-3 text-warning" />
-                    مخصص
-                  </Badge>
+                  <span className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[13px] text-primary-foreground">
+                    <Crown className="h-3 w-3" aria-hidden />
+                    مخصّص لك
+                  </span>
                 )}
+                <span className={cn("rounded-full px-2.5 py-0.5 text-[13px]", TONE_BG[priority.tone])}>
+                  {priority.label}
+                </span>
               </div>
-              <Badge className={`text-xs ${getPriorityColor(tip.priority ?? 1)}`}>
-                <div className="flex items-center gap-1">
-                  {getPriorityIcon(tip.priority ?? 1)}
-                  {getPriorityLabel(tip.priority ?? 1)}
-                </div>
-              </Badge>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {tip.content}
-              </p>
+              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-muted-foreground">{tip.content}</p>
               {tip.expiry_date && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  ينتهي في {new Date(tip.expiry_date).toLocaleDateString("ar-DZ")}
+                <p className="mt-2 flex items-center gap-1 text-[13px] text-muted-foreground">
+                  <Clock className="h-3 w-3" aria-hidden />
+                  حتى {new Date(tip.expiry_date).toLocaleDateString("ar-DZ")}
                 </p>
               )}
-            </div>
-          </div>
-        ))}
-        {tips.length === 0 && (
-          <div className="text-center text-muted-foreground text-base">
-            No tips available at the moment
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 };
 

@@ -35,7 +35,7 @@ class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6">
         <div className="w-full max-w-md text-center">
-          <h1 className="font-display text-2xl font-bold">حدث خطأ غير متوقع</h1>
+          <h1 className="text-[36px] font-light tracking-tight">حدث خطأ غير متوقع</h1>
           <p className="mx-auto mt-3 max-w-sm text-muted-foreground">
             جرّب إعادة تحميل الصفحة. إذا تكرّر الخطأ، تواصل معنا.
           </p>
@@ -44,7 +44,7 @@ class ErrorBoundary extends Component<Props, State> {
             إعادة تحميل
           </Button>
           {import.meta.env.DEV && (
-            <pre className="mt-6 overflow-auto rounded-md border border-border bg-surface-deep p-4 text-start text-xs text-muted-foreground">
+            <pre className="mt-6 overflow-auto rounded-2xl bg-card p-4 text-start text-xs text-muted-foreground">
               {this.state.error.message}
             </pre>
           )}

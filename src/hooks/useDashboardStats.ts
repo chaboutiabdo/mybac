@@ -11,86 +11,68 @@ export interface DashboardStats {
   loading: boolean;
 }
 
-export const useDashboardStats = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalScore: 0,
-    completedQuizzes: 0,
-    videosWatched: 0,
-    examsSolved: 0,
-    loading: true,
-  });
+const NO_COUNTS = { completedQuizzes: 0, videosWatched: 0, examsSolved: 0 };
+
+export const useDashboardStats = (): DashboardStats => {
   const { user } = useAuth();
-  const { score: userScore, loading: scoreLoading } = useUserScore();
+  const { score: totalScore, loading: scoreLoading } = useUserScore();
+  const [counts, setCounts] = useState(NO_COUNTS);
+  // The counts keep their own flag. Folding scoreLoading into this state read
+  // it from a stale closure and combined it as `scoreLoading || prev.loading`,
+  // which could never turn false: the cards showed "…" forever.
+  const [countsLoading, setCountsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardStats();
-    } else {
-      setStats({
-        totalScore: 0,
-        completedQuizzes: 0,
-        videosWatched: 0,
-        examsSolved: 0,
-        loading: false,
-      });
+    if (!user) {
+      setCounts(NO_COUNTS);
+      setCountsLoading(false);
+      return;
     }
+
+    let active = true;
+    setCountsLoading(true);
+
+    Promise.all([
+      // completed quizzes. source='quiz' only: a daily-question attempt holds
+      // one answer and is not a completed quiz — without this filter /home and
+      // /profile showed different numbers under the identical Arabic label,
+      // because useQuizStats does filter.
+      supabase
+        .from('quiz_attempts')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .eq('source', 'quiz')
+        .not('completed_at', 'is', null),
+      // videos watched
+      supabase
+        .from('video_progress')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .eq('watched', true),
+      // exams solved with AI or with the solution viewed
+      supabase
+        .from('exam_progress')
+        .select('id', { count: 'exact', head: true })
+        .eq('student_id', user.id)
+        .or('solved_with_ai.eq.true,viewed_solution.eq.true'),
+    ])
+      .then(([quizzes, videos, exams]) => {
+        if (!active) return;
+        setCounts({
+          completedQuizzes: quizzes.count ?? 0,
+          videosWatched: videos.count ?? 0,
+          examsSolved: exams.count ?? 0,
+        });
+      })
+      .catch((error) => console.error('Error fetching dashboard stats:', error))
+      .finally(() => {
+        if (active) setCountsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
-  // Update total score when userScore changes
-  useEffect(() => {
-    setStats((prev) => ({
-      ...prev,
-      totalScore: userScore,
-      loading: scoreLoading || prev.loading,
-    }));
-  }, [userScore, scoreLoading]);
-
-  const fetchDashboardStats = async () => {
-    if (!user) return;
-
-    setStats((prev) => ({ ...prev, loading: true }));
-
-    try {
-      // Fetch all stats in parallel
-      const [quizAttemptsData, videoProgressData, examProgressData] = await Promise.all([
-        // Completed Quizzes: Count quiz attempts that have been completed
-        supabase
-          .from('quiz_attempts')
-          .select('id', { count: 'exact' })
-          .eq('student_id', user.id)
-          .not('completed_at', 'is', null),
-        
-        // Videos Watched: Count videos where watched = true
-        supabase
-          .from('video_progress')
-          .select('id', { count: 'exact' })
-          .eq('student_id', user.id)
-          .eq('watched', true),
-        
-        // Exams Solved: Count exams where solved_with_ai = true or viewed_solution = true
-        supabase
-          .from('exam_progress')
-          .select('id', { count: 'exact' })
-          .eq('student_id', user.id)
-          .or('solved_with_ai.eq.true,viewed_solution.eq.true')
-      ]);
-
-      setStats({
-        totalScore: userScore,
-        completedQuizzes: quizAttemptsData.count || 0,
-        videosWatched: videoProgressData.count || 0,
-        examsSolved: examProgressData.count || 0,
-        loading: scoreLoading, // Only set to false if score is also loaded
-      });
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      setStats((prev) => ({
-        ...prev,
-        loading: scoreLoading, // Only set to false if score is also loaded
-      }));
-    }
-  };
-
-  return stats;
+  return { totalScore, ...counts, loading: countsLoading || scoreLoading };
 };
-

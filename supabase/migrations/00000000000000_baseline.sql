@@ -26,9 +26,8 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-
-COMMENT ON SCHEMA "public" IS 'standard public schema';
-
+-- (dump's `COMMENT ON SCHEMA public` removed: cosmetic, and on a hosted
+-- project it needs schema ownership and can abort the whole baseline)
 
 
 CREATE EXTENSION IF NOT EXISTS "moddatetime" WITH SCHEMA "extensions";
@@ -2812,6 +2811,12 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+--    The second one lives in 20260920000000_score_integrity.sql and belongs
+--    here at the next squash: `on_auth_user_email_changed` mirrors a confirmed
+--    email change into profiles.email, which the guard trigger otherwise pins.
+--    Lose it and a student who changes their email keeps the old one on the
+--    admin roster and on their premium receipt, forever.
 
 -- 2. REVOKES.
 --    The dump re-emits Supabase's default `GRANT ... TO anon, authenticated`

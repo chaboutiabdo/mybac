@@ -1,355 +1,231 @@
-import { useState, useRef, useEffect } from "react";
-import { MATH_CHAPTERS, PHYSICS_CHAPTERS } from "@/lib/bac";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import "katex/dist/katex.min.css";
-import { InlineMath, BlockMath } from "react-katex";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  Brain,
-  MessageCircle,
-  BookOpen,
-  Lightbulb,
-  Sparkles,
-  Loader2,
-  Send,
-  Bot,
-  User,
-} from "lucide-react";
-import Navigation from "@/components/layout/Navigation";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useRef, useState } from "react";
+import { Bot, Brain, Loader2, Send, Sparkles, User } from "lucide-react";
 import { toast } from "sonner";
+
+import { AnswerText } from "@/components/ai/AnswerText";
+import FilterPills, { SUBJECT_OPTIONS } from "@/components/FilterPills";
+import PageHeader from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { invokeAI } from "@/lib/ai";
+import { chaptersFor } from "@/lib/bac";
+import { cn, errorMessage } from "@/lib/utils";
 
-interface StudyTopic {
-  id: string;
-  subject: string;
-  chapter: string;
-  keyConcepts: string[];
-  tips: string[];
-}
-
-const studyTopics: StudyTopic[] = [];
+const STUDY_TIPS = [
+  "اقرأ المفاهيم الأساسية أولاً",
+  "حلّ التمارين التطبيقية خطوة بخطوة",
+  "راجع الأمثلة المحلولة في الكتاب",
+  "اسأل المعلّم الذكي عن أي نقطة غامضة",
+];
 
 const LearnAI = () => {
   const { user } = useAuth();
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedChapter, setSelectedChapter] = useState<string>("");
-  const [question, setQuestion] = useState<string>("");
-  const [currentTopic, setCurrentTopic] = useState<StudyTopic | null>(null);
-  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>(
-    [],
-  );
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [subject, setSubject] = useState<string | null>(null);
+  const [chapter, setChapter] = useState("");
+  const [question, setQuestion] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
-
-  // Handle Enter key press
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleAskQuestion();
-    }
-  };
-
-  const handleSubjectChange = (subject: string) => {
-    setSelectedSubject(subject);
-    setSelectedChapter("");
-    setCurrentTopic(null);
-  };
-
-  const handleChapterChange = (chapter: string) => {
-    setSelectedChapter(chapter);
-    const topic = studyTopics.find((t) => t.subject === selectedSubject && t.chapter === chapter);
-    setCurrentTopic(topic || null);
-  };
 
   const handleAskQuestion = async () => {
     if (!question.trim() || isLoading || !user) return;
 
     setIsLoading(true);
     const userQuestion = question;
+    // the chat so far, so "more info" continues the last answer (the function caps it)
+    const history = chatMessages.slice(-6);
     setQuestion("");
-
-    // Add user message immediately
     setChatMessages((prev) => [...prev, { role: "user", content: userQuestion }]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("gemini-chat", {
-        body: {
-          question: userQuestion,
-          subject: selectedSubject,
-          chapter: selectedChapter,
-        },
+      const data = await invokeAI<{ answer?: string }>({
+        question: userQuestion,
+        subject: subject ?? "",
+        chapter,
+        history,
       });
-
-      if (error) throw error;
-
-      // Add AI response
-      setChatMessages((prev) => [...prev, { role: "ai", content: data.answer }]);
+      if (!data?.answer) throw new Error("تعذّر توليد إجابة، جرّب صياغة أخرى.");
+      setChatMessages((prev) => [...prev, { role: "ai", content: data.answer as string }]);
     } catch (error) {
       console.error("Error asking question:", error);
-      toast.error("خطأ في الاتصال", { description: "حدث خطأ أثناء الحصول على الإجابة. يرجى المحاولة مرة أخرى." });
-
-      // Add error message to chat
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "عذراً، حدث خطأ أثناء معالجة سؤالك. يرجى المحاولة مرة أخرى." },
-      ]);
+      // The function's own message — the daily quota, the premium wall, "your
+      // question is too long" — used to be replaced here by a generic network
+      // error, so a student who had simply run out of questions was told the
+      // connection had failed.
+      toast.error(errorMessage(error, "تعذّر الحصول على الإجابة، حاول مرة أخرى."));
+      // The apology deliberately does NOT go into chatMessages: it was being
+      // sent straight back as history on the next question, so the model spent
+      // quota reading our own error text.
     } finally {
       setIsLoading(false);
     }
   };
 
+  const ready = Boolean(chapter) && Boolean(user);
+
   return (
-    <div className="pattern-field min-h-screen bg-background">
-      <Navigation />
+    <div className="space-y-8">
+      <PageHeader title="المعلّم الذكي" subtitle="اسأل بالعربية، واحصل على شرح خطوة بخطوة كما في ورقة الامتحان" />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <h1 className="font-display text-[34px] font-bold tracking-tight">تعلم مع الذكاء الاصطناعي</h1>
-            <p className="text-lg text-muted-foreground">
-              احصل على إرشادات دراسية مخصصة مدعومة بالذكاء الاصطناعي
-            </p>
+      <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-5">
+          <section className="space-y-4 rounded-card bg-card p-5 shadow-soft">
+            <h2 className="text-lg font-medium">اختر الموضوع</h2>
+            <FilterPills
+              label="المادة"
+              wrap
+              options={SUBJECT_OPTIONS}
+              value={subject}
+              onChange={(s) => {
+                setSubject(s);
+                setChapter("");
+              }}
+            />
+            <Select value={chapter} onValueChange={setChapter} disabled={!subject}>
+              <SelectTrigger className="h-12 rounded-full" aria-label="الفصل">
+                <SelectValue placeholder={subject ? "اختر الفصل" : "اختر المادة أولاً"} />
+              </SelectTrigger>
+              <SelectContent>
+                {chaptersFor(subject).map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </section>
+
+          {chapter && (
+            <section className="rounded-card bg-tone-peach p-5 shadow-soft">
+              <h2 className="text-lg font-medium">نصائح الدراسة</h2>
+              <ul className="mt-3 space-y-2">
+                {STUDY_TIPS.map((tip) => (
+                  <li key={tip} className="rounded-2xl bg-card-raised/70 px-3.5 py-2.5 text-[15px]">
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </aside>
+
+        <section className="flex h-[640px] flex-col rounded-card bg-card shadow-soft md:h-[720px]">
+          <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-tone-peach">
+              <Bot className="h-5 w-5" strokeWidth={1.8} aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-lg font-medium leading-tight">مساعد الدراسة</h2>
+              <p className="text-[15px] text-muted-foreground">
+                {chapter ? "اسأل عن الفصل المختار" : "اختر فصلاً ثم اسأل سؤالك"}
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            <div className="lg:col-span-1 space-y-4 md:space-y-6">
-              <Card className="border border-primary/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-                    <Brain className="h-5 w-5 text-primary" />
-                    اختر الموضوع
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Select value={selectedSubject} onValueChange={handleSubjectChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر المادة" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Math">الرياضيات</SelectItem>
-                      <SelectItem value="Physics">الفيزياء</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={selectedChapter}
-                    onValueChange={handleChapterChange}
-                    disabled={!selectedSubject}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر الفصل" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedSubject === "Math" &&
-                        MATH_CHAPTERS.map((chapter) => (
-                          <SelectItem key={chapter.value} value={chapter.value}>
-                            {chapter.label}
-                          </SelectItem>
-                        ))}
-                      {selectedSubject === "Physics" &&
-                        PHYSICS_CHAPTERS.map((chapter) => (
-                          <SelectItem key={chapter.value} value={chapter.value}>
-                            {chapter.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </CardContent>
-              </Card>
-
-              {selectedChapter && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-                      <BookOpen className="h-5 w-5 text-accent" />
-                      نصائح الدراسة
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 text-base">
-                      <p>اقرأ المفاهيم الأساسية أولاً</p>
-                      <p>حل التمارين التطبيقية خطوة بخطوة</p>
-                      <p>راجع الأمثلة المحلولة في الكتاب</p>
-                      <p>اسأل الذكاء الاصطناعي عن أي استفسار</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            <div className="lg:col-span-2">
-              <Card className="h-[600px] md:h-[700px] flex flex-col border border-primary/20">
-                <CardHeader className="border-b">
-                  <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-                    <Bot className="h-6 w-6 text-primary" />
-                    مساعد الذكاء الاصطناعي للدراسة
-                  </CardTitle>
-                  <CardDescription className="text-base md:text-lg">
-                    اسأل أسئلة حول {selectedChapter ? "الفصل المختار" : "أي موضوع"} واحصل على شروحات
-                    مفصلة
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="flex-1 flex flex-col p-0">
-                  {/* Chat Messages Area */}
-                  <div className="flex-1 p-4 overflow-y-auto">
-                    {chatMessages.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-center">
-                        <div className="space-y-4 max-w-md">
-                          <div className="relative">
-                            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center">
-                              <Brain className="h-10 w-10 text-primary animate-pulse" />
-                            </div>
-                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                              <Sparkles className="h-3 w-3 text-accent-foreground" />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <h3 className="text-xl font-semibold text-foreground">
-                              مرحباً! أنا مساعدك الذكي
-                            </h3>
-                            <p className="text-base text-muted-foreground">
-                              اختر موضوعاً واسأل سؤالك الأول!
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              أنا هنا لمساعدتك في فهم مفاهيم البكالوريا خطوة بخطوة.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {chatMessages.map((message, index) => (
-                          <div
-                            key={index}
-                            className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                          >
-                            {/* Avatar */}
-                            <div
-                              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                                message.role === "user"
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-secondary text-secondary-foreground"
-                              }`}
-                            >
-                              {message.role === "user" ? (
-                                <User className="h-4 w-4" />
-                              ) : (
-                                <Bot className="h-4 w-4" />
-                              )}
-                            </div>
-
-                            {/* Message Content */}
-                            <div className="flex-1 max-w-[85%] text-start">
-                              <div
-                                className={`p-4 rounded-2xl shadow-sm ${
-                                  message.role === "user"
-                                    ? "bg-primary text-primary-foreground ml-auto"
-                                    : "bg-card border border-border/50"
-                                }`}
-                              >
-                                {message.role === "user" ? (
-                                  <p className="text-base whitespace-pre-wrap leading-relaxed">
-                                    {message.content}
-                                  </p>
-                                ) : (
-                                  <div className="prose prose-sm dark:prose-invert max-w-none text-base leading-relaxed">
-                                    {message.content
-                                      .split(/(\\\(.*?\\\)|\\\[.*?\\\])/)
-                                      .map((part, partIndex) => {
-                                        if (part.startsWith("\\(") && part.endsWith("\\)")) {
-                                          // Inline math
-                                          const math = part.slice(2, -2);
-                                          return <InlineMath key={partIndex}>{math}</InlineMath>;
-                                        } else if (part.startsWith("\\[") && part.endsWith("\\]")) {
-                                          // Block math
-                                          const math = part.slice(2, -2);
-                                          return <BlockMath key={partIndex}>{math}</BlockMath>;
-                                        } else {
-                                          // Regular text with better formatting
-                                          return (
-                                            <span key={partIndex} className="whitespace-pre-wrap">
-                                              {part.split("\n").map((line, lineIndex) => (
-                                                <span key={lineIndex}>
-                                                  {line}
-                                                  {lineIndex < part.split("\n").length - 1 && (
-                                                    <br />
-                                                  )}
-                                                </span>
-                                              ))}
-                                            </span>
-                                          );
-                                        }
-                                      })}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        <div ref={chatEndRef} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Input Area */}
-                  <div className="p-4 bg-card border-t border-border/50">
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <Textarea
-                          ref={textareaRef}
-                          placeholder={
-                            user
-                              ? selectedChapter
-                                ? "اسأل سؤالاً حول الفصل المختار... (اضغط Enter للإرسال)"
-                                : "اختر موضوعاً أولاً، ثم اسأل سؤالك..."
-                              : "يجب تسجيل الدخول للاستفادة من الذكاء الاصطناعي"
-                          }
-                          value={question}
-                          onChange={(e) => setQuestion(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          disabled={!selectedChapter || isLoading || !user}
-                          className="min-h-[60px] md:min-h-[80px] text-base md:text-lg resize-none border focus:border-primary/50 transition-colors"
-                        />
-                      </div>
-                      <Button
-                        onClick={handleAskQuestion}
-                        disabled={!question.trim() || !selectedChapter || isLoading || !user}
-                        className="px-6 py-3 h-auto text-primary-foreground transition-all duration-200"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Send className="h-5 w-5" />
+          <div className="flex-1 overflow-y-auto p-5">
+            {chatMessages.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-center">
+                {/* the sparkle sits on the brain, not somewhere in the row */}
+                <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-tone-lav">
+                  <Brain className="h-9 w-9" strokeWidth={1.5} aria-hidden />
+                  <span className="absolute -end-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-tone-peach ring-4 ring-card">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                </span>
+                <h3 className="mt-5 text-xl font-medium">مرحباً! أنا معلّمك الذكي</h3>
+                <p className="mt-1 max-w-sm text-base text-muted-foreground">
+                  اختر موضوعاً واسأل سؤالك الأول، وسأشرحه خطوة بخطوة كما تُحلّ أسئلة البكالوريا.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {chatMessages.map((message, index) => {
+                  const mine = message.role === "user";
+                  return (
+                    <div key={index} className={cn("flex gap-3", mine && "flex-row-reverse")}>
+                      <span
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                          mine ? "bg-primary text-primary-foreground" : "bg-tone-peach"
                         )}
-                      </Button>
+                      >
+                        {mine ? <User className="h-4 w-4" aria-hidden /> : <Bot className="h-4 w-4" aria-hidden />}
+                      </span>
+                      <div
+                        className={cn(
+                          "max-w-[85%] rounded-3xl px-4 py-3",
+                          mine ? "bg-primary text-primary-foreground" : "bg-card-raised shadow-soft"
+                        )}
+                      >
+                        {mine ? (
+                          <p className="whitespace-pre-wrap text-base leading-relaxed">{message.content}</p>
+                        ) : (
+                          <AnswerText content={message.content} />
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2 text-sm text-muted-foreground text-center">
-                      اضغط Enter للإرسال أو Shift+Enter لسطر جديد
+                  );
+                })}
+                {isLoading && (
+                  <div className="flex gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tone-peach">
+                      <Bot className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="flex items-center gap-2 rounded-3xl bg-card-raised px-4 py-3 text-muted-foreground shadow-soft">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      يكتب الإجابة…
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border p-4">
+            <div className="flex gap-3">
+              <Textarea
+                placeholder={
+                  user
+                    ? chapter
+                      ? "اسأل سؤالاً حول الفصل المختار… (Enter للإرسال)"
+                      : "اختر موضوعاً أولاً، ثم اسأل سؤالك…"
+                    : "يجب تسجيل الدخول للاستفادة من المعلّم الذكي"
+                }
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAskQuestion();
+                  }
+                }}
+                disabled={!ready || isLoading}
+                className="min-h-[64px] flex-1 resize-none text-base"
+              />
+              <Button
+                onClick={handleAskQuestion}
+                disabled={!question.trim() || !ready || isLoading}
+                aria-label="أرسل"
+                className="h-auto w-14 rounded-2xl"
+              >
+                {isLoading ? <Loader2 className="animate-spin" /> : <Send />}
+              </Button>
+            </div>
+            <div className="mt-2 space-y-0.5 text-center text-[13px] text-muted-foreground">
+              <p>Enter للإرسال، Shift+Enter لسطر جديد</p>
+              {/* the free Gemini tier lets Google's reviewers read questions */}
+              <p>لا تكتب معلومات شخصية في أسئلتك، فقد يطّلع عليها مزوّد الذكاء الاصطناعي</p>
             </div>
           </div>
-        </div>
-      </main>
+        </section>
+      </div>
     </div>
   );
 };

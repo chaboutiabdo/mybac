@@ -106,6 +106,8 @@ export type Database = {
           chapter: string | null
           created_at: string
           id: string
+          mistake_id: string | null
+          mode: string
           question_text: string
           subject: string | null
           user_id: string
@@ -115,6 +117,8 @@ export type Database = {
           chapter?: string | null
           created_at?: string
           id?: string
+          mistake_id?: string | null
+          mode?: string
           question_text: string
           subject?: string | null
           user_id: string
@@ -124,11 +128,21 @@ export type Database = {
           chapter?: string | null
           created_at?: string
           id?: string
+          mistake_id?: string | null
+          mode?: string
           question_text?: string
           subject?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_learning_conversations_mistake_id_fkey"
+            columns: ["mistake_id"]
+            isOneToOne: false
+            referencedRelation: "mistakes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       alumni: {
         Row: {
@@ -359,6 +373,77 @@ export type Database = {
           },
         ]
       }
+      daily_questions: {
+        Row: {
+          answered_at: string | null
+          assigned_date: string
+          created_at: string
+          id: string
+          is_correct: boolean | null
+          question_id: string
+          quiz_attempt_id: string | null
+          quiz_id: string
+          reason: string
+          student_answer: string | null
+          student_id: string
+        }
+        Insert: {
+          answered_at?: string | null
+          assigned_date: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_id: string
+          quiz_attempt_id?: string | null
+          quiz_id: string
+          reason: string
+          student_answer?: string | null
+          student_id: string
+        }
+        Update: {
+          answered_at?: string | null
+          assigned_date?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_id?: string
+          quiz_attempt_id?: string | null
+          quiz_id?: string
+          reason?: string
+          student_answer?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_questions_quiz_attempt_id_fkey"
+            columns: ["quiz_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_questions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       exam_activity_logs: {
         Row: {
           action: string
@@ -398,6 +483,47 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_ai_solutions: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          model: string | null
+          prompt_version: number
+          solution: Json
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          model?: string | null
+          prompt_version?: number
+          solution: Json
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          model?: string | null
+          prompt_version?: number
+          solution?: Json
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_ai_solutions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_progress: {
         Row: {
           completed_at: string | null
@@ -436,6 +562,74 @@ export type Database = {
           },
           {
             foreignKeyName: "exam_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      exam_simulation_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number
+          expires_at: string
+          id: string
+          quiz_attempt_id: string
+          quiz_id: string
+          started_at: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes: number
+          expires_at: string
+          id?: string
+          quiz_attempt_id: string
+          quiz_id: string
+          started_at?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_minutes?: number
+          expires_at?: string
+          id?: string
+          quiz_attempt_id?: string
+          quiz_id?: string
+          started_at?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_simulation_sessions_quiz_attempt_id_fkey"
+            columns: ["quiz_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_simulation_sessions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_simulation_sessions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_simulation_sessions_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -487,6 +681,133 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      flashcards: {
+        Row: {
+          back: string
+          chapter: string
+          concept: string | null
+          created_at: string
+          front: string
+          id: string
+          source: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          back: string
+          chapter: string
+          concept?: string | null
+          created_at?: string
+          front: string
+          id?: string
+          source?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          back?: string
+          chapter?: string
+          concept?: string | null
+          created_at?: string
+          front?: string
+          id?: string
+          source?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mistakes: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          first_mistaken_at: string
+          id: string
+          last_mistaken_at: string
+          last_reviewed_at: string | null
+          mistake_count: number
+          options: Json | null
+          question_id: string
+          question_text: string
+          quiz_chapter: string | null
+          quiz_id: string
+          quiz_subject: string | null
+          quiz_type: string | null
+          resolved_at: string | null
+          review_due_at: string | null
+          status: string
+          student_answer: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          first_mistaken_at?: string
+          id?: string
+          last_mistaken_at?: string
+          last_reviewed_at?: string | null
+          mistake_count?: number
+          options?: Json | null
+          question_id: string
+          question_text: string
+          quiz_chapter?: string | null
+          quiz_id: string
+          quiz_subject?: string | null
+          quiz_type?: string | null
+          resolved_at?: string | null
+          review_due_at?: string | null
+          status?: string
+          student_answer?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          first_mistaken_at?: string
+          id?: string
+          last_mistaken_at?: string
+          last_reviewed_at?: string | null
+          mistake_count?: number
+          options?: Json | null
+          question_id?: string
+          question_text?: string
+          quiz_chapter?: string | null
+          quiz_id?: string
+          quiz_subject?: string | null
+          quiz_type?: string | null
+          resolved_at?: string | null
+          review_due_at?: string | null
+          status?: string
+          student_answer?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mistakes_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mistakes_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mistakes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       points_transactions: {
         Row: {
@@ -540,6 +861,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          city: string | null
           created_at: string
           email: string
           id: string
@@ -555,6 +877,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
           email: string
           id?: string
@@ -570,6 +893,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          city?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -654,6 +978,7 @@ export type Database = {
           id: string
           quiz_id: string
           score: number
+          source: string
           student_id: string
           submitted: boolean
         }
@@ -664,6 +989,7 @@ export type Database = {
           id?: string
           quiz_id: string
           score?: number
+          source?: string
           student_id: string
           submitted?: boolean
         }
@@ -674,6 +1000,7 @@ export type Database = {
           id?: string
           quiz_id?: string
           score?: number
+          source?: string
           student_id?: string
           submitted?: boolean
         }
@@ -758,6 +1085,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "quiz_question_results_quiz_attempt_id_fkey"
+            columns: ["quiz_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quiz_question_results_quiz_id_fkey"
             columns: ["quiz_id"]
             isOneToOne: false
@@ -770,6 +1104,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "quizzes_public"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_question_results_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -872,6 +1213,57 @@ export type Database = {
         }
         Relationships: []
       }
+      student_flashcard_progress: {
+        Row: {
+          created_at: string
+          flashcard_id: string
+          id: string
+          last_reviewed_at: string
+          next_review_at: string
+          recall_rating: string
+          review_count: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flashcard_id: string
+          id?: string
+          last_reviewed_at?: string
+          next_review_at: string
+          recall_rating: string
+          review_count?: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flashcard_id?: string
+          id?: string
+          last_reviewed_at?: string
+          next_review_at?: string
+          recall_rating?: string
+          review_count?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_flashcard_progress_flashcard_id_fkey"
+            columns: ["flashcard_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_flashcard_progress_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       student_questions_log: {
         Row: {
           ai_response: string | null
@@ -919,6 +1311,7 @@ export type Database = {
           message: string
           name: string
           phone: string | null
+          requester_id: string | null
           status: string
           type: string
           updated_at: string
@@ -930,6 +1323,7 @@ export type Database = {
           message: string
           name: string
           phone?: string | null
+          requester_id?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -941,6 +1335,7 @@ export type Database = {
           message?: string
           name?: string
           phone?: string | null
+          requester_id?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -1118,8 +1513,103 @@ export type Database = {
       }
     }
     Functions: {
-      calculate_user_score: { Args: { user_id_param: string }; Returns: number }
-      is_admin: { Args: never; Returns: boolean }
+      get_chapter_mastery: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active_mistakes: number
+          attempted: number
+          correct: number
+          mastery_pct: number
+          quiz_chapter: string
+          quiz_subject: string
+        }[]
+      }
+      get_city_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          total_score: number
+        }[]
+      }
+      get_or_create_daily_question: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          answered_at: string
+          correct_answer: string
+          id: string
+          is_correct: boolean
+          options: Json
+          question_id: string
+          question_text: string
+          quiz_chapter: string
+          quiz_id: string
+          quiz_subject: string
+          reason: string
+          student_answer: string
+        }[]
+      }
+      get_school_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          total_score: number
+        }[]
+      }
+      get_study_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_streak: number
+          days_this_month: number
+          longest_streak: number
+          tasks_completed_today: number
+        }[]
+      }
+      get_weekly_report: {
+        Args: { p_weeks_ago?: number }
+        Returns: {
+          flashcards_reviewed: number
+          lessons_completed: number
+          mistakes_made: number
+          mistakes_reviewed: number
+          prev_lessons_completed: number
+          prev_questions_answered: number
+          prev_questions_correct: number
+          prev_simulations_completed: number
+          prev_study_days: number
+          prev_week_end: string
+          prev_week_start: string
+          questions_answered: number
+          questions_correct: number
+          simulations_completed: number
+          study_days: number
+          week_end: string
+          week_start: string
+        }[]
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      mark_mistake_reviewed: {
+        Args: { p_mistake_id: string }
+        Returns: undefined
+      }
+      record_flashcard_review: {
+        Args: { p_flashcard_id: string; p_recall_rating: string }
+        Returns: {
+          created_at: string
+          flashcard_id: string
+          id: string
+          last_reviewed_at: string
+          next_review_at: string
+          recall_rating: string
+          review_count: number
+          student_id: string
+          updated_at: string
+        }
+      }
       record_points_transaction: {
         Args: {
           p_chapter?: string
@@ -1133,6 +1623,38 @@ export type Database = {
           p_subject?: string
         }
         Returns: string
+      }
+      start_exam_simulation: {
+        Args: { p_quiz_id: string }
+        Returns: {
+          completed_at: string | null
+          created_at: string
+          duration_minutes: number
+          expires_at: string
+          id: string
+          quiz_attempt_id: string
+          quiz_id: string
+          started_at: string
+          status: string
+          student_id: string
+        }
+      }
+      submit_daily_question: {
+        Args: { p_answer: string }
+        Returns: {
+          correct_answer: string
+          is_correct: boolean
+        }[]
+      }
+      submit_exam_simulation: {
+        Args: { p_answers: Json; p_session_id: string }
+        Returns: {
+          correct_count: number
+          max_score: number
+          score: number
+          total_questions: number
+          was_late: boolean
+        }[]
       }
       submit_quiz_attempt: {
         Args: { p_answers: Json; p_attempt_id: string }
@@ -1165,12 +1687,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1194,11 +1716,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1219,11 +1741,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1244,11 +1766,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1261,11 +1783,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

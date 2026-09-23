@@ -7,11 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 const questionCount = (questions: unknown): number =>
   Array.isArray(questions) ? questions.length : 0;
 
+const isMath = (subject?: string | null) =>
+  subject === "Math" || subject === "Mathematics" || subject?.toLowerCase() === "math";
+const isPhysics = (subject?: string | null) => subject?.toLowerCase() === "physics";
+
+const progress = (completed: number, total: number) => ({
+  completed,
+  total,
+  percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+});
+
 export interface QuizStats {
   completedQuizzes: number;
   averageScore: number;
   pointsEarned: number;
-  dayStreak: number;
   overallProgress: {
     completed: number;
     total: number;
@@ -30,7 +39,6 @@ export const useQuizStats = () => {
     completedQuizzes: 0,
     averageScore: 0,
     pointsEarned: 0,
-    dayStreak: 0,
     overallProgress: { completed: 0, total: 0, percentage: 0 },
     subjectProgress: {
       math: { completed: 0, total: 0, percentage: 0 },
@@ -55,210 +63,80 @@ export const useQuizStats = () => {
     try {
       setStats((prev) => ({ ...prev, loading: true }));
 
-      // Fetch all quiz attempts with scores
-      const { data: quizAttempts } = await supabase
-        .from('quiz_attempts')
-        .select(`
-          id,
-          score,
-          completed_at,
-          quiz_id,
-          quizzes!inner(
-            id,
-            subject,
-            type,
-            questions,
-            max_score
-          )
-        `)
-        .eq('student_id', user.id)
-        .not('completed_at', 'is', null);
+      // Students cannot read `quizzes` — it holds the answer key, and only
+      // admins may select from it. This hook used to read it directly and
+      // inner-join attempts and results to it, and an inner join to rows you
+      // cannot see returns nothing: every stat below was 0 for every student.
+      // quizzes_public carries all it needs, and each result row already
+      // records its quiz's type and subject.
+      const [{ data: attempts }, { data: correct }, { data: quizzes }] = await Promise.all([
+        // source='quiz' only: a daily-question attempt holds ONE answer, so its
+        // score (8) against the quiz's max_score (100) reads as 8% and would
+        // drag averageScore down every time a student answered the daily
+        // question correctly. Simulator attempts are genuine full attempts and
+        // stay in.
+        supabase
+          .from("quiz_attempts")
+          .select("quiz_id, score, completed_at")
+          .eq("student_id", user.id)
+          .eq("source", "quiz")
+          .not("completed_at", "is", null),
+        supabase
+          .from("quiz_question_results")
+          .select("quiz_type, quiz_subject")
+          .eq("student_id", user.id)
+          .eq("is_correct", true),
+        supabase.from("quizzes_public").select("id, type, subject, questions, max_score"),
+      ]);
 
-      // Fetch quiz question results for points calculation
-      const { data: questionResults } = await supabase
-        .from('quiz_question_results')
-        .select(`
-          id,
-          is_correct,
-          quizzes!inner(type)
-        `)
-        .eq('student_id', user.id)
-        .eq('is_correct', true);
+      const quizById = new Map((quizzes ?? []).map((q) => [q.id, q]));
 
-      // Fetch all daily quizzes to calculate progress
-      const { data: allDailyQuizzes } = await supabase
-        .from('quizzes')
-        .select('id, subject, questions')
-        .eq('type', 'daily');
+      const completedQuizzes = new Set((attempts ?? []).map((a) => a.quiz_id)).size;
 
-      // Calculate completed quizzes (unique quiz IDs)
-      const uniqueCompletedQuizzes = new Set(
-        quizAttempts?.map(attempt => attempt.quiz_id) || []
-      );
-      const completedQuizzes = uniqueCompletedQuizzes.size;
-
-      // Calculate average score as percentage
-      const scorePercentages = quizAttempts?.map(attempt => {
-        const score = attempt.score || 0;
-        const maxScore = attempt.quizzes?.max_score || 1;
-        return maxScore > 0 ? (score / maxScore) * 100 : 0;
-      }) || [];
-      const averageScore = scorePercentages.length > 0
-        ? Math.round((scorePercentages.reduce((sum, pct) => sum + pct, 0) / scorePercentages.length) * 10) / 10
+      // average score as a percentage of each quiz's maximum
+      const percentages = (attempts ?? []).map((a) => {
+        const max = quizById.get(a.quiz_id)?.max_score || 1;
+        return ((a.score || 0) / max) * 100;
+      });
+      const averageScore = percentages.length
+        ? Math.round((percentages.reduce((sum, p) => sum + p, 0) / percentages.length) * 10) / 10
         : 0;
 
-      // Calculate points earned from quizzes
-      let pointsEarned = 0;
-      questionResults?.forEach(result => {
-        const quizType = result.quizzes?.type;
-        if (quizType === 'daily') {
-          pointsEarned += 25;
-        } else if (quizType === 'practice') {
-          pointsEarned += 8;
-        }
-      });
+      // same amounts the server awards (record_points_transaction)
+      const pointsEarned = (correct ?? []).reduce(
+        (sum, r) => sum + (r.quiz_type === "daily" ? 25 : r.quiz_type === "practice" ? 8 : 0),
+        0
+      );
 
-      // Calculate day streak
-      const dayStreak = calculateDayStreak(quizAttempts || []);
-
-      // Calculate overall progress (daily quizzes only)
-      const dailyAttempts = quizAttempts?.filter(
-        attempt => attempt.quizzes?.type === 'daily'
-      ) || [];
-
-      // Count total questions in all daily quizzes
-      const totalQuestions = allDailyQuizzes?.reduce(
-        (sum, quiz) => sum + questionCount(quiz.questions), 0
-      ) || 0;
-
-      // Count completed questions (correctly answered from quiz_question_results)
-      // We'll use allQuestionResults which we fetch later, but for now use questionResults
-      const dailyQuestionResults = questionResults?.filter(
-        result => result.quizzes?.type === 'daily'
-      ) || [];
-      const completedQuestions = dailyQuestionResults.length;
-
-      // Calculate subject-specific progress
-      // Get all question results with quiz and subject info for daily quizzes
-      const { data: allQuestionResults } = await supabase
-        .from('quiz_question_results')
-        .select(`
-          id,
-          is_correct,
-          quizzes!inner(
-            type,
-            subject
-          )
-        `)
-        .eq('student_id', user.id)
-        .eq('quizzes.type', 'daily');
-
-      // Update completed questions count with all daily question results (only correct answers)
-      const actualCompletedQuestions = allQuestionResults?.filter(r => r.is_correct).length || 0;
-
-      const mathQuizzes = allDailyQuizzes?.filter(q => 
-        q.subject === 'Math' || q.subject === 'Mathematics' || q.subject?.toLowerCase() === 'math'
-      ) || [];
-      const physicsQuizzes = allDailyQuizzes?.filter(q => 
-        q.subject === 'Physics' || q.subject?.toLowerCase() === 'physics'
-      ) || [];
-
-      const mathTotal = mathQuizzes.reduce((sum, q) => sum + questionCount(q.questions), 0);
-      const physicsTotal = physicsQuizzes.reduce((sum, q) => sum + questionCount(q.questions), 0);
-
-      // Count questions answered correctly by subject
-      const mathQuestionsCompleted = allQuestionResults?.filter(
-        result => {
-          const subject = result.quizzes?.subject;
-          return result.is_correct && (
-            subject === 'Math' || 
-            subject === 'Mathematics' || 
-            subject?.toLowerCase() === 'math'
-          );
-        }
-      ).length || 0;
-
-      const physicsQuestionsCompleted = allQuestionResults?.filter(
-        result => {
-          const subject = result.quizzes?.subject;
-          return result.is_correct && (
-            subject === 'Physics' || 
-            subject?.toLowerCase() === 'physics'
-          );
-        }
-      ).length || 0;
-
-      const questionsRemaining = Math.max(0, totalQuestions - actualCompletedQuestions);
+      // progress counts daily quizzes only
+      const daily = (quizzes ?? []).filter((q) => q.type === "daily");
+      const dailyCorrect = (correct ?? []).filter((r) => r.quiz_type === "daily");
+      const questionsIn = (list: typeof daily) => list.reduce((sum, q) => sum + questionCount(q.questions), 0);
+      const totalQuestions = questionsIn(daily);
 
       setStats({
         completedQuizzes,
         averageScore,
         pointsEarned,
-        dayStreak,
-        overallProgress: {
-          completed: actualCompletedQuestions,
-          total: totalQuestions,
-          percentage: totalQuestions > 0 ? Math.round((actualCompletedQuestions / totalQuestions) * 100) : 0,
-        },
+        overallProgress: progress(dailyCorrect.length, totalQuestions),
         subjectProgress: {
-          math: {
-            completed: mathQuestionsCompleted,
-            total: mathTotal,
-            percentage: mathTotal > 0 ? Math.round((mathQuestionsCompleted / mathTotal) * 100) : 0,
-          },
-          physics: {
-            completed: physicsQuestionsCompleted,
-            total: physicsTotal,
-            percentage: physicsTotal > 0 ? Math.round((physicsQuestionsCompleted / physicsTotal) * 100) : 0,
-          },
+          math: progress(
+            dailyCorrect.filter((r) => isMath(r.quiz_subject)).length,
+            questionsIn(daily.filter((q) => isMath(q.subject)))
+          ),
+          physics: progress(
+            dailyCorrect.filter((r) => isPhysics(r.quiz_subject)).length,
+            questionsIn(daily.filter((q) => isPhysics(q.subject)))
+          ),
         },
-        questionsRemaining,
+        questionsRemaining: Math.max(0, totalQuestions - dailyCorrect.length),
         loading: false,
       });
     } catch (error) {
-      console.error('Error fetching quiz stats:', error);
+      console.error("Error fetching quiz stats:", error);
       setStats((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  const calculateDayStreak = (attempts: { completed_at: string | null }[]): number => {
-    if (!attempts || attempts.length === 0) return 0;
-
-    // Get unique dates from completed attempts
-    const dates = attempts
-      .map(attempt => {
-        if (!attempt.completed_at) return null;
-        const date = new Date(attempt.completed_at);
-        return date.toDateString();
-      })
-      .filter((date): date is string => date !== null);
-
-    const uniqueDates = Array.from(new Set(dates)).sort((a, b) => 
-      new Date(b).getTime() - new Date(a).getTime()
-    );
-
-    if (uniqueDates.length === 0) return 0;
-
-    // Check consecutive days starting from today
-    let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      const checkDateString = checkDate.toDateString();
-
-      if (uniqueDates.includes(checkDateString)) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  };
-
   return stats;
 };
-

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SUBJECTS } from "@/lib/bac";
+import { SUBJECTS, chaptersFor } from "@/lib/bac";
 import { Info, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -39,7 +39,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
     if (selectedFile && selectedFile.type === "text/csv") {
       setFile(selectedFile);
     } else {
-      toast.error("Invalid file type", { description: "Please select a CSV file" });
+      toast.error("نوع الملف غير صالح", { description: "اختر ملف CSV" });
     }
   };
 
@@ -81,7 +81,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
 
   const handleUpload = async () => {
     if (!file || !quizData.subject || !quizData.difficulty) {
-      toast.error("Missing information", { description: "Please fill all fields and select a CSV file" });
+      toast.error("معلومات ناقصة", { description: "املأ كل الحقول واختر ملف CSV" });
       return;
     }
 
@@ -145,7 +145,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
       setQuizData({ subject: "", chapter: "", difficulty: "", type: type });
     } catch (error) {
       console.error('Error uploading quiz:', error);
-      toast.error("Upload failed", { description: error instanceof Error ? error.message : "Failed to upload quiz" });
+      toast.error("تعذّر الرفع", { description: error instanceof Error ? error.message : "Failed to upload quiz" });
     } finally {
       setUploading(false);
     }
@@ -169,17 +169,17 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             <div className="flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
               <div className="space-y-2">
-                <p className="font-medium text-base">CSV Format Requirements:</p>
+                <p className="font-medium text-base">صيغة ملف CSV:</p>
                 <p className="text-base text-muted-foreground">
-                  Your CSV file must have these exact column headers:
+                  يجب أن تكون أسماء الأعمدة في ملف CSV هي هذه بالضبط:
                 </p>
                 <code className="text-sm bg-background p-2 rounded block">
                   question,option_a,option_b,option_c,option_d,correct_answer
                 </code>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>question:</strong> The question text</li>
-                  <li>• <strong>option_a, option_b, option_c, option_d:</strong> The four answer choices</li>
-                  <li>• <strong>correct_answer:</strong> Must be A, B, C, or D</li>
+                  <li>• <strong>question:</strong> نص السؤال</li>
+                  <li>• <strong>option_a, option_b, option_c, option_d:</strong> الخيارات الأربعة</li>
+                  <li>• <strong>correct_answer:</strong> A أو B أو C أو D</li>
                 </ul>
               </div>
             </div>
@@ -187,10 +187,10 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject *</Label>
-              <Select value={quizData.subject} onValueChange={(value) => setQuizData({...quizData, subject: value})}>
+              <Label htmlFor="subject">المادة *</Label>
+              <Select value={quizData.subject} onValueChange={(value) => setQuizData({...quizData, subject: value, chapter: ""})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
+                  <SelectValue placeholder="اختر المادة" />
                 </SelectTrigger>
                 <SelectContent>
                 {SUBJECTS.map((s) => (
@@ -201,10 +201,10 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="difficulty">Difficulty *</Label>
+              <Label htmlFor="difficulty">المستوى *</Label>
               <Select value={quizData.difficulty} onValueChange={(value) => setQuizData({...quizData, difficulty: value})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select difficulty" />
+                  <SelectValue placeholder="اختر المستوى" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="easy">سهل</SelectItem>
@@ -216,16 +216,27 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="chapter">Chapter (Optional)</Label>
-            <Input
-              placeholder="e.g., Limits and Continuity, Mechanics, etc."
+            <Label htmlFor="chapter">الفصل (اختياري)</Label>
+            {/* was free text, which never matched the curriculum chapters the
+                student pages label and filter by (src/lib/bac.ts) */}
+            <Select
               value={quizData.chapter}
-              onChange={(e) => setQuizData({...quizData, chapter: e.target.value})}
-            />
+              onValueChange={(value) => setQuizData({...quizData, chapter: value})}
+              disabled={chaptersFor(quizData.subject).length === 0}
+            >
+              <SelectTrigger id="chapter">
+                <SelectValue placeholder={quizData.subject ? "اختر الفصل" : "اختر المادة أولاً"} />
+              </SelectTrigger>
+              <SelectContent>
+                {chaptersFor(quizData.subject).map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="file">CSV File *</Label>
+            <Label htmlFor="file">ملف CSV *</Label>
             <Input
               id="file"
               type="file"
@@ -258,12 +269,12 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin me-2" />
-                  Uploading...
+                  جارٍ الرفع…
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 me-2" />
-                  Upload Quiz
+                  رفع الاختبار
                 </>
               )}
             </Button>

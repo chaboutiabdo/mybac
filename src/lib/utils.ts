@@ -17,3 +17,15 @@ export function errorMessage(error: unknown, fallback = "Something went wrong"):
   if (typeof error === "string") return error
   return fallback
 }
+
+/**
+ * Why a new password would be refused, in Arabic, or null when it is fine.
+ * Mirrors the hosted Auth settings (8+ characters, "letters and digits",
+ * where letters means Latin a-z/A-Z), so students read this instead of
+ * Supabase's English rejection. Change both together.
+ */
+export function passwordProblem(password: string): string | null {
+  if (password.length < 8) return "8 أحرف على الأقل."
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return "يجب أن تحتوي على حروف لاتينية وأرقام معًا."
+  return null
+}

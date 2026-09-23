@@ -1,89 +1,48 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Pin } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from "react";
+import { Pin } from "lucide-react";
+
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { formatDateDZ } from "@/lib/bac";
 
-type AdminAdvice = Tables<'admin_advice'>;
+type AdminAdvice = Tables<"admin_advice">;
 
+/** The admin's pinned message, as a sage announcement strip. */
 const AdminAdvice = () => {
   const [advice, setAdvice] = useState<AdminAdvice | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLatestAdvice = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('admin_advice')
-          .select('*')
-          .eq('is_pinned', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-          console.error('Error fetching admin advice:', error);
-        } else if (data) {
-          setAdvice(data);
-        }
-      } catch (error) {
-        console.error('Error fetching admin advice:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLatestAdvice();
+    supabase
+      .from("admin_advice")
+      .select("*")
+      .eq("is_pinned", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) console.error("Error fetching admin advice:", error);
+        setAdvice(data);
+      });
   }, []);
 
-  if (loading) {
-    return (
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!advice) {
-    return null;
-  }
+  if (!advice) return null;
 
   return (
-    <Card className="mb-6 border-primary/20">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary/10 rounded-full">
-            <Pin className="h-4 w-4 text-primary" />
-          </div>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            نصيحة الإدارة اليومية
-          </CardTitle>
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
-            مثبت
-          </Badge>
+    <section className="flex gap-4 rounded-card bg-tone-sage p-5 shadow-soft">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-card-raised/70">
+        <Pin className="h-5 w-5" strokeWidth={1.8} aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-card-raised/70 px-2.5 py-0.5 text-[13px]">رسالة من الإدارة</span>
+          {advice.created_at && (
+            <span className="text-[13px] text-foreground/60">{formatDateDZ(advice.created_at)}</span>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <h3 className="font-semibold text-xl mb-2">{advice.title}</h3>
-        <p className="text-muted-foreground leading-relaxed">{advice.content}</p>
-        <div className="mt-3 text-sm text-muted-foreground">
-          {new Date(advice.created_at ?? Date.now()).toLocaleDateString('ar-DZ', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
-        </div>
-      </CardContent>
-    </Card>
+        <h3 className="mt-1.5 text-lg font-medium">{advice.title}</h3>
+        <p className="mt-1 text-[15px] leading-relaxed text-foreground/75">{advice.content}</p>
+      </div>
+    </section>
   );
 };
 

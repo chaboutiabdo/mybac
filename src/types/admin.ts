@@ -11,6 +11,7 @@ export const ADMIN_SECTIONS = [
   "videos",
   "exams",
   "quizzes",
+  "flashcards",
   "advice",
   "tips",
   "subscriptions",

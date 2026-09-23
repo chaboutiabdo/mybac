@@ -20,9 +20,9 @@ import {
   Users,
   FileText,
   GraduationCap,
-  Shield,
   Video,
   BookOpen,
+  Layers,
   Lightbulb,
   Pin,
   TrendingUp,
@@ -40,6 +40,7 @@ const menuItems: { id: AdminSection; title: string; icon: LucideIcon }[] = [
   { id: "videos", title: "الدروس", icon: Video },
   { id: "exams", title: "الامتحانات", icon: FileText },
   { id: "quizzes", title: "الاختبارات", icon: BookOpen },
+  { id: "flashcards", title: "البطاقات", icon: Layers },
   { id: "advice", title: "نصيحة اليوم", icon: Pin },
   { id: "tips", title: "النصائح", icon: Lightbulb },
   { id: "subscriptions", title: "الاشتراكات", icon: TrendingUp },
@@ -49,15 +50,15 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
   const { state } = useSidebar();
 
   return (
-    <Sidebar className={state === "collapsed" ? "w-14" : "w-64"} collapsible="icon">
+    // side="right": in RTL the space reserved for the sidebar is on the right,
+    // so the default left-fixed panel covered the page content
+    <Sidebar side="right" className={state === "collapsed" ? "w-14" : "w-64"} collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-4 py-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border-gold/40 bg-accent-light">
-            <Shield className="h-5 w-5 text-accent" strokeWidth={1.7} />
-          </div>
+          <img src="/favicon.svg" alt="" className="h-10 w-10 shrink-0" aria-hidden />
           {state === "expanded" && (
             <div>
-              <h2 className="font-display text-lg font-bold text-sidebar-accent-foreground">لوحة الإدارة</h2>
+              <h2 className="text-lg font-semibold">لوحة الإدارة</h2>
               <p className="text-sm text-sidebar-foreground/70">THE SMART</p>
             </div>
           )}
@@ -67,7 +68,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-accent/80">الإدارة</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[13px] text-muted-foreground">الإدارة</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
@@ -76,9 +77,9 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
                     onClick={() => onSectionChange(item.id)}
                     isActive={activeSection === item.id}
                     className={cn(
-                      "h-11 w-full justify-start gap-3 text-base",
-                      activeSection === item.id &&
-                        "border-s-2 border-accent bg-sidebar-accent font-semibold text-accent"
+                      // the active item is an ink pill, like the student rail; it has to
+                      // be set on data-[active=true], which the base styles also target
+                      "h-11 w-full justify-start gap-3 rounded-2xl text-base data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground"
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -96,7 +97,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
             {state === "expanded" && (
                 <>
                   <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-accent" />
+                    <GraduationCap className="h-4 w-4" />
                     <span>THE SMART — الإدارة</span>
                   </div>
                 </>

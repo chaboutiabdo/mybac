@@ -1,321 +1,246 @@
-import { useState, useEffect } from "react";
-import { EXAM_YEARS, STREAMS, streamLabel } from "@/lib/bac";
-import { Loading } from "@/components/ui/states";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Eye, FileText, Sparkles, Download } from "lucide-react";
-import Navigation from "@/components/layout/Navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Eye, FileText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-// `solved` is derived client-side from exam_progress, not a column
-type Exam = Tables<'exams'> & { solved: boolean };
+import FilterPills, { STREAM_OPTIONS, SUBJECT_OPTIONS } from "@/components/FilterPills";
+import PageHeader from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmptyState, Loading } from "@/components/ui/states";
+import { useAuth } from "@/contexts/AuthContext";
+import { useActivityTracking } from "@/hooks/useActivityTracking";
+import { useSubscription } from "@/hooks/useSubscription";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { EXAM_YEARS, TONE_BG, difficultyLabel, streamLabel, subjectLabel, subjectTone } from "@/lib/bac";
+import { cn } from "@/lib/utils";
+
+type Exam = Tables<"exams">;
 
 const Exams = () => {
-  const [selectedStream, setSelectedStream] = useState<string>("");
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [stream, setStream] = useState<string | null>(null);
+  const [subject, setSubject] = useState<string | null>(null);
+  const [year, setYear] = useState("all");
   const [exams, setExams] = useState<Exam[]>([]);
-  const [examProgress, setExamProgress] = useState<Record<string, Tables<'exam_progress'>>>({});
+  const [examProgress, setExamProgress] = useState<Record<string, Tables<"exam_progress">>>({});
   const [loading, setLoading] = useState(true);
-  
+
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { isPremium } = useSubscription();
   const { trackExamActivity } = useActivityTracking();
 
   useEffect(() => {
     fetchExams();
-    if (user) {
-      fetchExamProgress(); 
-    }
+    if (user) fetchExamProgress();
   }, [user]);
 
   const fetchExams = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('exams')
-        .select('*')
-        .order('year', { ascending: false });
-
-      if (error) throw error;
-      
-      const examsWithSolved = data?.map(exam => ({
-        ...exam,
-        solved: examProgress[exam.id]?.solved_with_ai || false
-      })) || [];
-      
-      setExams(examsWithSolved);
-    } catch (error) {
-      console.error('Error fetching exams:', error);
-      toast.error("خطأ", { description: "تعذّر تحميل الامتحانات" });
-    } finally {
-      setLoading(false);
+    const { data, error } = await supabase
+      .from("exams")
+      .select("*")
+      .order("year", { ascending: false })
+      .order("subject")
+      .order("stream");
+    if (error) {
+      console.error("Error fetching exams:", error);
+      toast.error("تعذّر تحميل المواضيع");
     }
+    setExams(data ?? []);
+    setLoading(false);
   };
 
   const fetchExamProgress = async () => {
     if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('exam_progress')
-        .select('*')
-        .eq('student_id', user.id);
-
-      if (error) throw error;
-      
-      const progressMap: Record<string, Tables<'exam_progress'>> = {};
-      data?.forEach(progress => {
-        progressMap[progress.exam_id] = progress;
-      });
-      setExamProgress(progressMap);
-    } catch (error) {
-      console.error('Error fetching exam progress:', error);
+    const { data, error } = await supabase.from("exam_progress").select("*").eq("student_id", user.id);
+    if (error) {
+      console.error("Error fetching exam progress:", error);
+      return;
     }
+    setExamProgress(Object.fromEntries((data ?? []).map((p) => [p.exam_id, p])));
   };
 
-  const handleExamAction = async (exam: Exam, action: 'viewed' | 'viewed_solution' | 'solved_with_ai') => {
+  const handleExamAction = async (exam: Exam, action: "viewed" | "viewed_solution" | "solved_with_ai") => {
     if (!user) return;
 
-    console.log('User exam action:', { exam: exam.title, action });
-
     try {
-      // Track exam activity
       await trackExamActivity(
         exam.id,
-        action === 'viewed' ? 'viewed' : action === 'viewed_solution' ? 'downloaded' : 'started_solving',
+        action === "viewed" ? "viewed" : action === "viewed_solution" ? "downloaded" : "started_solving",
         exam.title,
         exam.subject,
         exam.year,
         exam.stream
       );
 
-      // Update exam progress for scoring
-      const progressUpdate: TablesInsert<'exam_progress'> = {
-        student_id: user.id,
-        exam_id: exam.id
-      };
+      const progressUpdate: TablesInsert<"exam_progress"> = { student_id: user.id, exam_id: exam.id };
+      if (action === "viewed") progressUpdate.viewed_exam = true;
+      else if (action === "viewed_solution") progressUpdate.viewed_solution = true;
+      else progressUpdate.solved_with_ai = true;
 
-      if (action === 'viewed') {
-        progressUpdate.viewed_exam = true;
-      } else if (action === 'viewed_solution') {
-        progressUpdate.viewed_solution = true;
-      } else if (action === 'solved_with_ai') {
-        progressUpdate.solved_with_ai = true;
-      }
-
-      await supabase.from('exam_progress').upsert(progressUpdate, {
-        onConflict: 'student_id,exam_id'
-      });
-
-      // Refresh exam progress to update UI
+      await supabase.from("exam_progress").upsert(progressUpdate, { onConflict: "student_id,exam_id" });
       fetchExamProgress();
-
-      toast.success("تم", { description: `Exam ${action.replace('_', ' ')} successfully` });
-
     } catch (error) {
-      console.error('Error handling exam action:', error);
-      toast.error("خطأ", { description: "Failed to process exam action" });
+      console.error("Error handling exam action:", error);
     }
   };
 
-  const openExamFile = async (exam: Exam, type: 'exam' | 'solution') => {
-    const fileUrl = type === 'exam' ? exam.exam_url : exam.solution_url;
+  const openExamFile = async (exam: Exam, type: "exam" | "solution") => {
+    const fileUrl = type === "exam" ? exam.exam_url : exam.solution_url;
     if (!fileUrl) {
-      toast.error("خطأ", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file not available` });
+      toast.error(type === "exam" ? "ملف الموضوع غير متوفر" : "الحل غير متوفر بعد");
       return;
     }
 
     try {
-      // Check if it's a direct URL or storage path
-      if (fileUrl.startsWith('http')) {
-        // Direct URL - just open in new tab to avoid blocking issues
-        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      if (fileUrl.startsWith("http")) {
+        window.open(fileUrl, "_blank", "noopener,noreferrer");
       } else {
-        // Storage path - get signed URL
-        const { data } = await supabase.storage
-          .from('documents')
-          .createSignedUrl(fileUrl, 3600); // 1 hour expiry
-
-        if (data?.signedUrl) {
-          // Open signed URL directly in new tab
-          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-        } else {
-          throw new Error('Failed to get signed URL');
-        }
+        // a storage path: open it through a one-hour signed URL
+        const { data } = await supabase.storage.from("documents").createSignedUrl(fileUrl, 3600);
+        if (!data?.signedUrl) throw new Error("Failed to get signed URL");
+        window.open(data.signedUrl, "_blank", "noopener,noreferrer");
       }
-      
-      // Update downloads count
-      if (type === 'exam') {
-        await supabase
-          .from('exams')
-          .update({ downloads: (exam.downloads || 0) + 1 })
-          .eq('id', exam.id);
-      }
-
-      toast.success("تم", { description: `${type === 'exam' ? 'Exam' : 'Solution'} file opened successfully!` });
-
+      // exams.downloads is counted by a database trigger on exam_progress
     } catch (error) {
-      console.error('Error opening file:', error);
-      toast.error("خطأ", { description: "Failed to open file. Please try again." });
+      console.error("Error opening file:", error);
+      toast.error("تعذّر فتح الملف، حاول مرة أخرى");
     }
   };
 
-  const filteredExams = exams.filter(exam => {
-    return (!selectedStream || selectedStream === "all" || exam.stream === selectedStream) &&
-           (!selectedSubject || selectedSubject === "all" || exam.subject === selectedSubject) &&
-           (!selectedYear || selectedYear === "all" || exam.year.toString() === selectedYear);
-  });
+  const filtered = exams.filter(
+    (exam) =>
+      (!stream || exam.stream === stream) &&
+      (!subject || exam.subject === subject) &&
+      (year === "all" || exam.year.toString() === year)
+  );
 
   return (
-    <div className="pattern-field min-h-screen bg-background">
-      <Navigation />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <h1 className="font-display text-[34px] font-bold tracking-tight">
-              امتحانات البكالوريا السابقة
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              تدرب على امتحانات رسمية سابقة واحصل على حلول مدعومة بالذكاء الاصطناعي
-            </p>
+    <div className="space-y-8">
+      <PageHeader title="مواضيع البكالوريا" subtitle="مواضيع رسمية من الدورات السابقة مع حلولها الرسمية" />
+
+      <div className="space-y-3">
+        <FilterPills label="الشعبة" options={STREAM_OPTIONS} value={stream} onChange={setStream} />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <FilterPills label="المادة" options={SUBJECT_OPTIONS} value={subject} onChange={setSubject} />
           </div>
-
-          <Card className="border border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
-                <FileText className="h-5 w-5 text-primary" />
-                تصفية الامتحانات
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Select value={selectedStream} onValueChange={setSelectedStream}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر الشعبة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الشعب</SelectItem>
-                  {STREAMS.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر المادة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع المواد</SelectItem>
-                  <SelectItem value="Math">الرياضيات</SelectItem>
-                  <SelectItem value="Physics">الفيزياء</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر السنة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع السنوات</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2023">2023</SelectItem>
-                  <SelectItem value="2022">2022</SelectItem>
-                  <SelectItem value="2021">2021</SelectItem>
-                  <SelectItem value="2020">2020</SelectItem>
-                  <SelectItem value="2019">2019</SelectItem>
-                  <SelectItem value="2018">2018</SelectItem>
-                  <SelectItem value="2017">2017</SelectItem>
-                  <SelectItem value="2016">2016</SelectItem>
-                  <SelectItem value="2015">2015</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {loading ? (
-            <Loading />
-          ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-            {filteredExams.map((exam) => (
-              <Card key={exam.id} className="group transition-all duration-300 border-primary/10">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                      {exam.solved && <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-success" />}
-                      <span className="line-clamp-2">{exam.title}</span>
-                    </CardTitle>
-                    <Badge variant={exam.solved ? "default" : "secondary"} className="text-sm">
-                      {exam.solved ? "محلول" : "جديد"}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-sm md:text-base">
-                    شعبة {streamLabel(exam.stream)} • {exam.year}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm md:text-base text-muted-foreground">
-                    <span>الصعوبة: <Badge variant="outline" className="ms-1 text-sm">{exam.difficulty || 'متوسط'}</Badge></span>
-                    <span>{exam.downloads || 0} تحميل</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <Button 
-                      className="w-full transition-all duration-300 text-sm md:text-base"
-                      variant="outline"
-                      onClick={() => {
-                        handleExamAction(exam, 'viewed');
-                        openExamFile(exam, 'exam');
-                      }}
-                      disabled={!exam.exam_url}
-                    >
-                      <Eye className="h-3 w-3 md:h-4 md:w-4 me-2" />
-                      عرض الامتحان
-                    </Button>
-                    <Button 
-                      className="w-full transition-all duration-300 text-sm md:text-base"
-                      variant="outline"
-                      onClick={() => {
-                        handleExamAction(exam, 'viewed_solution');
-                        openExamFile(exam, 'solution');
-                      }}
-                      disabled={!exam.solution_url}
-                    >
-                      <FileText className="h-3 w-3 md:h-4 md:w-4 me-2" />
-                      {exam.solution_url ? 'الحلول' : 'لا يوجد حل'}
-                    </Button>
-                    <Button 
-                      className="w-full relative overflow-hidden group text-primary-foreground transition-all duration-300"
-                      onClick={() => {
-                        toast.success("قريباً", { description: "هذه الميزة ستكون متاحة قريباً" });
-                      }}
-                    >
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 me-2 animate-pulse" />
-                        <span className="font-semibold">حل بالذكاء الاصطناعي</span>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />
-                      </div>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          )}
-          {!loading && filteredExams.length === 0 && (
-            <div className="text-center py-8 md:py-12">
-              <p className="text-muted-foreground">لا توجد امتحانات تطابق المرشحات المحددة.</p>
-            </div>
-          )}
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger className="h-12 w-40 rounded-full" aria-label="السنة">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل السنوات</SelectItem>
+              {EXAM_YEARS.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </main>
+      </div>
+
+      {loading ? (
+        <Loading />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={FileText} title="لا توجد مواضيع تطابق اختيارك" description="غيّر الشعبة أو المادة أو السنة." />
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-2">
+          {filtered.map((exam, i) => {
+            // derived at render: computing it at fetch time read progress before it had loaded
+            const solved = Boolean(examProgress[exam.id]?.solved_with_ai || examProgress[exam.id]?.viewed_solution);
+            return (
+              <article
+                key={exam.id}
+                className={cn(
+                  "flex flex-col rounded-card p-5 shadow-soft",
+                  TONE_BG[subjectTone(exam.subject)],
+                  filtered.length % 2 === 1 && i === filtered.length - 1 && "lg:col-span-2"
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-card-raised/70 px-3 py-1.5 text-[13px] backdrop-blur">
+                    {streamLabel(exam.stream)}
+                  </span>
+                  {exam.difficulty && (
+                    <span className="rounded-full bg-card-raised/70 px-2.5 py-1.5 text-[13px] backdrop-blur">
+                      {difficultyLabel(exam.difficulty)}
+                    </span>
+                  )}
+                  {solved && (
+                    <span className="ms-auto flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[13px] text-primary-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                      راجعته
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="mt-8 text-[22px] font-medium leading-[1.35]">
+                  {subjectLabel(exam.subject)} <span className="tabular font-normal">{exam.year}</span>
+                </h2>
+                <p className="mt-1 text-[15px] text-foreground/70">
+                  {exam.questions ? <span className="tabular">{exam.questions} تمارين · </span> : null}
+                  <span className="tabular">{exam.downloads || 0}</span> تحميل
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => {
+                      handleExamAction(exam, "viewed");
+                      openExamFile(exam, "exam");
+                    }}
+                    disabled={!exam.exam_url}
+                  >
+                    <Eye aria-hidden />
+                    عرض الموضوع
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="bg-card-raised/70 hover:bg-card-raised"
+                    onClick={() => {
+                      handleExamAction(exam, "viewed_solution");
+                      openExamFile(exam, "solution");
+                    }}
+                    disabled={!exam.solution_url}
+                  >
+                    <FileText aria-hidden />
+                    {exam.solution_url ? "الحل الرسمي" : "لا يوجد حل بعد"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="bg-card-raised/70 hover:bg-card-raised"
+                    // Visible to everyone, functionally gated — /exams is a free
+                    // route. Same shape as Flashcards.tsx's generate handler: a
+                    // toast explains why, then hands the student to /pricing,
+                    // rather than a silently dead button. exam_progress is NOT
+                    // written here: the solution page writes it only after a
+                    // solution actually renders, so a free student bounced to
+                    // /pricing is never marked as having solved the exam (and
+                    // never banks the 10 points handle_exam_points awards).
+                    onClick={() => {
+                      if (!isPremium) {
+                        toast.error("الحل بالذكاء الاصطناعي ميزة مميّزة", {
+                          description: "تصفّح المواضيع وحلولها الرسمية مجاني، أما الشرح خطوة بخطوة فيتطلب اشتراكاً مميّزاً.",
+                        });
+                        navigate("/pricing");
+                        return;
+                      }
+                      navigate(`/exam-solution/${exam.id}`);
+                    }}
+                    // matches its two siblings: nothing to analyse without a file
+                    disabled={!exam.exam_url && !exam.solution_url}
+                  >
+                    <Sparkles aria-hidden />
+                    {exam.exam_url || exam.solution_url ? "حل بالذكاء الاصطناعي" : "لا يوجد ملف"}
+                  </Button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

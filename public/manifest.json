@@ -4,8 +4,8 @@
   "description": "مواضيع بكالوريا سابقة مع حلولها، اختبار يومي مصحّح، ودروس حسب فصول المنهاج.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0B2A22",
-  "theme_color": "#0B2A22",
+  "background_color": "#efe6d6",
+  "theme_color": "#efe6d6",
   "orientation": "portrait",
   "icons": [
     {

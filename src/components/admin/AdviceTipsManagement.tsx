@@ -91,7 +91,7 @@ export function AdviceTipsManagement() {
 
       setIsLoading(false);
     } catch (error) {
-      toast.error("خطأ", { description: "Failed to load advice tips." });
+      toast.error("خطأ", { description: "تعذّر تحميل النصائح." });
     }
   };
 
@@ -159,11 +159,11 @@ export function AdviceTipsManagement() {
 
       if (error) throw error;
 
-      toast.success("تم", { description: "Tip deleted successfully." });
+      toast.success("تم", { description: "تم حذف النصيحة." });
 
       fetchTips();
     } catch (error) {
-      toast.error("خطأ", { description: "Failed to delete tip." });
+      toast.error("خطأ", { description: "تعذّر حذف النصيحة." });
     }
   };
 
@@ -194,7 +194,7 @@ export function AdviceTipsManagement() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loading />
-          <p className="text-muted-foreground">Loading advice tips...</p>
+          <p className="text-muted-foreground">جارٍ تحميل النصائح…</p>
         </div>
       </div>
     );

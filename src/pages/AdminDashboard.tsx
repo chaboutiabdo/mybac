@@ -8,6 +8,7 @@ import { SchoolsManagement } from "@/components/admin/SchoolsManagement";
 import { VideosManagement } from "@/components/admin/VideosManagement";
 import { ExamsManagement } from "@/components/admin/ExamsManagement";
 import { QuizzesManagement } from "@/components/admin/QuizzesManagement";
+import { FlashcardsManagement } from "@/components/admin/FlashcardsManagement";
 import { AdminAdviceManagement } from "@/components/admin/AdminAdviceManagement";
 import { AdviceTipsManagement } from "@/components/admin/AdviceTipsManagement";
 import { SubscriptionManagement } from "@/components/admin/SubscriptionManagement";
@@ -20,6 +21,7 @@ const SECTIONS: Record<AdminSection, () => JSX.Element> = {
   videos: VideosManagement,
   exams: ExamsManagement,
   quizzes: QuizzesManagement,
+  flashcards: FlashcardsManagement,
   advice: AdminAdviceManagement,
   tips: AdviceTipsManagement,
   subscriptions: SubscriptionManagement,
@@ -49,7 +51,7 @@ const AdminDashboard = () => {
           onSectionChange={(next) => navigate(`/admin/${next}`)}
         />
         <main className="flex-1 overflow-auto">
-          <div className="container py-6">
+          <div className="mx-auto max-w-[1320px] px-4 py-6 sm:px-6">
             <Section />
           </div>
         </main>

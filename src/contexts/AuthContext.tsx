@@ -20,6 +20,7 @@ interface AuthContextType {
     name: string,
     phone?: string,
     plan?: string,
+    city?: string,
   ) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -106,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     phone?: string,
     plan = "free",
+    city?: string,
   ) => {
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
@@ -119,22 +121,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone: phone,
             role: "student", // Default role
             initial_plan: plan, // Store the initially selected plan
+            // read by handle_new_user() at row-creation time -- email
+            // confirmation means there's no signed-in session afterward to
+            // write this with instead
+            city: city?.trim() || undefined,
           },
         },
       });
 
       if (error) {
-        toast.error("تعذّر إنشاء الحساب", { description: error.message });
+        // Supabase says "already registered" in as many words, which turns the
+        // signup form into an account-existence oracle. The detail stays in the
+        // console for whoever is debugging.
+        console.error("Sign up error:", error);
+        toast.error("تعذّر إنشاء الحساب", {
+          description: "تحقّق من بياناتك وحاول مرة أخرى.",
+        });
         return { error };
       }
 
-      if (plan === "free") {
-        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك. سيُفعَّل العرض المجاني بعد التأكيد." });
-      } else if (plan === "premium") {
-        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك. سنعالج طلب الاشتراك المميّز قريبًا." });
-      } else {
-        toast.success("تم إنشاء الحساب", { description: "تحقّق من بريدك لتأكيد حسابك." });
-      }
+      // Email confirmation is off in production (the free mailer only reaches
+      // the owner's team), so the account is signed in straight away.
+      toast.success("تم إنشاء الحساب", {
+        description: plan === "premium" ? "مرحبًا بك! سنعالج طلب الاشتراك المميّز قريبًا." : "مرحبًا بك في THE SMART!",
+      });
 
       return { error: null };
     } catch (error) {
@@ -151,7 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        toast.error("تعذّر تسجيل الدخول", { description: error.message });
+        console.error("Sign in error:", error);
+        toast.error("تعذّر تسجيل الدخول", {
+          description: "تحقّق من بريدك وكلمة مرورك.",
+        });
         return { error };
       }
 

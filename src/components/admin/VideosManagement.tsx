@@ -116,12 +116,12 @@ export function VideosManagement() {
 
   const handleCreateVideo = async () => {
     if (!formData.title || !formData.subject || !formData.chapter) {
-      toast.error("خطأ", { description: "Please fill in all required fields" });
+      toast.error("خطأ", { description: "املأ كل الحقول المطلوبة" });
       return;
     }
 
     if (!formData.url) {
-      toast.error("خطأ", { description: "Please provide a valid video URL" });
+      toast.error("خطأ", { description: "أدخل رابط فيديو صالحاً" });
       return;
     }
 
@@ -163,7 +163,7 @@ export function VideosManagement() {
       });
       setIsCreateDialogOpen(false);
       
-      toast.success("تم", { description: "Video created successfully" });
+      toast.success("تم", { description: "تمت إضافة الدرس" });
     } catch (error) {
       console.error("Error creating video:", error);
       toast.error("خطأ", { description: "تعذّر إنشاء الدرس" });
@@ -183,34 +183,34 @@ export function VideosManagement() {
         <div>
           <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <Video className="h-8 w-8" />
-            Videos Management
+            إدارة الدروس
           </h1>
-          <p className="text-muted-foreground">Manage video content, subjects, and chapters</p>
+          <p className="text-muted-foreground">الدروس المرئية حسب المواد والفصول</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="text-primary-foreground">
               <Plus className="h-4 w-4 me-2" />
-              Add Video
+              إضافة درس
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add New Video</DialogTitle>
+              <DialogTitle>إضافة درس جديد</DialogTitle>
               <DialogDescription>
-                Add a new video by providing a YouTube or premium video URL.
+                أضف درساً برابط يوتيوب أو برابط درس مميّز.
               </DialogDescription>
             </DialogHeader>
             
             <Tabs value={formData.type} onValueChange={(value) => setFormData({...formData, type: value as "youtube" | "premium"})}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="youtube">YouTube Video</TabsTrigger>
-                <TabsTrigger value="premium">Premium Video</TabsTrigger>
+                <TabsTrigger value="youtube">درس يوتيوب</TabsTrigger>
+                <TabsTrigger value="premium">درس مميّز</TabsTrigger>
               </TabsList>
               
               <TabsContent value="youtube" className="space-y-4">
                 <div>
-                  <Label htmlFor="video-url">YouTube Video URL</Label>
+                  <Label htmlFor="video-url">رابط يوتيوب</Label>
                   <Input
                     id="video-url"
                     value={formData.url}
@@ -222,7 +222,7 @@ export function VideosManagement() {
               
               <TabsContent value="premium" className="space-y-4">
                 <div>
-                  <Label htmlFor="premium-url">Premium Video URL or File Path</Label>
+                  <Label htmlFor="premium-url">رابط الدرس المميّز أو مسار الملف</Label>
                   <Input
                     id="premium-url"
                     value={formData.url}
@@ -235,12 +235,12 @@ export function VideosManagement() {
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="col-span-2">
-                <Label htmlFor="title">Video Title *</Label>
+                <Label htmlFor="title">عنوان الدرس *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="Enter video title"
+                  placeholder="عنوان الدرس"
                 />
               </div>
               <div className="col-span-2">
@@ -249,15 +249,15 @@ export function VideosManagement() {
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Video description"
+                  placeholder="وصف الدرس"
                   rows={3}
                 />
               </div>
               <div>
-                <Label htmlFor="subject">Subject *</Label>
+                <Label htmlFor="subject">المادة *</Label>
                 <Select value={formData.subject} onValueChange={(value) => setFormData({...formData, subject: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder="اختر المادة" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border z-50">
                     {subjects.map((subject) => (
@@ -267,10 +267,10 @@ export function VideosManagement() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="chapter">Chapter *</Label>
+                <Label htmlFor="chapter">الفصل *</Label>
                 <Select value={formData.chapter} onValueChange={(value) => setFormData({...formData, chapter: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select chapter" />
+                    <SelectValue placeholder="اختر الفصل" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border z-50">
                     {chapters.map((chapter) => (
@@ -286,7 +286,7 @@ export function VideosManagement() {
                   type="number"
                   value={formData.duration}
                   onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                  placeholder="Duration in minutes"
+                  placeholder="المدة بالدقائق"
                 />
               </div>
             </div>
@@ -296,7 +296,7 @@ export function VideosManagement() {
                 Cancel
               </Button>
               <Button onClick={handleCreateVideo} className="text-primary-foreground">
-                Create Video
+                إضافة الدرس
               </Button>
             </div>
           </DialogContent>
@@ -322,7 +322,7 @@ export function VideosManagement() {
               <Link className="h-5 w-5 text-success" />
               <div>
                 <p className="text-3xl font-bold">{youtubeVideos}</p>
-                <p className="text-base text-muted-foreground">YouTube</p>
+                <p className="text-base text-muted-foreground">يوتيوب</p>
               </div>
             </div>
           </CardContent>
@@ -330,7 +330,7 @@ export function VideosManagement() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-accent" />
+              <Upload className="h-5 w-5" />
               <div>
                 <p className="text-3xl font-bold">{premiumVideos}</p>
                 <p className="text-base text-muted-foreground">مميّز</p>
@@ -344,7 +344,7 @@ export function VideosManagement() {
               <Eye className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-3xl font-bold">{totalViews.toLocaleString()}</p>
-                <p className="text-base text-muted-foreground">Total Views</p>
+                <p className="text-base text-muted-foreground">مجموع المشاهدات</p>
               </div>
             </div>
           </CardContent>
@@ -354,8 +354,8 @@ export function VideosManagement() {
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-info" />
               <div>
-                <p className="text-3xl font-bold">{avgDuration}min</p>
-                <p className="text-base text-muted-foreground">Avg Duration</p>
+                <p className="text-3xl font-bold">{avgDuration} د</p>
+                <p className="text-base text-muted-foreground">متوسط المدة</p>
               </div>
             </div>
           </CardContent>
@@ -366,28 +366,28 @@ export function VideosManagement() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Video Library</CardTitle>
+            <CardTitle>مكتبة الدروس</CardTitle>
             <div className="flex gap-2">
               <Button
                 variant={activeTab === "all" ? "default" : "outline"}
                 onClick={() => setActiveTab("all")}
                 size="sm"
               >
-                All Videos ({videos.length})
+                كل الدروس ({videos.length})
               </Button>
               <Button
                 variant={activeTab === "youtube" ? "default" : "outline"}
                 onClick={() => setActiveTab("youtube")}
                 size="sm"
               >
-                YouTube ({youtubeVideos})
+                يوتيوب ({youtubeVideos})
               </Button>
               <Button
                 variant={activeTab === "premium" ? "default" : "outline"}
                 onClick={() => setActiveTab("premium")}
                 size="sm"
               >
-                Premium ({premiumVideos})
+                مميّزة ({premiumVideos})
               </Button>
             </div>
           </div>
@@ -398,7 +398,7 @@ export function VideosManagement() {
             <div className="relative flex-1">
               <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search videos by title, description, or subject..."
+                placeholder="ابحث بالعنوان أو الوصف أو المادة…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="ps-10"
@@ -407,10 +407,10 @@ export function VideosManagement() {
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger className="w-48">
                 <Filter className="h-4 w-4 me-2" />
-                <SelectValue placeholder="Filter by subject" />
+                <SelectValue placeholder="المادة" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="all">All Subjects</SelectItem>
+                <SelectItem value="all">كل المواد</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                 ))}
@@ -436,13 +436,13 @@ export function VideosManagement() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
-                      Loading videos...
+                      جارٍ تحميل الدروس…
                     </TableCell>
                   </TableRow>
                 ) : filteredVideos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
-                      No videos found
+                      لا توجد دروس
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -473,14 +473,14 @@ export function VideosManagement() {
                             ) : (
                               <Link className="h-3 w-3" />
                             )}
-                            {video.type}
+                            {video.type === "premium" ? "مميّز" : "يوتيوب"}
                           </div>
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {video.duration ? `${video.duration}min` : "N/A"}
+                          {video.duration ? `${video.duration} د` : "—"}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -491,13 +491,13 @@ export function VideosManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" title="Play video">
+                          <Button variant="ghost" size="sm" title="تشغيل">
                             <Play className="h-4 w-4 text-success" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Edit video">
+                          <Button variant="ghost" size="sm" title="تعديل">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Delete video">
+                          <Button variant="ghost" size="sm" title="حذف">
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>

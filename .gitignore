@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# the owner's local reports (the security audit describes live findings)
+docs/

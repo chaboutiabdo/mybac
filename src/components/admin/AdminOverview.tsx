@@ -14,6 +14,7 @@ import {
   Upload
 } from "lucide-react";
 import StatsCard from "@/components/dashboard/StatsCard";
+import PageHeader from "@/components/layout/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { UploadExamDialog } from "./UploadExamDialog";
@@ -95,40 +96,35 @@ export function AdminOverview() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground">لوحة الإدارة</h1>
-          <p className="text-muted-foreground">Welcome back! Here's what's happening with your platform.</p>
-        </div>
-      </div>
+      <PageHeader title="لوحة الإدارة" subtitle="نظرة سريعة على نشاط المنصة ومحتواها." />
 
       {/* Stats Overview */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatsCard
           title="إجمالي الطلاب"
           value={stats.students}
-          subtitle="Active learners"
+          subtitle="طالب مسجّل"
           icon={Users}
           variant="default"
         />
         <StatsCard
           title="الثانويات"
           value={stats.schools}
-          subtitle="Registered schools"
+          subtitle="ثانوية مسجّلة"
           icon={GraduationCap}
           variant="success"
         />
         <StatsCard
-          title="Exams Available"
+          title="المواضيع"
           value={stats.exams}
-          subtitle="BAC papers"
+          subtitle="موضوع بكالوريا"
           icon={FileText}
           variant="accent"
         />
         <StatsCard
           title="الدروس"
           value={stats.videos}
-          subtitle="Educational content"
+          subtitle="درس منشور"
           icon={Video}
           variant="warning"
         />
@@ -217,19 +213,14 @@ export function AdminOverview() {
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <UploadExamDialog>
-              <Button 
-                className="w-full h-20 hover:from-green-700 hover:to-green-800 text-primary-foreground"
-              >
-                <Upload className="h-5 w-5 me-2" />
-                Upload Exam
+              <Button size="xl" className="h-20 w-full rounded-card">
+                <Upload aria-hidden />
+                رفع موضوع بكالوريا
               </Button>
             </UploadExamDialog>
-            <Button 
-              className="w-full h-20 hover:from-purple-700 hover:to-purple-800 text-primary-foreground"
-              onClick={() => setShowUploadQuiz(true)}
-            >
-              <Upload className="h-5 w-5 me-2" />
-              Upload Practice Quiz
+            <Button size="xl" variant="accent" className="h-20 w-full rounded-card" onClick={() => setShowUploadQuiz(true)}>
+              <Upload aria-hidden />
+              رفع اختبار تدريبي
             </Button>
           </div>
         </CardContent>

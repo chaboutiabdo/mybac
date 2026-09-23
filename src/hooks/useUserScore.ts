@@ -8,32 +8,10 @@ export const useUserScore = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchUserScore();
-      
-      // Set up real-time subscription to profiles to get score updates
-      const subscription = supabase
-        .channel(`profile_${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            if (payload.new.total_score !== undefined) {
-              setScore(payload.new.total_score);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
+    // No realtime subscription: profiles was never in the supabase_realtime
+    // publication, so the old one never received an event — it only opened a
+    // websocket the CSP would have had to allow. Callers use refreshScore().
+    if (user) fetchUserScore();
   }, [user]);
 
   const fetchUserScore = async () => {

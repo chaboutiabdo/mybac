@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SUBJECTS } from "@/lib/bac";
+import { EXAM_YEARS, SUBJECTS } from "@/lib/bac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +70,7 @@ export function ExamsManagement() {
   }, []);
 
   const subjects = SUBJECTS.map((s) => s.value);
-  const years = [2024, 2023, 2022, 2021, 2020];
+  const years = EXAM_YEARS;
 
   const filteredExams = exams.filter(exam => {
     const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,14 +90,14 @@ export function ExamsManagement() {
         <div>
           <h1 className="text-4xl font-bold text-foreground flex items-center gap-2">
             <FileText className="h-8 w-8" />
-            Exams Management
+            إدارة المواضيع
           </h1>
-          <p className="text-muted-foreground">Upload and manage BAC examination papers</p>
+          <p className="text-muted-foreground">رفع مواضيع البكالوريا وإدارتها</p>
         </div>
         <UploadExamDialog>
           <Button className="text-primary-foreground">
             <Upload className="h-4 w-4 me-2" />
-            Upload Exam
+            رفع موضوع
           </Button>
         </UploadExamDialog>
       </div>
@@ -121,7 +121,7 @@ export function ExamsManagement() {
               <Download className="h-5 w-5 text-success" />
               <div>
                 <p className="text-3xl font-bold">{totalDownloads.toLocaleString()}</p>
-                <p className="text-base text-muted-foreground">Total Downloads</p>
+                <p className="text-base text-muted-foreground">مجموع التحميلات</p>
               </div>
             </div>
           </CardContent>
@@ -129,10 +129,10 @@ export function ExamsManagement() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-accent" />
+              <Calendar className="h-5 w-5" />
               <div>
                 <p className="text-3xl font-bold">{new Date().getFullYear()}</p>
-                <p className="text-base text-muted-foreground">Current Year</p>
+                <p className="text-base text-muted-foreground">السنة الحالية</p>
               </div>
             </div>
           </CardContent>
@@ -142,7 +142,7 @@ export function ExamsManagement() {
       {/* Exams List */}
       <Card>
         <CardHeader>
-          <CardTitle>Examination Papers</CardTitle>
+          <CardTitle>مواضيع الامتحانات</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search and Filters */}
@@ -150,7 +150,7 @@ export function ExamsManagement() {
             <div className="relative flex-1">
               <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search exams by title or subject..."
+                placeholder="ابحث بالعنوان أو المادة…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="ps-10"
@@ -159,10 +159,10 @@ export function ExamsManagement() {
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger className="w-48">
                 <Filter className="h-4 w-4 me-2" />
-                <SelectValue placeholder="Filter by subject" />
+                <SelectValue placeholder="المادة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
+                <SelectItem value="all">كل المواد</SelectItem>
                 {subjects.map((subject) => (
                   <SelectItem key={subject} value={subject}>
                     {subject}
@@ -175,7 +175,7 @@ export function ExamsManagement() {
                 <SelectValue placeholder="السنة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Years</SelectItem>
+                <SelectItem value="all">كل السنوات</SelectItem>
                 {years.map((year) => (
                   <SelectItem key={year} value={year.toString()}>
                     {year}
@@ -190,7 +190,7 @@ export function ExamsManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Exam Title</TableHead>
+                  <TableHead>عنوان الموضوع</TableHead>
                   <TableHead>المادة</TableHead>
                   <TableHead>السنة</TableHead>
                   <TableHead>النوع</TableHead>
@@ -204,13 +204,13 @@ export function ExamsManagement() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      Loading exams...
+                      جارٍ تحميل المواضيع…
                     </TableCell>
                   </TableRow>
                 ) : filteredExams.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      No exams found
+                      لا توجد مواضيع
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -245,13 +245,13 @@ export function ExamsManagement() {
                       <TableCell>{(exam.downloads || 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" title="Download exam">
+                          <Button variant="ghost" size="sm" title="تحميل الموضوع">
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Edit exam">
+                          <Button variant="ghost" size="sm" title="تعديل">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" title="Delete exam">
+                          <Button variant="ghost" size="sm" title="حذف">
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>

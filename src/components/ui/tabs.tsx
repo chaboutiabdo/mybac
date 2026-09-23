@@ -12,7 +12,8 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-12 w-full items-center justify-start gap-7 border-b border-border bg-transparent p-0 text-muted-foreground",
+      // a pill track with an ink active pill, like the mockup's stream filter
+      "inline-flex h-12 items-center gap-1 rounded-full bg-card p-1 text-muted-foreground shadow-soft",
       className
     )}
     {...props}
@@ -27,7 +28,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex h-12 items-center justify-center whitespace-nowrap border-b-2 border-transparent px-0.5 text-[15px] font-medium text-muted-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-foreground data-[state=active]:border-accent data-[state=active]:text-accent data-[state=active]:font-semibold",
+      "inline-flex h-10 flex-1 items-center justify-center whitespace-nowrap rounded-full px-5 text-[15px] font-medium text-muted-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
       className
     )}
     {...props}

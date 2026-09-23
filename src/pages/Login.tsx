@@ -6,16 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { passwordProblem } from "@/lib/utils";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
   const { signIn, signUp, user, profile } = useAuth();
 
   const selectedPlan = sessionStorage.getItem("selectedPlan");
@@ -33,39 +32,32 @@ const Login = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const problem = passwordProblem(password);
+    if (problem) {
+      toast.error("كلمة المرور ضعيفة", { description: problem });
+      return;
+    }
     setLoading(true);
-    const { error } = await signUp(email, password, name, phone, selectedPlan ?? undefined);
+    const { error } = await signUp(email, password, name, phone, selectedPlan ?? undefined, city);
     if (!error) sessionStorage.removeItem("selectedPlan");
     setLoading(false);
   };
 
-  const handlePasswordReset = async () => {
-    if (!email) {
-      toast.error("أدخل بريدك الإلكتروني", { description: "اكتب البريد المرتبط بحسابك أولًا." });
-      return;
-    }
-
-    setResettingPassword(true);
-    setResetEmailSent(false);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+  // The free Supabase mailer only delivers to the owner's own team, so a reset
+  // email would never reach a student. Until a real SMTP service is set up,
+  // resets go through the owner by hand.
+  const handlePasswordReset = () => {
+    toast.info("استعادة كلمة المرور", {
+      description: "راسلنا من بريدك المسجّل على a.chabouti@esi-sba.dz وسنعيد تعيين كلمة المرور لك.",
+      duration: 10000,
     });
-    setResettingPassword(false);
-
-    if (error) {
-      toast.error("تعذّر الإرسال", { description: error.message });
-      return;
-    }
-
-    setResetEmailSent(true);
-    toast.success("تم إرسال الرابط", { description: "تحقّق من بريدك لتعيين كلمة مرور جديدة." });
   };
 
   const facts = [
-    { value: "142", label: "موضوع بكالوريا" },
-    { value: "2008", label: "أقدم دورة متوفّرة" },
-    { value: "16", label: "فصلًا مغطّى" },
-    { value: "700", label: "دج شهريًا للمميّز", accent: true },
+    { value: "114", label: "موضوع بكالوريا", tone: "bg-tone-pink" },
+    { value: "2008", label: "أقدم دورة متوفّرة", tone: "bg-tone-mint" },
+    { value: "16", label: "فصلًا مغطّى", tone: "bg-tone-lav" },
+    { value: "700", label: "دج شهريًا للمميّز", tone: "bg-tone-peach" },
   ];
 
   return (
@@ -73,18 +65,18 @@ const Login = () => {
       {/* form */}
       <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex items-center gap-2.5">
-            <img src="/favicon.svg" alt="" className="h-9 w-9" aria-hidden />
-            <span className="font-display text-[22px] font-bold tracking-tight">THE SMART</span>
+          <div className="mb-10 flex items-center gap-2.5">
+            <img src="/favicon.svg" alt="" className="h-10 w-10" aria-hidden />
+            <span className="text-[22px] font-semibold tracking-tight">THE SMART</span>
           </div>
 
-          <h1 className="font-display text-[34px] font-bold tracking-tight">أهلًا بعودتك</h1>
-          <p className="mt-1.5 text-base text-muted-foreground">
+          <h1 className="text-[44px] font-light leading-tight tracking-tight">أهلًا بعودتك</h1>
+          <p className="mt-2 text-base text-muted-foreground">
             سجّل الدخول لمتابعة تحضيرك للبكالوريا.
           </p>
 
-          <Tabs defaultValue="login" className="mt-6 w-full">
-            <TabsList>
+          <Tabs defaultValue="login" className="mt-8 w-full">
+            <TabsList className="w-full">
               <TabsTrigger value="login">تسجيل الدخول</TabsTrigger>
               <TabsTrigger value="signup">حساب جديد</TabsTrigger>
             </TabsList>
@@ -111,9 +103,9 @@ const Login = () => {
                       type="button"
                       className="text-sm text-primary hover:underline disabled:opacity-60"
                       onClick={handlePasswordReset}
-                      disabled={resettingPassword || loading}
+                      disabled={loading}
                     >
-                      {resettingPassword ? "جارٍ الإرسال…" : "نسيت كلمة المرور؟"}
+                      نسيت كلمة المرور؟
                     </button>
                   </div>
                   <Input
@@ -124,9 +116,6 @@ const Login = () => {
                     required
                     disabled={loading}
                   />
-                  {resetEmailSent && (
-                    <p className="text-sm text-success">تم إرسال الرابط إلى بريدك.</p>
-                  )}
                 </div>
                 <Button type="submit" size="lg" className="w-full" disabled={loading}>
                   {loading ? "جارٍ تسجيل الدخول…" : "تسجيل الدخول"}
@@ -160,6 +149,19 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label htmlFor="signup-city">مدينتك (اختياري)</Label>
+                  <Input
+                    id="signup-city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="مثال: وهران"
+                    disabled={loading}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    لمقارنة ترتيبك مع طلاب مدينتك في «أفضل الطلاب».
+                  </p>
+                </div>
+                <div className="space-y-1.5">
                   <Label htmlFor="signup-email">البريد الإلكتروني</Label>
                   <Input
                     id="signup-email"
@@ -181,9 +183,9 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={loading}
-                    minLength={6}
+                    minLength={8}
                   />
-                  <p className="text-sm text-muted-foreground">6 أحرف على الأقل.</p>
+                  <p className="text-sm text-muted-foreground">8 أحرف على الأقل، حروف وأرقام.</p>
                 </div>
                 <Button type="submit" size="lg" className="w-full" disabled={loading}>
                   {loading ? "جارٍ إنشاء الحساب…" : "إنشاء حساب مجاني"}
@@ -195,40 +197,28 @@ const Login = () => {
       </div>
 
       {/* brand panel */}
-      <div className="pattern-field hero-vignette relative hidden flex-col justify-center gap-10 border-s border-border-gold/25 bg-gradient-to-br from-card-raised via-card to-surface-deep px-12 py-14 lg:flex">
+      <div className="m-4 hidden flex-col justify-center gap-10 rounded-[32px] bg-card px-12 py-14 shadow-soft lg:flex">
         <div>
-          <p className="relative z-10 text-sm font-semibold tracking-[0.14em] text-accent">
-            منصة التحضير للبكالوريا
-          </p>
-          <h2 className="relative z-10 mt-4 font-display text-[40px] font-bold leading-[1.45] tracking-tight">
-            كل مواضيع البكالوريا،
-            <br />
-            وكل حلولها، في مكان واحد.
+          <span className="inline-flex rounded-full bg-card-raised px-4 py-1.5 text-[15px]">منصة التحضير للبكالوريا</span>
+          <h2 className="mt-5 text-[48px] font-light leading-[1.15] tracking-tight">
+            كل مواضيع البكالوريا، وكل حلولها، في مكان واحد.
           </h2>
         </div>
 
-        <div className="relative z-10 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border-gold/30 bg-border-gold/20">
+        <div className="grid grid-cols-2 gap-4">
           {facts.map((f) => (
-            <div key={f.label} className="bg-card px-5 py-5">
-              <div
-                className={`text-2xl font-bold tabular ${
-                  f.accent ? "text-accent" : "text-primary-foreground"
-                }`}
-              >
-                {f.value}
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">{f.label}</div>
+            <div key={f.label} className={`rounded-3xl px-5 py-5 ${f.tone}`}>
+              <div className="tabular text-[32px] font-semibold leading-none">{f.value}</div>
+              <div className="mt-2 text-[15px] text-foreground/75">{f.label}</div>
             </div>
           ))}
         </div>
 
-        <blockquote className="relative z-10 border-s-2 border-accent ps-5">
-          <p className="text-[17px] leading-[1.9] text-foreground/90">
+        <blockquote className="rounded-3xl bg-card-raised p-5">
+          <p className="text-[17px] leading-[1.9]">
             «ركّز على فهم المفاهيم لا على الحفظ فقط — البكالوريا تختبر مهارات التفكير لديك.»
           </p>
-          <footer className="mt-3 text-sm text-muted-foreground">
-            نصيحة من خرّيجي الدفعات السابقة
-          </footer>
+          <footer className="mt-3 text-[15px] text-muted-foreground">نصيحة من خرّيجي الدفعات السابقة</footer>
         </blockquote>
       </div>
     </div>

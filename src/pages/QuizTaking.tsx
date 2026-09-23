@@ -1,50 +1,52 @@
-import { useState, useEffect } from "react";
-import { Loading } from "@/components/ui/states";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
-import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, CheckCircle, Loader2 } from "lucide-react";
-import Navigation from "@/components/layout/Navigation";
+import { EmptyState, Loading } from "@/components/ui/states";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { TONE_BG, chapterLabel, subjectLabel, subjectTone } from "@/lib/bac";
+import { cn } from "@/lib/utils";
 
-type QuizAttempt = Tables<'quiz_attempts'>;
-type Quiz = Tables<'quizzes'>;
+type QuizAttempt = Tables<"quiz_attempts">;
+type Quiz = Tables<"quizzes">;
 
+/**
+ * A question as `quizzes_public` serves it: the answer key is stripped, so the
+ * browser cannot tell right from wrong. It used to try, compare against an
+ * undefined `correct`, and paint every chosen answer red. Grading happens in
+ * the database on submit (`submit_quiz_attempt`), which returns the score.
+ */
 interface Question {
   id: string;
   question: string;
   options: string[];
-  correct: number;
-  points: number;
 }
+
+const LETTERS = ["A", "B", "C", "D"];
+const ARABIC_LETTERS = ["أ", "ب", "ج", "د"];
 
 const QuizTaking = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t, isRTL } = useLanguage();
-  const { trackQuizQuestion } = useActivityTracking();
 
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [current, setCurrent] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
-  const [answeredQuestions, setAnsweredQuestions] = useState<Record<string, boolean>>({});
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!attemptId || !user) {
-      navigate('/quizzes');
+      navigate("/quizzes");
       return;
     }
     fetchQuizAttempt();
@@ -54,9 +56,8 @@ const QuizTaking = () => {
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-      handleSubmitQuiz();
     }
+    handleSubmitQuiz();
   }, [timeLeft]);
 
   const fetchQuizAttempt = async () => {
@@ -64,57 +65,31 @@ const QuizTaking = () => {
 
     try {
       const { data: attemptData, error: attemptError } = await supabase
-        .from('quiz_attempts')
-        .select('*')
-        .eq('id', attemptId)
-        .eq('student_id', user!.id)
+        .from("quiz_attempts")
+        .select("*")
+        .eq("id", attemptId)
+        .eq("student_id", user!.id)
         .single();
-
       if (attemptError) throw attemptError;
       setAttempt(attemptData as QuizAttempt);
 
       const { data: quizData, error: quizError } = await supabase
-        .from('quizzes_public')
-        .select('*')
-        .eq('id', attemptData.quiz_id)
+        .from("quizzes_public")
+        .select("*")
+        .eq("id", attemptData.quiz_id)
         .single();
-
       if (quizError) throw quizError;
       setQuiz(quizData as Quiz);
-      setQuestions(Array.isArray(quizData.questions) ? (quizData.questions as unknown as Question[]) : []);
+      const raw = Array.isArray(quizData.questions) ? (quizData.questions as unknown as Question[]) : [];
+      // key answers exactly as submit_quiz_attempt reads them: the question's
+      // id, or "q_<position>" when it has none
+      setQuestions(raw.map((q, i) => ({ ...q, id: q.id ?? `q_${i + 1}` })));
     } catch (error) {
-      console.error('Error fetching quiz:', error);
-      toast.error("خطأ", { description: "تعذّر تحميل الاختبار" });
-      navigate('/quizzes');
+      console.error("Error fetching quiz:", error);
+      toast.error("تعذّر تحميل الاختبار");
+      navigate("/quizzes");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAnswerSelect = (questionId: string, answer: string) => {
-    if (answeredQuestions[questionId]) return; // Prevent changing answer after selection
-    
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [questionId]: answer
-    }));
-    
-    // Mark question as answered
-    setAnsweredQuestions(prev => ({
-      ...prev,
-      [questionId]: true
-    }));
-  };
-
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
@@ -129,22 +104,20 @@ const QuizTaking = () => {
 
     try {
       // The database grades against the answer key, records completion and
-      // banks the points. The browser no longer computes or writes the score.
-      const { data, error } = await supabase.rpc('submit_quiz_attempt', {
+      // banks the points. The browser never computes or writes the score.
+      const { data, error } = await supabase.rpc("submit_quiz_attempt", {
         p_attempt_id: attemptId,
         p_answers: selectedAnswers,
       });
-
       if (error) throw error;
 
       const result = Array.isArray(data) ? data[0] : data;
       toast.success("تم إرسال الاختبار", {
         description: `نتيجتك: ${result?.correct_count ?? 0} من ${result?.total_questions ?? 0} — ${result?.score ?? 0} نقطة`,
       });
-
-      navigate('/quizzes');
+      navigate("/quizzes");
     } catch (error) {
-      console.error('Error submitting quiz:', error);
+      console.error("Error submitting quiz:", error);
       toast.error("تعذّر إرسال الاختبار", {
         description: error instanceof Error ? error.message : undefined,
       });
@@ -153,187 +126,121 @@ const QuizTaking = () => {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  const formatTime = (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-  if (loading) {
-    return (
-      <Loading />
-    );
-  }
+  if (loading) return <Loading full />;
 
   if (!quiz || !questions.length) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card>
-          <CardContent className="p-6">
-            <p>الاختبار غير موجود أو لا يحتوي على أسئلة.</p>
-            <Button onClick={() => navigate('/quizzes')} className="mt-4">
-              Back to Quizzes
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        title="الاختبار غير موجود أو لا يحتوي على أسئلة"
+        action={<Button onClick={() => navigate("/quizzes")}>العودة إلى الاختبارات</Button>}
+      />
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const question = questions[current];
+  const chosen = selectedAnswers[question.id];
+  const last = current === questions.length - 1;
+  const answered = Object.keys(selectedAnswers).length;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="container py-8 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (confirm('Are you sure you want to leave? Your progress will be lost.')) {
-                navigate('/quizzes');
-              }
-            }}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Quizzes
-          </Button>
-          
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatTime(timeLeft)}
-            </Badge>
-            <Badge variant="outline">
-              {currentQuestionIndex + 1} of {questions.length}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div className="mb-6">
-          <div className="flex justify-between text-base text-muted-foreground mb-2">
-            <span>{quiz.subject} - {quiz.chapter || 'General'}</span>
-            <span>{Math.round(progress)}% Complete</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        {/* Question Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl">
-              Question {currentQuestionIndex + 1}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xl mb-4">{currentQuestion.question}</p>
-            
-            <div className="space-y-3">
-              {currentQuestion.options.map((optionText, index) => {
-                const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-                const isSelected = selectedAnswers[currentQuestion.id] === optionLetter;
-                const isAnswered = answeredQuestions[currentQuestion.id];
-                const isCorrect = index === currentQuestion.correct;
-                const selectedIndex = ['A', 'B', 'C', 'D'].indexOf(selectedAnswers[currentQuestion.id] || '');
-                const isWrongSelection = isAnswered && isSelected && !isCorrect;
-                const isCorrectAnswer = isAnswered && isCorrect;
-                
-                let buttonClass = 'w-full text-start p-4 rounded-md border transition-colors ';
-                if (isAnswered) {
-                  if (isCorrectAnswer) {
-                    buttonClass += 'border-green-500 bg-success-light dark:bg-green-900/20';
-                  } else if (isWrongSelection) {
-                    buttonClass += 'border-red-500 bg-destructive-light dark:bg-red-900/20';
-                  } else {
-                    buttonClass += 'border-border bg-card-raised/60';
-                  }
-                } else {
-                  buttonClass += isSelected 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border hover:border-primary/50 cursor-pointer';
-                }
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(currentQuestion.id, optionLetter)}
-                    disabled={isAnswered}
-                    className={buttonClass}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${
-                        isAnswered 
-                          ? isCorrectAnswer 
-                            ? 'border-green-500 bg-success-light0 text-primary-foreground'
-                            : isWrongSelection
-                            ? 'border-red-500 bg-destructive-light0 text-primary-foreground'
-                            : 'border-muted-foreground'
-                          : isSelected 
-                            ? 'border-primary bg-primary text-primary-foreground' 
-                            : 'border-muted-foreground'
-                      }`}>
-                        {optionLetter}
-                      </div>
-                      <span className={
-                        isAnswered 
-                          ? isCorrectAnswer 
-                            ? 'text-success dark:text-green-300 font-medium'
-                            : isWrongSelection
-                            ? 'text-destructive dark:text-destructive'
-                            : ''
-                          : ''
-                      }>
-                        {optionText}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
-          >
-            Previous
-          </Button>
-          
-          <div className="flex gap-2">
-            {currentQuestionIndex === questions.length - 1 ? (
-              <Button
-                onClick={handleSubmitQuiz}
-                disabled={isSubmitting}
-                className="min-w-[120px]"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle className="me-2 h-4 w-4" />
-                    Submit Quiz
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleNextQuestion}
-                disabled={!answeredQuestions[currentQuestion.id]}
-              >
-                Next
-              </Button>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          variant="ghost"
+          onClick={() => {
+            if (confirm("هل تريد مغادرة الاختبار؟ ستضيع إجاباتك.")) navigate("/quizzes");
+          }}
+        >
+          <ArrowRight aria-hidden />
+          العودة إلى الاختبارات
+        </Button>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "tabular flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15px] font-medium",
+              timeLeft < 120 ? "bg-destructive-light text-destructive" : "bg-primary text-primary-foreground"
             )}
-          </div>
+          >
+            <Clock className="h-4 w-4" aria-hidden />
+            {formatTime(timeLeft)}
+          </span>
+          <span className="tabular rounded-full bg-card px-3 py-1.5 text-[15px] shadow-soft">
+            {current + 1} من {questions.length}
+          </span>
         </div>
+      </div>
+
+      <section className={cn("rounded-card p-6 shadow-soft", TONE_BG[subjectTone(quiz.subject)])}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-full bg-card-raised/70 px-3 py-1.5 text-[13px] backdrop-blur">
+            {subjectLabel(quiz.subject)} · {quiz.chapter ? chapterLabel(quiz.chapter) : "مراجعة عامة"}
+          </span>
+          <span className="tabular text-[13px] text-foreground/70">
+            أجبت عن {answered} من {questions.length}
+          </span>
+        </div>
+        {/* how much is ANSWERED, matching the label directly above it — not the
+            cursor position, which sits in the header chip. Those disagreed:
+            opening a quiz showed an untouched question under a bar that was
+            already part-filled, and a one-question quiz showed 100%. */}
+        <Progress value={(answered / questions.length) * 100} className="mt-4 h-2 bg-card-raised/60" />
+        <p className="mt-6 text-[13px] text-foreground/70">السؤال {current + 1}</p>
+        <h1 className="mt-1 text-[24px] font-medium leading-snug">{question.question}</h1>
+      </section>
+
+      <div className="space-y-3" role="radiogroup" aria-label="الإجابات">
+        {question.options.map((option, index) => {
+          const letter = LETTERS[index];
+          const selected = chosen === letter;
+          return (
+            <button
+              key={index}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setSelectedAnswers((prev) => ({ ...prev, [question.id]: letter }))}
+              className={cn(
+                "flex w-full items-center gap-4 rounded-2xl p-4 text-start text-lg shadow-soft transition-colors",
+                selected ? "bg-primary text-primary-foreground" : "bg-card-raised hover:bg-card"
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-medium",
+                  selected ? "bg-primary-foreground/15" : "bg-muted"
+                )}
+              >
+                {ARABIC_LETTERS[index]}
+              </span>
+              {option}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between">
+        <Button variant="secondary" onClick={() => setCurrent((i) => i - 1)} disabled={current === 0}>
+          السابق
+        </Button>
+        {last ? (
+          <Button onClick={handleSubmitQuiz} disabled={isSubmitting || !chosen} className="min-w-[140px]">
+            {isSubmitting ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <>
+                <CheckCircle2 aria-hidden />
+                إرسال الاختبار
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button onClick={() => setCurrent((i) => i + 1)} disabled={!chosen}>
+            التالي
+          </Button>
+        )}
       </div>
     </div>
   );

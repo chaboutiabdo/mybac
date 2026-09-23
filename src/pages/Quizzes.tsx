@@ -1,335 +1,231 @@
-import Navigation from "@/components/layout/Navigation";
-import { Loading } from "@/components/ui/states";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, BookX, CircleHelp, Flame, Target, Trophy, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+
+import DailyQuizCard from "@/components/dashboard/DailyQuizCard";
+import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { EmptyState, Loading } from "@/components/ui/states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Brain, 
-  Clock, 
-  Trophy, 
-  Target, 
-  PlayCircle,
-  CheckCircle,
-  Calendar,
-  TrendingUp
-} from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuizStats } from "@/hooks/useQuizStats";
+import { useStudyStreak } from "@/hooks/useStudyStreak";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useAuth } from "@/contexts/AuthContext";
-import { useActivityTracking } from "@/hooks/useActivityTracking";
-import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuizStats } from "@/hooks/useQuizStats";
+import { TONE_BG, chapterLabel, subjectLabel, subjectTone } from "@/lib/bac";
+import { cn } from "@/lib/utils";
 
-type Quiz = Tables<'quizzes'>;
+type Quiz = Tables<"quizzes">;
 
 // `questions` is a jsonb column: typed Json, and nullable. Dereferencing
 // .length directly crashed the whole quiz list on a quiz with no questions.
-const questionCount = (questions: Quiz['questions']): number =>
+const questionCount = (questions: Quiz["questions"]): number =>
   Array.isArray(questions) ? questions.length : 0;
 
+/** Points per correct answer, as the server awards them (record_points_transaction). */
+const POINTS = { daily: 25, practice: 8 } as const;
+
+const QuizGrid = ({ quizzes, onStart }: { quizzes: Quiz[]; onStart: (quiz: Quiz) => void }) => (
+  <div className="grid gap-5 md:grid-cols-2">
+    {quizzes.map((quiz, i) => {
+      const daily = quiz.type === "daily";
+      return (
+        <article
+          key={quiz.id}
+          className={cn(
+            "flex flex-col rounded-card p-5 shadow-soft",
+            TONE_BG[subjectTone(quiz.subject)],
+            quizzes.length % 2 === 1 && i === quizzes.length - 1 && "md:col-span-2"
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-full bg-card-raised/70 px-3 py-1.5 text-[13px] backdrop-blur">
+              {subjectLabel(quiz.subject)}
+            </span>
+            <span
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[13px]",
+                daily ? "bg-primary text-primary-foreground" : "bg-card-raised/70 backdrop-blur"
+              )}
+            >
+              {daily ? "يومي" : "تدريب"}
+            </span>
+          </div>
+          <h3 className="mt-8 text-[22px] font-medium leading-snug">
+            {quiz.chapter ? chapterLabel(quiz.chapter) : "مراجعة عامة"}
+          </h3>
+          <p className="tabular mt-1 text-[15px] text-foreground/70">
+            {questionCount(quiz.questions)} أسئلة · {POINTS[daily ? "daily" : "practice"]} نقطة لكل إجابة صحيحة
+          </p>
+          <Button className="mt-5 self-start" onClick={() => onStart(quiz)}>
+            ابدأ الاختبار
+            <ArrowLeft aria-hidden />
+          </Button>
+        </article>
+      );
+    })}
+  </div>
+);
+
 const Quizzes = () => {
-  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
-  const { trackQuizQuestion } = useActivityTracking();
   const navigate = useNavigate();
   const [practiceQuizzes, setPracticeQuizzes] = useState<Quiz[]>([]);
   const [dailyQuizzes, setDailyQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const quizStats = useQuizStats();
+  const { currentStreak } = useStudyStreak();
 
   useEffect(() => {
-    fetchQuizzes();
+    // quizzes_public strips the answer key; grading happens server-side
+    supabase
+      .from("quizzes_public")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching quizzes:", error);
+          toast.error("تعذّر تحميل الاختبارات");
+        }
+        const quizzes = (data ?? []) as Quiz[];
+        setPracticeQuizzes(quizzes.filter((q) => q.type === "practice"));
+        setDailyQuizzes(quizzes.filter((q) => q.type === "daily"));
+        setLoading(false);
+      });
   }, []);
-
-  const fetchQuizzes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('quizzes_public')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      const quizzes = (data || []) as Quiz[];
-      setPracticeQuizzes(quizzes.filter(quiz => quiz.type === 'practice'));
-      setDailyQuizzes(quizzes.filter(quiz => quiz.type === 'daily'));
-    } catch (error) {
-      console.error('Error fetching quizzes:', error);
-      toast.error("خطأ", { description: "تعذّر تحميل الاختبارات" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const startQuiz = async (quiz: Quiz) => {
     if (!user) {
-      toast.error("يلزم تسجيل الدخول", { description: "سجّل الدخول لبدء الاختبارات" });
+      toast.error("سجّل الدخول لبدء الاختبارات");
       return;
     }
 
     try {
-      // Check if quiz was already completed (by checking if previous attempts have answers)
-      const { data: allAttempts } = await supabase
-        .from('quiz_attempts')
-        .select('answers')
-        .eq('quiz_id', quiz.id)
-        .eq('student_id', user.id);
+      // Every source, because attempt_number must not collide with a daily
+      // question's attempt on the same quiz (quiz_attempts_unique_attempt).
+      const { data: attempts } = await supabase
+        .from("quiz_attempts")
+        .select("answers, attempt_number, source")
+        .eq("quiz_id", quiz.id)
+        .eq("student_id", user.id)
+        .order("attempt_number", { ascending: false });
 
-      const hasCompletedBefore = allAttempts?.some(attempt => 
-        attempt.answers && Object.keys(attempt.answers).length > 0
+      // ...but only a REAL prior attempt makes this a retake. A daily question
+      // drawn from this quiz left a one-answer attempt behind, and counting it
+      // told students their first ever go at a quiz was a no-points retry.
+      const priorRealAttempt = attempts?.some(
+        (a) => a.source === "quiz" && a.answers && Object.keys(a.answers).length > 0
       );
-      
-      if (hasCompletedBefore) {
-        toast.success("إعادة المحاولة", { description: "يمكنك إعادة هذا الاختبار للتدريب، دون احتساب نقاط إضافية." });
+      if (priorRealAttempt) {
+        toast("إعادة المحاولة", { description: "يمكنك إعادة هذا الاختبار للتدريب، دون احتساب نقاط إضافية." });
       }
 
-      // Check for existing attempts to determine attempt number
-      const { data: existingAttempts } = await supabase
-        .from('quiz_attempts')
-        .select('attempt_number')
-        .eq('quiz_id', quiz.id)
-        .eq('student_id', user.id)
-        .order('attempt_number', { ascending: false })
-        .limit(1);
-
-      const nextAttemptNumber = existingAttempts && existingAttempts.length > 0 
-        ? existingAttempts[0].attempt_number + 1 
-        : 1;
-
-      // Create quiz attempt
       const { data: attempt, error } = await supabase
-        .from('quiz_attempts')
+        .from("quiz_attempts")
         .insert({
           student_id: user.id,
           quiz_id: quiz.id,
           score: 0,
           answers: {},
-          attempt_number: nextAttemptNumber
+          attempt_number: (attempts?.[0]?.attempt_number ?? 0) + 1,
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      toast.success("بدأ الاختبار", { description: `Starting ${quiz.subject} quiz with ${questionCount(quiz.questions)} questions` });
-
-      // Navigate to the quiz taking page
       navigate(`/quiz/${attempt.id}`);
     } catch (error) {
-      console.error('Error starting quiz:', error);
-      toast.error("خطأ", { description: "تعذّر بدء الاختبار" });
+      console.error("Error starting quiz:", error);
+      toast.error("تعذّر بدء الاختبار");
     }
   };
-  
+
+  const weekly = [
+    { label: "اختبارات مكتملة", value: String(quizStats.completedQuizzes), icon: Target, tone: "bg-tone-mint" },
+    { label: "متوسط النتيجة", value: `${Math.round(quizStats.averageScore)}%`, icon: TrendingUp, tone: "bg-tone-lav" },
+    { label: "مجموع النقاط", value: `+${quizStats.pointsEarned}`, icon: Trophy, tone: "bg-tone-peach" },
+    { label: "أيام متتالية", value: String(currentStreak), icon: Flame, tone: "bg-tone-pink" },
+  ];
+
   return (
-    <div className="pattern-field min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="container py-8">
-        <div className="space-y-8">
-          {/* Header */}
-          <div className="space-y-4">
-            <h1 className="font-display text-[34px] font-bold tracking-tight">{t("quizCenter")}</h1>
-            <p className="text-muted-foreground">
-              {t("quizCenterDescription")}
-            </p>
-          </div>
+    <div className="space-y-8">
+      <PageHeader title="مركز الاختبارات" subtitle="اختبار يومي مصحّح فوراً، واختبارات تدريبية حسب الفصول">
+        <Button variant="outline" asChild>
+          <Link to="/mistakes">
+            <BookX aria-hidden />
+            أخطائي
+          </Link>
+        </Button>
+      </PageHeader>
 
-          {/* Daily Quiz Progress */}
-          <Card className="border-primary/20">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  {t("todaysQuiz")}
-                </CardTitle>
-                <Badge className="bg-accent text-accent-foreground">
-                  {t("dailyChallenge")}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {quizStats.loading ? (
-                <Loading />
-              ) : (
-                <>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-base">
-                        <span>{t("overallProgress")}</span>
-                        <span className="font-medium">
-                          {quizStats.overallProgress.completed}/{quizStats.overallProgress.total}
-                        </span>
-                      </div>
-                      <Progress value={quizStats.overallProgress.percentage} className="h-3" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-base">
-                        <span>{t("mathQuestions")}</span>
-                        <span className="font-medium">
-                          {quizStats.subjectProgress.math.completed}/{quizStats.subjectProgress.math.total}
-                        </span>
-                      </div>
-                      <Progress value={quizStats.subjectProgress.math.percentage} className="h-3" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-base">
-                        <span>{t("physicsQuestions")}</span>
-                        <span className="font-medium">
-                          {quizStats.subjectProgress.physics.completed}/{quizStats.subjectProgress.physics.total}
-                        </span>
-                      </div>
-                      <Progress value={quizStats.subjectProgress.physics.percentage} className="h-3" />
-                    </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <DailyQuizCard
+          stats={quizStats}
+          action={
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={dailyQuizzes.length === 0}
+              onClick={() => dailyQuizzes[0] && startQuiz(dailyQuizzes[0])}
+            >
+              ابدأ اختبار اليوم
+              <ArrowLeft aria-hidden />
+            </Button>
+          }
+        />
+
+        <section className="rounded-card bg-card p-5 shadow-soft">
+          {/* these are all-time figures from useQuizStats; the genuinely
+              weekly ones live on /weekly-report */}
+          <h2 className="text-lg font-medium">أداؤك الإجمالي</h2>
+          {quizStats.loading ? (
+            <Loading />
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {weekly.map((w) => (
+                <div key={w.label} className="flex items-center gap-3 rounded-2xl bg-card-raised p-4">
+                  <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", w.tone)}>
+                    <w.icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                  </span>
+                  <div>
+                    {/* ltr, or "+25" and "50%" come out as "25+" and "%50" in RTL */}
+                    <p dir="ltr" className="tabular text-end text-[22px] font-semibold leading-none">{w.value}</p>
+                    <p className="mt-1.5 text-[13px] leading-none text-muted-foreground">{w.label}</p>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-base text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{quizStats.questionsRemaining} {t("questionsRemaining")}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Trophy className="h-4 w-4" />
-                        <span>{t("maxPoints")}</span>
-                      </div>
-                    </div>
-                    <Button variant="hero" size="lg">
-                      <PlayCircle className="me-2 h-4 w-4" />
-                      {t("continueQuiz")}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quiz Categories */}
-          <Tabs defaultValue="daily" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="daily">{t("dailyQuizzes")}</TabsTrigger>
-              <TabsTrigger value="practice">{t("practiceQuizzes")}</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="daily" className="space-y-6">
-              {loading ? (
-                <Loading />
-              ) : dailyQuizzes.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">لا يوجد اختبار يومي بعد.</p>
                 </div>
-              ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {dailyQuizzes.map((quiz) => (
-                  <Card key={quiz.id} className="transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-xl">{quiz.subject}</CardTitle>
-                      <p className="text-base text-muted-foreground">{quiz.chapter || "General Topics"}</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-base">
-                        <span>{questionCount(quiz.questions)} {t("questions")}</span>
-                        <Badge variant="default">يومي</Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-base">
-                        <span>Max Score: {quiz.max_score} pts</span>
-                        <span>25 pts per question</span>
-                      </div>
-                      <Button 
-                        className="w-full"
-                        onClick={() => startQuiz(quiz)}
-                      >
-                        <Brain className="me-2 h-4 w-4" />
-                        {t("startQuiz")}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              )}
-
-              {/* Weekly Stats */}
-              <Card className="">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-secondary" />
-                    {t("weeklyPerformance")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {quizStats.loading ? (
-                    <Loading />
-                  ) : (
-                    <div className="grid md:grid-cols-4 gap-4">
-                      <div className="text-center space-y-1">
-                        <p className="text-3xl font-bold text-primary">{quizStats.completedQuizzes}</p>
-                        <p className="text-base text-muted-foreground">{t("quizzesCompleted")}</p>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <p className="text-3xl font-bold text-secondary">
-                          {quizStats.averageScore > 0 ? `${Math.round(quizStats.averageScore)}%` : '0%'}
-                        </p>
-                        <p className="text-base text-muted-foreground">{t("averageScore")}</p>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <p className="text-3xl font-bold text-accent">+{quizStats.pointsEarned}</p>
-                        <p className="text-base text-muted-foreground">{t("weeklyPointsEarned")}</p>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <p className="text-3xl font-bold text-warning">{quizStats.dayStreak}</p>
-                        <p className="text-base text-muted-foreground">{t("dayStreak")}</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="practice" className="space-y-6">
-              {loading ? (
-                <Loading />
-              ) : practiceQuizzes.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">لا توجد اختبارات تدريبية بعد.</p>
-                </div>
-              ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {practiceQuizzes.map((quiz) => (
-                  <Card key={quiz.id} className="transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="text-xl">{quiz.subject}</CardTitle>
-                      <p className="text-base text-muted-foreground">{quiz.chapter || "General Topics"}</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between text-base">
-                        <span>{questionCount(quiz.questions)} {t("questions")}</span>
-                        <Badge variant="outline">تدريب</Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-base">
-                        <span>Max Score: {quiz.max_score} pts</span>
-                        <span>8 pts per question</span>
-                      </div>
-                      <Button 
-                        className="w-full"
-                        onClick={() => startQuiz(quiz)}
-                      >
-                        <Brain className="me-2 h-4 w-4" />
-                        {t("startQuiz")}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+
+      <Tabs defaultValue="daily">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="daily">الاختبارات اليومية</TabsTrigger>
+          <TabsTrigger value="practice">اختبارات تدريبية</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="daily" className="mt-5">
+          {loading ? (
+            <Loading />
+          ) : dailyQuizzes.length === 0 ? (
+            <EmptyState icon={CircleHelp} title="لا يوجد اختبار يومي بعد" description="يُنشر اختبار جديد كل يوم." />
+          ) : (
+            <QuizGrid quizzes={dailyQuizzes} onStart={startQuiz} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="practice" className="mt-5">
+          {loading ? (
+            <Loading />
+          ) : practiceQuizzes.length === 0 ? (
+            <EmptyState icon={CircleHelp} title="لا توجد اختبارات تدريبية بعد" />
+          ) : (
+            <QuizGrid quizzes={practiceQuizzes} onStart={startQuiz} />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

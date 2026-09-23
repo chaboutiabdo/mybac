@@ -2,82 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "./styles/ornament.css";
-
 /* ==========================================================================
-   THE SMART — Emerald Academy
+   THE SMART — design tokens
 
-   Deep emerald surfaces, brass gold as the jewel, warm cream text.
-   Prestigious and collegiate: leather, brass and green baize.
+   From the owner's mockup (THE SMART Dashboard.html): a warm canvas page,
+   cream panels, white inner tiles, ink for text and the one primary action,
+   and six pastel tones that colour-code streams and subjects.
 
-   Gold is the ACCENT, not a second primary. It marks the one thing on a
-   screen that matters most — a countdown, a score, the premium tier.
+   Tones are CATEGORY colours, not decoration: a stream or subject keeps the
+   same tone everywhere (see src/lib/bac.ts). Text is always ink or muted,
+   never pastel.
    ========================================================================== */
 
 @layer base {
   :root {
-    --background: 164 59% 10%;        /* #0B2A22  deep emerald page       */
-    --surface-deep: 166 55% 8%;       /* #08211B  wells, inputs, insets   */
-    --foreground: 45 32% 93%;         /* #F2EFE6  warm cream              */
+    --background: 38 44% 89%;         /* #efe6d6  canvas                  */
+    --foreground: 0 0% 8%;            /* #141414  ink                     */
 
-    --card: 162 53% 15%;              /* #123A2E  lifted card             */
-    --card-foreground: 45 32% 93%;
-    --card-raised: 162 45% 19%;       /* #18473A  reading + hover surface */
+    --card: 38 46% 92%;               /* #f4ede1  cream panel             */
+    --card-foreground: 0 0% 8%;
+    --card-raised: 0 0% 100%;         /* white inner tile                 */
 
-    --popover: 162 45% 17%;
-    --popover-foreground: 45 32% 93%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 160 60% 32%;           /* #20825F  emerald actions         */
-    --primary-foreground: 45 32% 96%;
-    --primary-hover: 160 60% 38%;
-    --primary-light: 162 45% 20%;     /* DARK tint — not a pale wash      */
+    --primary: 0 0% 8%;               /* ink pill                         */
+    --primary-foreground: 38 46% 92%;
+    --primary-hover: 0 0% 18%;
+    --primary-light: 38 30% 86%;
 
-    --secondary: 162 40% 20%;
-    --secondary-foreground: 45 32% 93%;
-    --secondary-hover: 162 40% 25%;
-    --secondary-light: 162 40% 17%;
+    --secondary: 38 46% 92%;          /* cream pill                       */
+    --secondary-foreground: 0 0% 8%;
+    --secondary-hover: 0 0% 100%;
+    --secondary-light: 38 44% 89%;
 
-    --accent: 38 61% 56%;             /* #D4A24C  brass gold              */
-    --accent-foreground: 164 59% 10%;
-    --accent-hover: 38 61% 64%;
-    --accent-light: 38 40% 20%;
+    --accent: 36 79% 80%;             /* peach — premium, points, featured */
+    --accent-foreground: 0 0% 8%;
+    --accent-hover: 35 71% 69%;
+    --accent-light: 36 80% 92%;
 
-    --muted: 162 40% 17%;
-    --muted-foreground: 160 15% 68%;  /* #A2B8AF                          */
+    --muted: 38 39% 85%;              /* tracks, wells                    */
+    --muted-foreground: 41 10% 38%;   /* #6b6558                          */
 
-    --success: 145 55% 48%;
-    --success-foreground: 164 59% 10%;
-    --success-light: 145 40% 18%;
+    /* status: readable dark text, pastel fill */
+    --success: 143 44% 33%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 133 35% 84%;
 
-    --warning: 38 61% 56%;
-    --warning-foreground: 164 59% 10%;
-    --warning-light: 38 40% 20%;
+    --warning: 37 82% 32%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 36 79% 80%;
 
-    --destructive: 4 65% 55%;
-    --destructive-foreground: 45 32% 96%;
-    --destructive-light: 4 45% 20%;
+    --destructive: 4 57% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-light: 4 70% 87%;
 
-    --border: 162 30% 22%;
-    --border-gold: 38 45% 38%;
-    --input: 166 55% 8%;
-    --ring: 38 61% 56%;               /* gold focus ring                  */
+    --border: 38 36% 82%;
+    --input: 38 36% 82%;
+    --ring: 0 0% 8%;
 
-    --radius: 0.625rem;               /* 10px                             */
+    --radius: 1rem;
 
-    /* Dark themes need deeper, softer shadows than light ones. */
-    --shadow-raised: 0 2px 10px -3px hsl(166 60% 3% / 0.55);
-    --shadow-overlay: 0 18px 50px -14px hsl(166 60% 3% / 0.75),
-                      0 4px 14px -5px hsl(166 60% 3% / 0.5);
+    --shadow-soft: 0 1px 2px rgb(20 20 20 / 0.04), 0 8px 24px rgb(20 20 20 / 0.05);
+    --shadow-pop: 0 2px 6px rgb(20 20 20 / 0.06), 0 20px 40px -12px rgb(20 20 20 / 0.1);
 
-    /* Admin sidebar — the deepest surface in the app */
-    --sidebar-background: 166 60% 7%;
-    --sidebar-foreground: 160 15% 72%;
-    --sidebar-primary: 38 61% 56%;
-    --sidebar-primary-foreground: 164 59% 10%;
-    --sidebar-accent: 162 45% 16%;
-    --sidebar-accent-foreground: 45 32% 96%;
-    --sidebar-border: 162 30% 18%;
-    --sidebar-ring: 38 61% 56%;
+    /* the six category tones and their stronger pairs */
+    --tone-pink: 4 70% 87%;
+    --tone-pink-strong: 4 61% 78%;
+    --tone-mint: 133 35% 84%;
+    --tone-mint-strong: 134 32% 74%;
+    --tone-lav: 257 58% 87%;
+    --tone-lav-strong: 256 51% 77%;
+    --tone-peach: 36 79% 80%;
+    --tone-peach-strong: 35 71% 69%;
+    --tone-sage: 74 47% 81%;
+    --tone-sage-strong: 77 41% 68%;
+    --tone-sky: 210 54% 86%;
+    --tone-sky-strong: 211 53% 76%;
+
+    /* admin sidebar: a cream panel with an ink active item */
+    --sidebar-background: 38 46% 92%;
+    --sidebar-foreground: 0 0% 8%;
+    --sidebar-primary: 0 0% 8%;
+    --sidebar-primary-foreground: 38 46% 92%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-border: 38 36% 82%;
+    --sidebar-ring: 0 0% 8%;
   }
 }
 
@@ -93,7 +104,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     /* Arabic needs more leading than Latin at the same size. */
-    line-height: 1.8;
+    line-height: 1.75;
+    font-feature-settings: "kern", "liga", "calt";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -101,17 +113,20 @@
 
   h1, h2, h3, h4 {
     @apply font-display;
-    line-height: 1.4;
+    line-height: 1.3;
     letter-spacing: -0.01em;
   }
 
-  /* Digits stop jittering in scores, timers, tables and the leaderboard. */
+  /* Numbers are set in Inter, as in the mockup; Arabic in the same element
+     falls through to Readex Pro. Tabular so scores and timers don't jitter. */
   .tabular {
+    font-family: Inter, "Readex Pro", ui-sans-serif, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 
   ::selection {
-    background: hsl(var(--accent) / 0.3);
+    background: hsl(var(--tone-lav));
   }
 
   ::-webkit-scrollbar {
@@ -129,10 +144,6 @@
     border: 3px solid hsl(var(--background));
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--border-gold) / 0.7);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -141,5 +152,50 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+/* KaTeX output is left-to-right inside an RTL document, and the prompts
+   deliberately ask for French units (m/s², kg, N) inline with Arabic —
+   exactly the mixed-direction case the bidi algorithm reorders wrongly
+   without an isolate. Deliberately OUTSIDE any @layer: Tailwind drops layered
+   rules whose class never appears in the source, and `.katex` is only ever
+   generated at runtime. Inside @layer components this rule never shipped, and
+   every AI formula rendered mirrored (fractions reversed, subscripts on the
+   wrong side). */
+.katex {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+@layer components {
+  /* horizontal pill rows scroll without a visible bar */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-progress > * {
+    animation: progress-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-rise {
+    animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    transform: translateX(var(--progress-from, 100%));
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }

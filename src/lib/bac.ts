@@ -8,6 +8,33 @@
  *     coefficients, the /20 scale, and the exam countdown.
  */
 
+/* -------------------------------------------------------------------- tones */
+
+/**
+ * The six category colours of the design. A stream or subject keeps the same
+ * tone on every page. Class names are spelled out in full so Tailwind sees
+ * them — never build them with string concatenation.
+ */
+export type Tone = "pink" | "mint" | "lav" | "peach" | "sage" | "sky"
+
+export const TONE_BG: Record<Tone, string> = {
+  pink: "bg-tone-pink",
+  mint: "bg-tone-mint",
+  lav: "bg-tone-lav",
+  peach: "bg-tone-peach",
+  sage: "bg-tone-sage",
+  sky: "bg-tone-sky",
+}
+
+export const TONE_BG_STRONG: Record<Tone, string> = {
+  pink: "bg-tone-pink-strong",
+  mint: "bg-tone-mint-strong",
+  lav: "bg-tone-lav-strong",
+  peach: "bg-tone-peach-strong",
+  sage: "bg-tone-sage-strong",
+  sky: "bg-tone-sky-strong",
+}
+
 /* ------------------------------------------------------------------ streams */
 
 export interface Stream {
@@ -17,6 +44,7 @@ export interface Stream {
   label: string
   /** French label, how the stream is named officially */
   fr: string
+  tone: Tone
 }
 
 /**
@@ -25,39 +53,50 @@ export interface Stream {
  * contained only "الكل" — a decorative dropdown.
  */
 export const STREAMS: Stream[] = [
-  { value: "Sciences Expérimentales", label: "علوم تجريبية", fr: "Sciences Expérimentales" },
-  { value: "Mathématiques", label: "رياضيات", fr: "Mathématiques" },
-  { value: "Technique Mathématiques", label: "تقني رياضي", fr: "Technique Mathématiques" },
-  { value: "Gestion Économie", label: "تسيير واقتصاد", fr: "Gestion et Économie" },
-  { value: "Lettres et Philosophie", label: "آداب وفلسفة", fr: "Lettres et Philosophie" },
-  { value: "Langues Étrangères", label: "لغات أجنبية", fr: "Langues Étrangères" },
+  { value: "Sciences Expérimentales", label: "علوم تجريبية", fr: "Sciences Expérimentales", tone: "pink" },
+  { value: "Mathématiques", label: "رياضيات", fr: "Mathématiques", tone: "lav" },
+  { value: "Technique Mathématiques", label: "تقني رياضي", fr: "Technique Mathématiques", tone: "sky" },
+  { value: "Gestion Économie", label: "تسيير واقتصاد", fr: "Gestion et Économie", tone: "mint" },
+  { value: "Lettres et Philosophie", label: "آداب وفلسفة", fr: "Lettres et Philosophie", tone: "peach" },
+  { value: "Langues Étrangères", label: "لغات أجنبية", fr: "Langues Étrangères", tone: "sage" },
 ]
 
 export const streamLabel = (value?: string | null): string =>
   STREAMS.find((s) => s.value === value)?.label ?? value ?? "—"
+
+export const streamTone = (value?: string | null): Tone =>
+  STREAMS.find((s) => s.value === value)?.tone ?? "sage"
 
 /* ------------------------------------------------------- subjects & coefficients */
 
 export interface Subject {
   value: string
   label: string
+  tone: Tone
 }
 
 /** Only Math and Physics have content today; the rest are listed for filters. */
 export const SUBJECTS: Subject[] = [
-  { value: "Math", label: "الرياضيات" },
-  { value: "Physics", label: "الفيزياء" },
-  { value: "Science", label: "علوم الطبيعة والحياة" },
-  { value: "Arabic", label: "اللغة العربية" },
-  { value: "French", label: "الفرنسية" },
-  { value: "English", label: "الإنجليزية" },
-  { value: "Philosophy", label: "الفلسفة" },
-  { value: "History", label: "التاريخ والجغرافيا" },
-  { value: "Islamic", label: "العلوم الإسلامية" },
+  { value: "Math", label: "الرياضيات", tone: "lav" },
+  { value: "Physics", label: "الفيزياء", tone: "pink" },
+  { value: "Science", label: "علوم الطبيعة والحياة", tone: "mint" },
+  { value: "Arabic", label: "اللغة العربية", tone: "peach" },
+  { value: "French", label: "الفرنسية", tone: "sky" },
+  { value: "English", label: "الإنجليزية", tone: "sage" },
+  { value: "Philosophy", label: "الفلسفة", tone: "peach" },
+  { value: "History", label: "التاريخ والجغرافيا", tone: "sage" },
+  { value: "Islamic", label: "العلوم الإسلامية", tone: "sage" },
 ]
 
 export const subjectLabel = (value?: string | null): string =>
   SUBJECTS.find((s) => s.value === value)?.label ?? value ?? "—"
+
+export const subjectTone = (value?: string | null): Tone =>
+  SUBJECTS.find((s) => s.value === value)?.tone ?? "sage"
+
+/** Exam difficulty as stored (`easy` / `medium` / `hard`), in Arabic. */
+export const difficultyLabel = (value?: string | null): string =>
+  ({ easy: "سهل", medium: "متوسط", hard: "صعب" } as Record<string, string>)[value ?? ""] ?? value ?? "—"
 
 /**
  * Per-stream subject coefficients (معاملات).
@@ -90,10 +129,11 @@ export function coefficient(stream?: string | null, subject?: string | null): nu
 /* --------------------------------------------------------------- BAC calendar */
 
 /**
- * Start of the main BAC session (دورة عادية). Update once a year — ONEC
- * publishes the date each spring.
+ * Start of the next main BAC session (دورة عادية). Update once a year — ONEC
+ * publishes the date each spring. 2027 is an ESTIMATE (the first Sunday of
+ * June, as in 2026) until then. EXAM_YEARS below follows this date.
  */
-export const BAC_DATE = new Date("2026-06-07T08:00:00+01:00")
+export const BAC_DATE = new Date("2027-06-06T08:00:00+01:00")
 
 /** Whole days until the exam; 0 once it has started. */
 export function daysUntilBac(from: Date = new Date()): number {
@@ -101,7 +141,7 @@ export function daysUntilBac(from: Date = new Date()): number {
   return Math.max(0, Math.ceil(ms / 86_400_000))
 }
 
-export const BAC_SESSION_LABEL = "دورة جوان 2026"
+export const BAC_SESSION_LABEL = "دورة جوان 2027"
 
 export const SESSIONS = [
   { value: "normale", label: "دورة عادية" },
@@ -169,5 +209,10 @@ export const formatDateDZ = (value: string | number | Date): string =>
     day: "numeric",
   })
 
-/** Exam years present in the archive, newest first. */
-export const EXAM_YEARS = Array.from({ length: 18 }, (_, i) => 2025 - i)
+/**
+ * Exam years in the archive, newest first: every session held before the one
+ * BAC_DATE points at. A hard-coded 2025 here kept the 2026 papers out of both
+ * the upload form and the student filter.
+ */
+const LAST_HELD_SESSION = BAC_DATE.getFullYear() - 1
+export const EXAM_YEARS = Array.from({ length: LAST_HELD_SESSION - 2007 }, (_, i) => LAST_HELD_SESSION - i)

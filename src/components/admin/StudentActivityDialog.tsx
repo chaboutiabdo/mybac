@@ -175,7 +175,7 @@ export function StudentActivityDialog({
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Student Activity - {studentName}</DialogTitle>
-            <DialogDescription>Loading student activity data...</DialogDescription>
+            <DialogDescription>جارٍ تحميل نشاط الطالب…</DialogDescription>
           </DialogHeader>
           <Loading />
         </DialogContent>
@@ -189,7 +189,7 @@ export function StudentActivityDialog({
         <DialogHeader>
           <DialogTitle>Student Activity - {studentName}</DialogTitle>
           <DialogDescription>
-            Detailed learning activity and progress tracking
+            نشاط الطالب وتقدّمه بالتفصيل
           </DialogDescription>
         </DialogHeader>
 
@@ -216,7 +216,7 @@ export function StudentActivityDialog({
           <TabsContent value="quizzes" className="space-y-4">
             <div className="grid gap-4">
               {quizResults.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No quiz attempts found</p>
+                <p className="text-muted-foreground text-center py-8">لا توجد محاولات اختبار</p>
               ) : (
                 quizResults.map((result) => (
                   <Card key={result.id}>
@@ -245,7 +245,7 @@ export function StudentActivityDialog({
           <TabsContent value="videos" className="space-y-4">
             <div className="grid gap-4">
               {videoActivities.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No video activity found</p>
+                <p className="text-muted-foreground text-center py-8">لا يوجد نشاط في الدروس</p>
               ) : (
                 videoActivities.map((activity) => (
                   <Card key={activity.id}>
@@ -271,7 +271,7 @@ export function StudentActivityDialog({
           <TabsContent value="exams" className="space-y-4">
             <div className="grid gap-4">
               {examActivities.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No exam activity found</p>
+                <p className="text-muted-foreground text-center py-8">لا يوجد نشاط في المواضيع</p>
               ) : (
                 examActivities.map((activity) => (
                   <Card key={activity.id}>
@@ -297,7 +297,7 @@ export function StudentActivityDialog({
           <TabsContent value="questions" className="space-y-4">
             <div className="grid gap-4">
               {questionActivities.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No questions found</p>
+                <p className="text-muted-foreground text-center py-8">لا توجد أسئلة</p>
               ) : (
                 questionActivities.map((question) => (
                   <Card key={question.id}>
@@ -311,12 +311,12 @@ export function StudentActivityDialog({
                             </p>
                           </div>
                           <Badge variant="secondary" className="text-sm">
-                            AI Question
+                            سؤال للمعلّم الذكي
                           </Badge>
                         </div>
                         {question.ai_response && (
                           <div className="mt-2 p-2 bg-card-raised/60 rounded text-base">
-                            <p className="text-sm text-muted-foreground mb-1">AI Response:</p>
+                            <p className="text-sm text-muted-foreground mb-1">إجابة المعلّم الذكي:</p>
                             <p className="line-clamp-2">{question.ai_response}</p>
                           </div>
                         )}

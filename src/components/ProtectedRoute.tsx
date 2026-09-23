@@ -43,14 +43,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return (
           <div className="flex min-h-screen items-center justify-center bg-background px-6">
             <div className="w-full max-w-md text-center">
-              <Crown className="mx-auto mb-5 h-7 w-7 text-accent" strokeWidth={1.5} aria-hidden />
-              <h1 className="text-3xl font-semibold tracking-tight">ميزة للمشتركين المميّزين</h1>
+              <span className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-tone-peach">
+                <Crown className="h-6 w-6" strokeWidth={1.6} aria-hidden />
+              </span>
+              <h1 className="text-[36px] font-light leading-tight tracking-tight">ميزة للمشتركين المميّزين</h1>
               <p className="mx-auto mt-2 max-w-sm text-base leading-relaxed text-muted-foreground">
                 الاختبارات غير المحدودة والأستاذ بالذكاء الاصطناعي متاحان في العرض المميّز
                 بـ<span className="font-semibold text-foreground tabular"> 700 دج </span>شهريًا.
               </p>
 
-              <div className="mt-6 rounded-md border border-border bg-card p-4 text-start">
+              <div className="mt-6 rounded-card bg-card p-5 text-start shadow-soft">
                 <p className="text-sm font-semibold text-muted-foreground">يشمل العرض</p>
                 <ul className="mt-2.5 space-y-2 text-base text-muted-foreground">
                   <li className="flex gap-2.5">

@@ -4,21 +4,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[13px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  // pill chips, as in the mockup
+  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default:
-          "border-primary/60 bg-primary text-primary-foreground",
-        secondary:
-          "border-border bg-card-raised text-muted-foreground",
-        destructive:
-          "border-destructive/25 bg-destructive-light text-destructive",
-        outline: "border-border-gold/40 text-muted-foreground",
-        // amber is a signal, not decoration: due dates, streaks, warnings
-        warning: "border-accent/40 bg-accent-light text-accent",
-        success: "border-success/35 bg-success-light text-success",
-        info: "border-border-gold/30 bg-primary-light text-foreground",
+        // ink chip: premium, "top 10"
+        default: "bg-primary text-primary-foreground",
+        // the translucent white chip that sits on a tone card
+        secondary: "bg-card-raised/70 text-foreground backdrop-blur",
+        destructive: "bg-destructive-light text-destructive",
+        outline: "border border-foreground/10 text-muted-foreground",
+        warning: "bg-warning-light text-warning",
+        success: "bg-success-light text-success",
+        info: "bg-tone-sky text-foreground",
       },
     },
     defaultVariants: {

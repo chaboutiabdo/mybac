@@ -30,16 +30,24 @@ import { STREAMS, formatDateDZ, streamLabel } from "@/lib/bac";
 type Student = Tables<"profiles"> & {
   quizzesCompleted: number;
   lastActive: string | null;
+  schoolId: string | null;
 };
 
 const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const NO_SCHOOL = "none";
 
 export function StudentsManagement() {
   const [search, setSearch] = useState("");
   const [streamFilter, setStreamFilter] = useState("all");
   const [students, setStudents] = useState<Student[]>([]);
+  const [schools, setSchools] = useState<Pick<Tables<"schools">, "id" | "name">[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Student | null>(null);
+  // per-row optimistic-disable while a school assignment is being written
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSchoolId, setBulkSchoolId] = useState(NO_SCHOOL);
+  const [bulkAssigning, setBulkAssigning] = useState(false);
 
   useEffect(() => {
     void loadStudents();
@@ -55,14 +63,17 @@ export function StudentsManagement() {
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const [profilesRes, attemptsRes, activityRes] = await Promise.all([
+      const [profilesRes, attemptsRes, activityRes, schoolsRes, schoolLinksRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("quiz_attempts").select("student_id").not("completed_at", "is", null),
+        // source='quiz': daily-question attempts are single answers, not quizzes
+        supabase.from("quiz_attempts").select("student_id").eq("source", "quiz").not("completed_at", "is", null),
         supabase
           .from("video_activity_logs")
           .select("student_id, created_at")
           .order("created_at", { ascending: false })
           .limit(2000),
+        supabase.from("schools").select("id, name").order("name"),
+        supabase.from("school_students").select("student_id, school_id"),
       ]);
 
       if (profilesRes.error) throw profilesRes.error;
@@ -80,11 +91,18 @@ export function StudentsManagement() {
         }
       }
 
+      const schoolByStudent = new Map<string, string>();
+      for (const row of schoolLinksRes.data ?? []) {
+        schoolByStudent.set(row.student_id, row.school_id);
+      }
+
+      setSchools(schoolsRes.data ?? []);
       setStudents(
         (profilesRes.data ?? []).map((profile) => ({
           ...profile,
           quizzesCompleted: attemptsByStudent.get(profile.user_id) ?? 0,
           lastActive: lastActiveByStudent.get(profile.user_id) ?? profile.updated_at,
+          schoolId: schoolByStudent.get(profile.user_id) ?? null,
         }))
       );
     } catch (error) {
@@ -93,6 +111,70 @@ export function StudentsManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * A student has at most one school in practice, even though `school_students`
+   * has no DB constraint enforcing that — so reassigning deletes any existing
+   * row for the selected students before inserting the new one. Batched: one
+   * DELETE + one INSERT cover every id, not a query pair per student, so
+   * selecting thirty names and assigning them costs the same two round trips
+   * as assigning one.
+   */
+  const handleBulkAssignSchool = async (studentIds: string[], schoolId: string) => {
+    if (studentIds.length === 0) return;
+    try {
+      const { error: deleteError } = await supabase.from("school_students").delete().in("student_id", studentIds);
+      if (deleteError) throw deleteError;
+      if (schoolId !== NO_SCHOOL) {
+        const { error: insertError } = await supabase
+          .from("school_students")
+          .insert(studentIds.map((student_id) => ({ student_id, school_id: schoolId })));
+        if (insertError) throw insertError;
+      }
+      const idSet = new Set(studentIds);
+      setStudents((prev) =>
+        prev.map((s) => (idSet.has(s.user_id) ? { ...s, schoolId: schoolId === NO_SCHOOL ? null : schoolId } : s))
+      );
+    } catch (error) {
+      console.error("Error assigning school:", error);
+      toast.error("تعذّر تحديث الثانوية");
+      throw error;
+    }
+  };
+
+  const handleAssignSchool = async (studentId: string, schoolId: string) => {
+    setAssigning(studentId);
+    try {
+      await handleBulkAssignSchool([studentId], schoolId);
+    } catch {
+      // already toasted in handleBulkAssignSchool
+    } finally {
+      setAssigning(null);
+    }
+  };
+
+  const handleBulkApply = async () => {
+    setBulkAssigning(true);
+    try {
+      await handleBulkAssignSchool([...selectedIds], bulkSchoolId);
+      toast.success(`تم تحديث ${selectedIds.size} طالباً`);
+      setSelectedIds(new Set());
+      setBulkSchoolId(NO_SCHOOL);
+    } catch {
+      // already toasted in handleBulkAssignSchool
+    } finally {
+      setBulkAssigning(false);
+    }
+  };
+
+  const toggleSelected = (studentId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
   };
 
   const filtered = useMemo(() => {
@@ -106,6 +188,23 @@ export function StudentsManagement() {
       return matchesSearch && matchesStream;
     });
   }, [students, search, streamFilter]);
+
+  // "select all" only ever touches what's currently visible; the Set itself
+  // is independent of the filter, so narrowing the search doesn't silently
+  // drop an existing selection made before the filter changed.
+  const allFilteredSelected = filtered.length > 0 && filtered.every((s) => selectedIds.has(s.user_id));
+  const toggleSelectAllFiltered = () => {
+    setSelectedIds((prev) => {
+      if (allFilteredSelected) {
+        const next = new Set(prev);
+        filtered.forEach((s) => next.delete(s.user_id));
+        return next;
+      }
+      const next = new Set(prev);
+      filtered.forEach((s) => next.add(s.user_id));
+      return next;
+    });
+  };
 
   const isActive = (s: Student) =>
     !!s.lastActive && new Date(s.lastActive).getTime() > Date.now() - ACTIVE_WINDOW_MS;
@@ -126,7 +225,7 @@ export function StudentsManagement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-[34px] font-bold tracking-tight">الطلاب</h1>
+        <h1 className="text-[40px] font-light tracking-tight sm:text-[52px]">الطلاب</h1>
         <p className="mt-1 text-lg text-muted-foreground">
           كل الحسابات المسجّلة، ونشاطها خلال آخر سبعة أيام.
         </p>
@@ -138,11 +237,11 @@ export function StudentsManagement() {
             <CardContent className="flex items-center justify-between p-5">
               <div>
                 <p className="text-sm text-muted-foreground">{tile.label}</p>
-                <p className="mt-2 font-display text-3xl font-bold tabular">
+                <p className="mt-2 tabular text-3xl font-semibold">
                   {tile.value.toLocaleString("ar-DZ")}
                 </p>
               </div>
-              <tile.icon className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+              <tile.icon className="h-5 w-5" strokeWidth={1.8} aria-hidden />
             </CardContent>
           </Card>
         ))}
@@ -176,6 +275,33 @@ export function StudentsManagement() {
         </Select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-card bg-card-raised p-4">
+          <span className="text-sm font-medium">
+            <span className="tabular">{selectedIds.size}</span> طالب محدَّد
+          </span>
+          <Select value={bulkSchoolId} onValueChange={setBulkSchoolId}>
+            <SelectTrigger className="h-8 w-48 text-sm">
+              <SelectValue placeholder="بدون ثانوية" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_SCHOOL}>بدون ثانوية</SelectItem>
+              {schools.map((school) => (
+                <SelectItem key={school.id} value={school.id}>
+                  {school.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={() => void handleBulkApply()} disabled={bulkAssigning}>
+            تعيين
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            إلغاء التحديد
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -191,8 +317,18 @@ export function StudentsManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFiltered}
+                      aria-label="تحديد كل الطلاب الظاهرين"
+                    />
+                  </TableHead>
                   <TableHead>الطالب</TableHead>
                   <TableHead>الشعبة</TableHead>
+                  <TableHead>الثانوية</TableHead>
                   <TableHead>الحالة</TableHead>
                   <TableHead>النقاط</TableHead>
                   <TableHead>اختبارات</TableHead>
@@ -204,6 +340,15 @@ export function StudentsManagement() {
                 {filtered.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={selectedIds.has(student.user_id)}
+                        onChange={() => toggleSelected(student.user_id)}
+                        aria-label={`تحديد ${student.name}`}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <div className="font-medium">{student.name}</div>
                       <div className="text-sm text-muted-foreground">{student.email}</div>
                     </TableCell>
@@ -211,6 +356,25 @@ export function StudentsManagement() {
                         stream and "الشعبة" showed the role */}
                     <TableCell className="text-muted-foreground">
                       {streamLabel(student.stream)}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={student.schoolId ?? NO_SCHOOL}
+                        onValueChange={(value) => void handleAssignSchool(student.user_id, value)}
+                        disabled={assigning === student.user_id}
+                      >
+                        <SelectTrigger className="h-8 w-40 text-sm">
+                          <SelectValue placeholder="بدون ثانوية" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SCHOOL}>بدون ثانوية</SelectItem>
+                          {schools.map((school) => (
+                            <SelectItem key={school.id} value={school.id}>
+                              {school.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       {student.role === "admin" ? (

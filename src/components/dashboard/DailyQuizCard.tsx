@@ -1,78 +1,76 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Brain } from "lucide-react";
+import { ArrowLeft, CircleHelp } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useQuizStats } from "@/hooks/useQuizStats";
+import type { QuizStats } from "@/hooks/useQuizStats";
 
 /**
- * Today's quiz. Split out of the old QuickActions, which rendered three cards
- * into a two-column grid so the third always orphaned.
- *
- * Every figure here is real, from useQuizStats.
+ * Today's quiz as a mint tone card. Takes the stats from the page, which
+ * reads useQuizStats once for every widget. `action` replaces the default
+ * link to /quizzes (on the quizzes page itself it starts the quiz).
  */
-const DailyQuizCard = () => {
-  const stats = useQuizStats();
-
+const DailyQuizCard = ({ stats, action }: { stats: QuizStats; action?: ReactNode }) => {
   const subjects = [
     { label: "الرياضيات", data: stats.subjectProgress.math },
     { label: "الفيزياء", data: stats.subjectProgress.physics },
   ];
+  const none = stats.overallProgress.total === 0;
 
   return (
-    <Card className="edge-gold h-full">
-      <CardHeader className="flex flex-row items-center justify-between border-b border-border px-5 py-4">
-        <CardTitle className="flex items-center gap-2.5 font-display text-xl">
-          <Brain className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+    <article className="flex h-full flex-col gap-5 rounded-card bg-tone-mint p-5 shadow-soft">
+      <div className="flex items-center justify-between">
+        <Badge variant="secondary">
+          <CircleHelp className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           اختبار اليوم
-        </CardTitle>
-        <Badge variant="warning">اليوم</Badge>
-      </CardHeader>
+        </Badge>
+        <Badge variant="default" className="tabular">25 نقطة للسؤال</Badge>
+      </div>
 
-      <CardContent className="flex h-full flex-col gap-5 p-5">
-        <div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-base text-muted-foreground">التقدّم الكلّي</span>
-            <span className="font-display text-2xl font-bold tabular">
-              {stats.overallProgress.completed}
-              <span className="text-lg font-normal text-muted-foreground">
-                {" "}/ {stats.overallProgress.total}
+      {none ? (
+        <p className="text-lg font-medium leading-snug">لم يُنشر اختبار اليوم بعد. عُد لاحقاً.</p>
+      ) : (
+        <>
+          <div>
+            <p className="flex items-baseline gap-2">
+              <span className="tabular text-[40px] font-semibold leading-none">
+                {stats.overallProgress.completed}
               </span>
-            </span>
+              <span className="tabular text-lg text-foreground/60">/ {stats.overallProgress.total}</span>
+            </p>
+            <Progress value={stats.overallProgress.percentage} className="mt-3 h-2.5 bg-card-raised/60 animate-progress" />
+            <p className="mt-2 text-[15px] text-foreground/70">بقي {stats.questionsRemaining} سؤالاً</p>
           </div>
-          <Progress
-            value={stats.overallProgress.percentage}
-            className="mt-3 h-2.5 animate-progress"
-          />
-          <p className="mt-2.5 text-sm text-muted-foreground tabular">
-            بقي {stats.questionsRemaining} سؤالًا · 25 نقطة للسؤال
-          </p>
-        </div>
 
-        <div className="grid grid-cols-2 gap-5">
-          {subjects.map((s) => (
-            <div key={s.label}>
-              <div className="flex items-baseline justify-between text-sm">
-                <span className="text-muted-foreground">{s.label}</span>
-                <span className="font-semibold tabular">
-                  {s.data.completed}/{s.data.total}
-                </span>
+          <div className="grid grid-cols-2 gap-3">
+            {subjects.map((s) => (
+              <div key={s.label} className="rounded-2xl bg-card-raised/70 p-3">
+                <div className="flex items-baseline justify-between text-[15px]">
+                  <span>{s.label}</span>
+                  <span className="tabular font-semibold">
+                    {s.data.completed}/{s.data.total}
+                  </span>
+                </div>
+                <Progress value={s.data.percentage} className="mt-2 h-1.5 animate-progress" />
               </div>
-              <Progress value={s.data.percentage} className="mt-2 h-1.5 animate-progress" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
+      )}
 
-        <Link to="/quizzes" className="mt-auto block">
-          <Button variant="gold" size="lg" className="w-full">
-            ابدأ الاختبار
-            <ArrowLeft className="ms-1 h-4 w-4" aria-hidden />
+      <div className="mt-auto">
+        {action ?? (
+          <Button asChild size="lg" className="w-full">
+            <Link to="/quizzes">
+              {none ? "تدرّب على اختبار سابق" : "ابدأ الاختبار"}
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Link>
           </Button>
-        </Link>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </article>
   );
 };
 

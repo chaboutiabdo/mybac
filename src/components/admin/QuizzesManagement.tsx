@@ -77,12 +77,12 @@ export function QuizzesManagement() {
 
       if (error) throw error;
 
-      toast.success("تم", { description: "Quiz deleted successfully" });
+      toast.success("تم", { description: "تم حذف الاختبار" });
       
       loadQuizzes();
     } catch (error) {
       console.error('Error deleting quiz:', error);
-      toast.error("خطأ", { description: "Failed to delete quiz" });
+      toast.error("خطأ", { description: "تعذّر حذف الاختبار" });
     }
   };
 
@@ -90,19 +90,19 @@ export function QuizzesManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold">Quizzes Management</h1>
+          <h1 className="text-4xl font-bold">إدارة الاختبارات</h1>
           <p className="text-muted-foreground">
-            Manage practice and daily quizzes for students
+            الاختبارات اليومية والتدريبية للطلاب
           </p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setDailyUploadDialogOpen(true)}>
             <Calendar className="me-2 h-4 w-4" />
-            Upload Daily Quiz
+            رفع اختبار يومي
           </Button>
           <Button onClick={() => setUploadDialogOpen(true)}>
             <Plus className="me-2 h-4 w-4" />
-            Upload Practice Quiz
+            رفع اختبار تدريبي
           </Button>
         </div>
       </div>
@@ -111,7 +111,7 @@ export function QuizzesManagement() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Total Quizzes</CardTitle>
+            <CardTitle className="text-base font-medium">كل الاختبارات</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -120,7 +120,7 @@ export function QuizzesManagement() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Practice Quizzes</CardTitle>
+            <CardTitle className="text-base font-medium">اختبارات تدريبية</CardTitle>
             <BookOpen className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -129,7 +129,7 @@ export function QuizzesManagement() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Daily Quizzes</CardTitle>
+            <CardTitle className="text-base font-medium">اختبارات يومية</CardTitle>
             <Calendar className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
@@ -139,7 +139,7 @@ export function QuizzesManagement() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-medium">مجموع الأسئلة</CardTitle>
-            <BookOpen className="h-4 w-4 text-purple-500" />
+            <BookOpen className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{totalQuestions}</div>
@@ -150,7 +150,7 @@ export function QuizzesManagement() {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Quiz Library</CardTitle>
+          <CardTitle>مكتبة الاختبارات</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -158,7 +158,7 @@ export function QuizzesManagement() {
               <div className="relative">
                 <Search className="absolute start-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by subject or chapter..."
+                  placeholder="ابحث بالمادة أو الفصل…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="ps-8"
@@ -167,20 +167,20 @@ export function QuizzesManagement() {
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter by type" />
+                <SelectValue placeholder="النوع" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">كل الأنواع</SelectItem>
                 <SelectItem value="practice">تدريب</SelectItem>
                 <SelectItem value="daily">يومي</SelectItem>
               </SelectContent>
             </Select>
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
               <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter by subject" />
+                <SelectValue placeholder="المادة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
+                <SelectItem value="all">كل المواد</SelectItem>
                 {subjects.map(subject => (
                   <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                 ))}
@@ -198,7 +198,7 @@ export function QuizzesManagement() {
                   <TableHead>الفصل</TableHead>
                   <TableHead>النوع</TableHead>
                   <TableHead>الأسئلة</TableHead>
-                  <TableHead>Max Score</TableHead>
+                  <TableHead>العلامة القصوى</TableHead>
                   <TableHead>التاريخ</TableHead>
                   <TableHead>إجراءات</TableHead>
                 </TableRow>
@@ -207,7 +207,7 @@ export function QuizzesManagement() {
                 {filteredQuizzes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No quizzes found
+                      لا توجد اختبارات
                     </TableCell>
                   </TableRow>
                 ) : (

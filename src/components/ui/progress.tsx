@@ -10,14 +10,18 @@ const Progress = React.forwardRef<
   <ProgressPrimitive.Root
     ref={ref}
     className={cn(
-      "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+      "relative h-4 w-full overflow-hidden rounded-full bg-muted",
       className
     )}
     {...props}
   >
+    {/* width, not translateX: a transform is not direction-aware, so in this
+        RTL app the shadcn default anchored the fill to the LEFT edge and grew
+        it away from the reading origin. Block width flips with `direction`
+        for free, in both RTL and LTR. */}
     <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 bg-primary transition-all"
-      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      className="h-full bg-primary transition-all"
+      style={{ width: `${value || 0}%` }}
     />
   </ProgressPrimitive.Root>
 ))

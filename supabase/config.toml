@@ -333,3 +333,9 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+[functions.gemini-chat]
+# Pinned here rather than left to whatever the dashboard last set. The function
+# verifies the JWT itself too (supabase.auth.getUser), so this is the gateway
+# turning away unauthenticated callers before they cost anything.
+verify_jwt = true

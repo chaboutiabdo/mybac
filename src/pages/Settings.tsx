@@ -24,10 +24,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import Navigation from "@/components/layout/Navigation";
+import PageHeader from "@/components/layout/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { errorMessage } from "@/lib/utils";
+import { errorMessage, passwordProblem } from "@/lib/utils";
 
 /**
  * Account settings.
@@ -45,6 +45,7 @@ const Settings = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [stream, setStream] = useState("");
+  const [city, setCity] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -55,6 +56,7 @@ const Settings = () => {
       setName(profile.name ?? "");
       setEmail(profile.email ?? "");
       setStream(profile.stream ?? "");
+      setCity(profile.city ?? "");
     }
   }, [profile]);
 
@@ -65,10 +67,14 @@ const Settings = () => {
     try {
       const { error } = await supabase
         .from("profiles")
+        // No `email` here. profiles.email is account identity — the admin
+        // roster shows it and a premium receipt is bound to it — so the
+        // database pins it, and a confirmed auth.updateUser below is the only
+        // thing that may change it. A trigger mirrors it back.
         .update({
           name,
-          email,
           stream: stream || null,
+          city: city.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
@@ -95,8 +101,9 @@ const Settings = () => {
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
-      toast.error("كلمة المرور قصيرة", { description: "6 أحرف على الأقل." });
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      toast.error("كلمة المرور ضعيفة", { description: problem });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -121,26 +128,19 @@ const Settings = () => {
   };
 
   return (
-    <div className="pattern-field min-h-screen bg-background">
-      <Navigation />
-
-      <main className="container py-8">
         <div className="mx-auto max-w-2xl space-y-6">
-          <div>
-            <h1 className="font-display text-[34px] font-bold tracking-tight">الإعدادات</h1>
-            <p className="mt-1 text-lg text-muted-foreground">
-              بيانات حسابك وكلمة المرور.
-            </p>
-          </div>
+          <PageHeader title="الإعدادات" subtitle="بيانات حسابك وكلمة المرور." />
 
           <Card>
-            <CardHeader className="border-b border-border">
-              <CardTitle className="flex items-center gap-2.5 font-display text-xl">
-                <User className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-tone-lav">
+                  <User className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                </span>
                 معلومات الحساب
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 p-6">
+            <CardContent className="space-y-5">
               <div className="space-y-1.5">
                 <Label htmlFor="name">الاسم الكامل</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -179,6 +179,14 @@ const Settings = () => {
                 </p>
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="city">مدينتك</Label>
+                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="مثال: وهران" />
+                <p className="text-sm text-muted-foreground">
+                  لمقارنة ترتيبك مع طلاب مدينتك في «أفضل الطلاب».
+                </p>
+              </div>
+
               <Button onClick={handleSave} disabled={isLoading} size="lg">
                 {isLoading ? "جارٍ الحفظ…" : "حفظ التغييرات"}
               </Button>
@@ -186,22 +194,24 @@ const Settings = () => {
           </Card>
 
           <Card>
-            <CardHeader className="border-b border-border">
-              <CardTitle className="flex items-center gap-2.5 font-display text-xl">
-                <Shield className="h-5 w-5 text-accent" strokeWidth={1.6} aria-hidden />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-tone-peach">
+                  <Shield className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                </span>
                 الأمان
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-3 p-6">
+            <CardContent className="flex flex-wrap items-center gap-3">
               <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">تغيير كلمة المرور</Button>
+                  <Button variant="secondary" className="bg-card-raised">تغيير كلمة المرور</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>تغيير كلمة المرور</DialogTitle>
                     <DialogDescription>
-                      اختر كلمة مرور جديدة من 6 أحرف على الأقل.
+                      اختر كلمة مرور جديدة من 8 أحرف على الأقل، فيها حروف لاتينية وأرقام.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -252,8 +262,6 @@ const Settings = () => {
             </CardContent>
           </Card>
         </div>
-      </main>
-    </div>
   );
 };
 

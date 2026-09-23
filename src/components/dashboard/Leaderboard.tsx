@@ -1,128 +1,77 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { Link } from "react-router-dom";
+import { Trophy } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
+import { TONE_BG, type Tone } from "@/lib/bac";
+import { cn } from "@/lib/utils";
 
 // the leaderboard view drops NOT NULL, so these arrive nullable
 interface LeaderboardEntry {
   id: string | null;
   name: string | null;
   score: number | null;
-  avatar?: string;
-  rank: number;
 }
 
+// the podium keeps its own tones; the rest sit on white
+const PODIUM: Tone[] = ["peach", "lav", "pink"];
+
 const Leaderboard = () => {
-  const { t, isRTL } = useLanguage();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
 
   useEffect(() => {
-    fetchLeaderboard();
+    // reads the `leaderboard` view, not `profiles`: the view exposes only
+    // id/name/total_score, so ranking needs no access to anyone's email
+    supabase
+      .from("leaderboard")
+      .select("id, name, total_score")
+      .limit(5)
+      .then(({ data, error }) => {
+        if (error) console.error("Error fetching leaderboard:", error);
+        setLeaderboard((data ?? []).map((e) => ({ id: e.id, name: e.name, score: e.total_score })));
+      });
   }, []);
 
-  const fetchLeaderboard = async () => {
-    try {
-      // reads the `leaderboard` view, not `profiles` — the view exposes only
-      // id/name/total_score, so ranking no longer requires read access to
-      // every student's email
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('id, name, total_score')
-        .limit(5);
-
-      if (error) {
-        console.error('Error fetching leaderboard:', error);
-        return;
-      }
-
-      const leaderboardData = data.map((entry, index) => ({
-        id: entry.id,
-        name: entry.name,
-        score: entry.total_score,
-        rank: index + 1
-      }));
-
-      setLeaderboard(leaderboardData);
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Trophy className="h-5 w-5 text-warning" />;
-      case 2:
-        return <Medal className="h-5 w-5 text-muted-foreground" />;
-      case 3:
-        return <Award className="h-5 w-5 text-accent" />;
-      default:
-        return <span className="text-base font-bold text-muted-foreground">#{rank}</span>;
-    }
-  };
-
-  const getRankBadgeVariant = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return "bg-warning text-warning-foreground";
-      case 2:
-        return "bg-muted text-muted-foreground";
-      case 3:
-        return "bg-accent text-accent-foreground";
-      default:
-        return "bg-secondary text-secondary-foreground";
-    }
-  };
-
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-warning" />
-          {t("topStudents")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? (
-          <div className="text-center text-muted-foreground">جارٍ التحميل…</div>
+    <section className="flex h-full flex-col rounded-card bg-card p-5 shadow-soft">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-tone-peach">
+            <Trophy className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+          </span>
+          <h2 className="text-lg font-medium">أفضل الطلاب</h2>
+        </div>
+        <Link to="/leaderboard" className="text-[13px] text-muted-foreground hover:text-foreground">
+          التفاصيل
+        </Link>
+      </div>
+
+      <ol className="mt-4 flex flex-1 flex-col gap-2">
+        {leaderboard === null ? (
+          <li className="py-6 text-center text-muted-foreground">جارٍ التحميل…</li>
         ) : leaderboard.length === 0 ? (
-          <div className="text-center text-muted-foreground">لا يوجد طلاب بعد</div>
+          <li className="py-6 text-center text-muted-foreground">لا يوجد طلاب بعد</li>
         ) : (
-          leaderboard.map((student) => (
-          <div
-            key={student.id}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-card-raised/60 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8">
-                {getRankIcon(student.rank)}
-              </div>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={student.avatar} alt={student.name ?? undefined} />
-                <AvatarFallback className="text-sm">
-                  {(student.name ?? "?").split(" ").map(n => n[0]).join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-medium truncate">{student.name}</p>
-              </div>
-            </div>
-            <Badge 
-              className={`${getRankBadgeVariant(student.rank)} font-semibold`}
-            >
-              {(student.score ?? 0).toLocaleString()} {t("pts")}
-            </Badge>
-          </div>
-        ))
+          leaderboard.map((student, i) => (
+            <li key={student.id ?? i} className="flex items-center gap-3 rounded-2xl bg-card-raised p-2.5">
+              <span
+                className={cn(
+                  "tabular flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                  i < 3 ? TONE_BG[PODIUM[i]] : "bg-muted"
+                )}
+              >
+                {i + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{student.name}</span>
+              <span className="tabular shrink-0 text-[15px] font-semibold">
+                {(student.score ?? 0).toLocaleString("ar-DZ")}
+                <span className="ms-1 text-sm font-normal text-muted-foreground">نقطة</span>
+              </span>
+            </li>
+          ))
         )}
-      </CardContent>
-    </Card>
+      </ol>
+    </section>
   );
 };
 

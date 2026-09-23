@@ -5,16 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, XCircle, Search, Filter, Crown, Users, TrendingUp } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Search, Filter, Crown, Users, TrendingUp, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessage } from "@/lib/utils";
+import { formatDateDZ } from "@/lib/bac";
+import { EmptyState, ErrorState, Loading } from "@/components/ui/states";
 import type { Tables } from "@/integrations/supabase/types";
 
 // exactly the columns the query below selects, taken from the generated row
 type Profile = Pick<
   Tables<'profiles'>,
   'user_id' | 'name' | 'email' | 'role' | 'subscription_status' | 'created_at' | 'updated_at'
+>;
+
+// a payment receipt sent from /pricing; approving upgrades requester_id
+type PremiumRequest = Pick<
+  Tables<'support_requests'>,
+  'id' | 'name' | 'email' | 'phone' | 'message' | 'requester_id' | 'created_at'
 >;
 
 interface Stats {
@@ -30,6 +38,9 @@ export function SubscriptionManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  // null until loaded, so "no requests" never shows before we actually know
+  const [requests, setRequests] = useState<PremiumRequest[] | null>(null);
+  const [requestsFailed, setRequestsFailed] = useState(false);
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     premiumUsers: 0,
@@ -39,6 +50,7 @@ export function SubscriptionManagement() {
 
   useEffect(() => {
     fetchProfiles();
+    fetchRequests();
   }, []);
 
   useEffect(() => {
@@ -63,6 +75,23 @@ export function SubscriptionManagement() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchRequests = async () => {
+    setRequestsFailed(false);
+    const { data, error } = await supabase
+      .from('support_requests')
+      .select('id, name, email, phone, message, requester_id, created_at')
+      .eq('type', 'premium_subscription')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error:', error);
+      setRequestsFailed(true);
+      return;
+    }
+    setRequests(data);
   };
 
   const calculateStats = (profiles: Profile[]) => {
@@ -127,8 +156,114 @@ export function SubscriptionManagement() {
     }
   };
 
+  const resolveRequest = async (request: PremiumRequest, status: 'approved' | 'rejected') => {
+    if (status === 'approved') {
+      if (!request.requester_id) return;
+      // Upgrade before marking approved, and only a student: someone who filed
+      // a request and has since become premium or admin keeps their role.
+      // Setting 'premium' unconditionally demoted an admin who approved their
+      // own old request.
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: 'premium', subscription_status: 'premium', updated_at: new Date().toISOString() })
+        .eq('user_id', request.requester_id)
+        .eq('role', 'student');
+
+      if (error) {
+        toast.error("خطأ في تحديث الحالة", { description: errorMessage(error) });
+        return;
+      }
+      fetchProfiles();
+    }
+
+    const { error } = await supabase
+      .from('support_requests')
+      .update({ status })
+      .eq('id', request.id);
+
+    if (error) {
+      toast.error("خطأ في تحديث الطلب", { description: errorMessage(error) });
+      return;
+    }
+    toast.success(status === 'approved' ? "تم تفعيل الاشتراك المميز" : "تم رفض الطلب");
+    fetchRequests();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Pending premium requests: the receipts students send from /pricing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Inbox className="h-5 w-5" />
+            طلبات الاشتراك المعلّقة
+            {requests && requests.length > 0 && <Badge>{requests.length}</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {requestsFailed ? (
+            <ErrorState onRetry={fetchRequests} />
+          ) : requests === null ? (
+            <Loading />
+          ) : requests.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              title="لا توجد طلبات معلّقة"
+              description="تظهر هنا إيصالات الدفع التي يرسلها الطلاب من صفحة الاشتراك."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>الطالب</TableHead>
+                  <TableHead>الهاتف</TableHead>
+                  <TableHead>تفاصيل الدفع</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <p className="font-medium">{request.name}</p>
+                      <p className="text-base text-muted-foreground">{request.email}</p>
+                    </TableCell>
+                    <TableCell>
+                      <span dir="ltr">{request.phone ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="max-w-xs whitespace-pre-wrap">{request.message}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDateDZ(request.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          disabled={!request.requester_id || loading}
+                          title={request.requester_id ? undefined : "طلب قديم غير مرتبط بحساب، رقِّ الطالب من الجدول أدناه"}
+                          onClick={() => resolveRequest(request, 'approved')}
+                        >
+                          <CheckCircle2 className="h-4 w-4 me-1" />
+                          تفعيل المميز
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={loading}
+                          onClick={() => resolveRequest(request, 'rejected')}
+                        >
+                          <XCircle className="h-4 w-4 me-1" />
+                          رفض
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

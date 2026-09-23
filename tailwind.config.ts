@@ -14,12 +14,11 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				// Covers Arabic and Latin in one family with matched metrics, which
-				// this app needs: Arabic prose, French units (m/s², kg, N) and KaTeX
-				// math sit inline together.
-				sans: ['"IBM Plex Sans Arabic"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-				// Headings get their own face, or they read as merely bigger body text.
-				display: ['Rubik', '"IBM Plex Sans Arabic"', 'ui-sans-serif', 'system-ui', 'sans-serif']
+				// Readex Pro covers Arabic and Latin with matched metrics: Arabic prose,
+				// French units (m/s², kg, N) and KaTeX math sit inline together.
+				sans: ['"Readex Pro"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+				// headings use the same face; weight and size carry the hierarchy
+				display: ['"Readex Pro"', 'ui-sans-serif', 'system-ui', 'sans-serif']
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -73,8 +72,22 @@ export default {
 					foreground: 'hsl(var(--card-foreground))',
 					raised: 'hsl(var(--card-raised))'
 				},
-				'surface-deep': 'hsl(var(--surface-deep))',
-				'border-gold': 'hsl(var(--border-gold))',
+				// category tones: streams and subjects (src/lib/bac.ts). Prefixed so
+				// they don't replace Tailwind's own pink/sky scales.
+				tone: {
+					pink: 'hsl(var(--tone-pink))',
+					'pink-strong': 'hsl(var(--tone-pink-strong))',
+					mint: 'hsl(var(--tone-mint))',
+					'mint-strong': 'hsl(var(--tone-mint-strong))',
+					lav: 'hsl(var(--tone-lav))',
+					'lav-strong': 'hsl(var(--tone-lav-strong))',
+					peach: 'hsl(var(--tone-peach))',
+					'peach-strong': 'hsl(var(--tone-peach-strong))',
+					sage: 'hsl(var(--tone-sage))',
+					'sage-strong': 'hsl(var(--tone-sage-strong))',
+					sky: 'hsl(var(--tone-sky))',
+					'sky-strong': 'hsl(var(--tone-sky-strong))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -88,12 +101,14 @@ export default {
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 3px)'
+				md: 'calc(var(--radius) - 4px)',
+				sm: 'calc(var(--radius) - 6px)',
+				// the mockup's card corner
+				card: '26px'
 			},
 			boxShadow: {
-				overlay: 'var(--shadow-overlay)',
-				raised: 'var(--shadow-raised)'
+				soft: 'var(--shadow-soft)',
+				pop: 'var(--shadow-pop)'
 			},
 			keyframes: {
 				'accordion-down': {
