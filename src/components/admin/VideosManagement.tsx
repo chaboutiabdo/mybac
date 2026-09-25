@@ -45,11 +45,7 @@ import {
   Upload,
   Link,
   Play,
-  BookOpen,
-  GraduationCap,
-  Clock,
-  Eye,
-  Download
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -173,7 +169,6 @@ export function VideosManagement() {
   const totalVideos = videos.length;
   const youtubeVideos = videos.filter(v => v.type === "youtube").length;
   const premiumVideos = videos.filter(v => v.type === "premium").length;
-  const totalViews = videos.reduce((sum, v) => sum + (v.views || 0), 0);
   const avgDuration = videos.length > 0 ? Math.round(videos.reduce((sum, v) => sum + (v.duration || 0), 0) / videos.length) : 0;
 
   return (
@@ -304,7 +299,7 @@ export function VideosManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
@@ -334,17 +329,6 @@ export function VideosManagement() {
               <div>
                 <p className="text-3xl font-bold">{premiumVideos}</p>
                 <p className="text-base text-muted-foreground">مميّز</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-warning" />
-              <div>
-                <p className="text-3xl font-bold">{totalViews.toLocaleString()}</p>
-                <p className="text-base text-muted-foreground">مجموع المشاهدات</p>
               </div>
             </div>
           </CardContent>
@@ -428,20 +412,19 @@ export function VideosManagement() {
                   <TableHead>الفصل</TableHead>
                   <TableHead>النوع</TableHead>
                   <TableHead>المدة</TableHead>
-                  <TableHead>المشاهدات</TableHead>
                   <TableHead>إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       جارٍ تحميل الدروس…
                     </TableCell>
                   </TableRow>
                 ) : filteredVideos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       لا توجد دروس
                     </TableCell>
                   </TableRow>
@@ -481,12 +464,6 @@ export function VideosManagement() {
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {video.duration ? `${video.duration} د` : "—"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          {(video.views || 0).toLocaleString()}
                         </div>
                       </TableCell>
                       <TableCell>

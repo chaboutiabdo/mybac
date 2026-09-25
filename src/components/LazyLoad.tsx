@@ -1,4 +1,4 @@
-import { Suspense, ComponentType, ReactNode } from 'react';
+import { Suspense, ReactNode } from 'react';
 import { Loading } from "@/components/ui/states";
 
 interface LazyLoadProps {
@@ -15,18 +15,6 @@ export const LazyLoad = ({ children, fallback = <DefaultFallback /> }: LazyLoadP
     <Suspense fallback={fallback}>
       {children}
     </Suspense>
-  );
-};
-
-// HOC for lazy loading components
-export const withLazyLoad = <P extends object>(
-  Component: ComponentType<P>,
-  fallback?: ReactNode
-) => {
-  return (props: P) => (
-    <LazyLoad fallback={fallback}>
-      <Component {...props} />
-    </LazyLoad>
   );
 };
 

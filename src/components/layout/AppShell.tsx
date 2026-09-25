@@ -141,7 +141,9 @@ export default function AppShell() {
 
   return (
     <>
-      <div className="mx-auto flex max-w-[1440px] gap-6 px-4 pb-28 pt-6 sm:px-6 lg:pb-8">
+      {/* 1920, not the mockup's 1440: on a 1920px screen 1440 left ~240px
+          empty on each side. Still capped for ultra-wide monitors. */}
+      <div className="mx-auto flex max-w-[1920px] gap-6 px-4 pb-28 pt-6 sm:px-6 lg:pb-8">
         <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[88px] shrink-0 flex-col items-center gap-2 py-6 lg:flex">
           <Link to="/home" aria-label="THE SMART" className="mb-4">
             <img src="/favicon.svg" alt="" className="h-11 w-11" />

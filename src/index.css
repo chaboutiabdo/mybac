@@ -162,10 +162,24 @@
    rules whose class never appears in the source, and `.katex` is only ever
    generated at runtime. Inside @layer components this rule never shipped, and
    every AI formula rendered mirrored (fractions reversed, subscripts on the
-   wrong side). */
+   wrong side).
+   `position: relative` anchors KaTeX's hidden MathML copy (position: absolute)
+   to its own formula. Without it, every copy escaped the chat's scroll box and
+   stretched the page: an empty band under the tutor after each answer. */
 .katex {
   direction: ltr;
   unicode-bidi: isolate;
+  position: relative;
+}
+
+/* A display formula never wraps. Without this, one long equation in an AI
+   answer set the width of its whole column: on a phone the tutor page grew to
+   456 px and every line beside it was cut off. It scrolls on its own instead.
+   Outside @layer for the same reason as .katex above. */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
 }
 
 @layer components {
@@ -181,21 +195,10 @@
   .animate-progress > * {
     animation: progress-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-
-  .animate-rise {
-    animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
 }
 
 @keyframes progress-fill {
   from {
     transform: translateX(var(--progress-from, 100%));
-  }
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
   }
 }

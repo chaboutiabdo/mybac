@@ -14,6 +14,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { EXAM_YEARS, TONE_BG, difficultyLabel, streamLabel, subjectLabel, subjectTone } from "@/lib/bac";
+import { openStoredFile } from "@/lib/files";
 import { cn } from "@/lib/utils";
 
 type Exam = Tables<"exams">;
@@ -94,14 +95,7 @@ const Exams = () => {
     }
 
     try {
-      if (fileUrl.startsWith("http")) {
-        window.open(fileUrl, "_blank", "noopener,noreferrer");
-      } else {
-        // a storage path: open it through a one-hour signed URL
-        const { data } = await supabase.storage.from("documents").createSignedUrl(fileUrl, 3600);
-        if (!data?.signedUrl) throw new Error("Failed to get signed URL");
-        window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-      }
+      await openStoredFile(fileUrl);
       // exams.downloads is counted by a database trigger on exam_progress
     } catch (error) {
       console.error("Error opening file:", error);
@@ -212,7 +206,7 @@ const Exams = () => {
                     variant="secondary"
                     className="bg-card-raised/70 hover:bg-card-raised"
                     // Visible to everyone, functionally gated — /exams is a free
-                    // route. Same shape as Flashcards.tsx's generate handler: a
+                    // route. Same shape as MistakeCard's explain button: a
                     // toast explains why, then hands the student to /pricing,
                     // rather than a silently dead button. exam_progress is NOT
                     // written here: the solution page writes it only after a

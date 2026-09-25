@@ -33,7 +33,8 @@ export default function MistakeCard({
   const handleExplain = async () => {
     // /mistakes and /revision are free routes, and this was the only AI action
     // in the app with no client-side gate: a free student waited for a spinner
-    // and then got the server's 403 as a toast. Same upsell Flashcards.tsx uses.
+    // and then got the server's 403 as a toast. Same upsell as the "solve with
+    // AI" button on /exams.
     if (!isPremium) {
       toast.error("شرح الأخطاء بالذكاء الاصطناعي ميزة مميّزة", {
         description: "اشترك للحصول على شرح مفصّل لكل خطأ.",

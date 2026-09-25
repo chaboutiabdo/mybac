@@ -1,22 +1,27 @@
 /**
  * Solves every paper ahead of time, so students open a cached AI solution
- * instantly instead of waiting up to two minutes on the free Gemini tier.
+ * instantly instead of waiting up to two minutes on the free Gemini tier, and
+ * copies each solved question's wording from the paper, so the solution page
+ * can show the question above its steps.
  *
- *   node scripts/prewarm-exam-solutions.mjs              everything still unsolved
- *   node scripts/prewarm-exam-solutions.mjs --limit 5    at most 5 papers this run
+ *   node scripts/prewarm-exam-solutions.mjs              everything still to do
+ *   node scripts/prewarm-exam-solutions.mjs --limit 5    at most 5 papers per phase
  *
  * It goes through gemini-chat like a student would, signed in as an admin
  * (admins have no daily ceiling), so the prompt, the checks and the cache are
  * exactly the ones students get. No service key. The database is the state:
  * a rerun picks up where the last one stopped.
  *
- * To do: papers with no solution for the current SOLVE_PROMPT_VERSION, plus
- * 'derived' solutions whose official correction has since been uploaded.
+ * Phase 1, solve: papers with no solution for the current SOLVE_PROMPT_VERSION,
+ * plus 'derived' solutions whose official correction has since been uploaded.
  * Papers with an official correction go first (cheaper and more accurate).
+ * Phase 2, questions (mode extract_questions, admin only): solved papers whose
+ * questions have no question_text yet. It adds text, never changes a solution.
  *
  * Google's free tier is often saturated. A busy paper is retried after 30 s
  * and 60 s; after three busy papers in a row the run stops by itself. Every
- * solve spends the same free quota students use.
+ * call spends the same free quota students use — if this key shares a Google
+ * project with the live site's key, run it when students are asleep.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -57,22 +62,17 @@ if (signInError) throw new Error(`admin sign-in failed for ${EMAIL}: ${signInErr
 const { data: exams, error: examsError } = await client.from("exams")
   .select("id, subject, stream, year, exam_url, solution_url");
 if (examsError) throw examsError;
-// Admins can read this table; students cannot (see attack-suite "AI exam solver").
-const { data: solved, error: solvedError } = await client.from("exam_ai_solutions")
-  .select("exam_id, source").eq("prompt_version", PROMPT_VERSION);
-if (solvedError) throw solvedError;
-const have = new Map(solved.map((s) => [s.exam_id, s.source]));
 
-const todo = exams
-  .filter((e) => e.exam_url || e.solution_url)
-  .filter((e) => !have.has(e.id) || (have.get(e.id) === "derived" && e.solution_url))
-  .sort((a, b) => Number(!!b.solution_url) - Number(!!a.solution_url) || b.year - a.year)
-  .slice(0, LIMIT);
-
-console.log(`${exams.length} papers, ${have.size} solved for prompt v${PROMPT_VERSION}, ${todo.length} to do this run`);
+/** Admins can read this table; students cannot (see attack-suite "AI exam solver"). */
+async function solutions() {
+  const { data, error } = await client.from("exam_ai_solutions")
+    .select("exam_id, source, solution").eq("prompt_version", PROMPT_VERSION);
+  if (error) throw error;
+  return new Map(data.map((s) => [s.exam_id, s]));
+}
 
 /** One request, exactly as the page makes it. Returns the HTTP status (0 = network/timeout). */
-async function solveOnce(examId) {
+async function callOnce(mode, examId) {
   const { data } = await client.auth.getSession();   // refreshes an expired token
   try {
     const res = await fetch(`${URL}/functions/v1/gemini-chat`, {
@@ -82,7 +82,7 @@ async function solveOnce(examId) {
         apikey: ANON_KEY,
         Authorization: `Bearer ${data.session?.access_token}`,
       },
-      body: JSON.stringify({ mode: "solve_exam", exam_id: examId }),
+      body: JSON.stringify({ mode, exam_id: examId }),
       signal: AbortSignal.timeout(170_000),
     });
     const body = await res.json().catch(() => ({}));
@@ -92,47 +92,73 @@ async function solveOnce(examId) {
   }
 }
 
-const done = [];
-const failed = [];
-let busyStreak = 0;
-let stopped = null;
+/** Runs one mode over a list of papers with the busy backoff. Returns why it stopped early, if it did. */
+async function phase(name, mode, todo, describe) {
+  console.log(`\n${name}: ${todo.length} to do this run`);
+  const done = [];
+  const failed = [];
+  let busyStreak = 0;
+  let stopped = null;
 
-for (const [i, exam] of todo.entries()) {
-  const label = `${exam.subject}/${exam.stream}/${exam.year}`;
-  let r;
-  for (let attempt = 0; ; attempt++) {
-    const t = Date.now();
-    r = await solveOnce(exam.id);
-    const secs = Math.round((Date.now() - t) / 1000);
-    const detail = r.status === 200
-      ? `${r.body.solution?.length} questions, ${r.body.source}${r.body.cached ? ", already cached" : ""}`
-      : r.body.error ?? "";
-    console.log(`[${i + 1}/${todo.length}] ${label}  ${r.status || "network"} in ${secs} s  ${detail}`);
-    if (!(BUSY.has(r.status) || r.status === 0) || attempt >= WAITS_S.length) break;
-    await sleep(WAITS_S[attempt]);
-  }
-
-  if (r.status === 200) {
-    done.push(label);
-    busyStreak = 0;
-  } else if (r.status === 429 || r.status === 401 || r.status === 403) {
-    stopped = `${r.status}: ${r.body.error} — is ${EMAIL} still an admin?`;
-    break;
-  } else {
-    failed.push(`${label}: ${r.status || "network"} ${r.body.error ?? ""}`);
-    if (BUSY.has(r.status) || r.status === 0) {
-      if (++busyStreak >= GIVE_UP_AFTER) {
-        stopped = `Google stayed busy for ${GIVE_UP_AFTER} papers in a row — rerun later`;
-        break;
-      }
-    } else {
-      busyStreak = 0;
+  for (const [i, exam] of todo.entries()) {
+    const label = `${exam.subject}/${exam.stream}/${exam.year}`;
+    let r;
+    for (let attempt = 0; ; attempt++) {
+      const t = Date.now();
+      r = await callOnce(mode, exam.id);
+      const secs = Math.round((Date.now() - t) / 1000);
+      const detail = r.status === 200 ? describe(r.body) : r.body.error ?? "";
+      console.log(`[${i + 1}/${todo.length}] ${label}  ${r.status || "network"} in ${secs} s  ${detail}`);
+      if (!(BUSY.has(r.status) || r.status === 0) || attempt >= WAITS_S.length) break;
+      await sleep(WAITS_S[attempt]);
     }
+
+    if (r.status === 200) {
+      done.push(label);
+      busyStreak = 0;
+    } else if (r.status === 429 || r.status === 401 || r.status === 403) {
+      stopped = `${r.status}: ${r.body.error} — is ${EMAIL} still an admin?`;
+      break;
+    } else {
+      failed.push(`${label}: ${r.status || "network"} ${r.body.error ?? ""}`);
+      if (BUSY.has(r.status) || r.status === 0) {
+        if (++busyStreak >= GIVE_UP_AFTER) {
+          stopped = `Google stayed busy for ${GIVE_UP_AFTER} papers in a row — rerun later`;
+          break;
+        }
+      } else {
+        busyStreak = 0;
+      }
+    }
+    if (i < todo.length - 1) await sleep(BETWEEN_PAPERS_S);
   }
-  if (i < todo.length - 1) await sleep(BETWEEN_PAPERS_S);
+
+  console.log(`${name}: done ${done.length}, failed ${failed.length}, not reached ${todo.length - done.length - failed.length}`);
+  for (const f of failed) console.log(`  ✗ ${f}`);
+  if (stopped) console.log(`stopped: ${stopped}`);
+  return stopped;
 }
 
-console.log(`\nsolved ${done.length}, failed ${failed.length}, not reached ${todo.length - done.length - failed.length}`);
-for (const f of failed) console.log(`  ✗ ${f}`);
-if (stopped) console.log(`stopped: ${stopped}`);
+let have = await solutions();
+console.log(`${exams.length} papers, ${have.size} solved for prompt v${PROMPT_VERSION}`);
+
+const toSolve = exams
+  .filter((e) => e.exam_url || e.solution_url)
+  .filter((e) => !have.has(e.id) || (have.get(e.id).source === "derived" && e.solution_url))
+  .sort((a, b) => Number(!!b.solution_url) - Number(!!a.solution_url) || b.year - a.year)
+  .slice(0, LIMIT);
+let stopped = await phase("solve", "solve_exam", toSolve,
+  (b) => `${b.solution?.length} questions, ${b.source}${b.cached ? ", already cached" : ""}`);
+
+if (!stopped) {
+  have = await solutions();
+  const lacksText = (s) => !Array.isArray(s?.solution) || s.solution.some((q) => !q.question_text);
+  const toCopy = exams
+    .filter((e) => e.exam_url && have.has(e.id) && lacksText(have.get(e.id)))
+    .sort((a, b) => b.year - a.year)
+    .slice(0, LIMIT);
+  stopped = await phase("questions", "extract_questions", toCopy,
+    (b) => `${b.questions} question texts${b.cached ? ", already there" : ""}`);
+}
+
 process.exit(stopped && !stopped.startsWith("Google") ? 1 : 0);

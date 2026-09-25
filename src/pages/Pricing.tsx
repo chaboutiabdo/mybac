@@ -117,7 +117,8 @@ const Pricing = () => {
       unit: "دج",
       note: "للأبد",
       tone: "bg-card",
-      features: ["الدروس المجانية", "كل مواضيع البكالوريا وحلولها", "الاختبار اليومي"],
+      // the quizzes page is premium (App.tsx); the free daily item is the question of the day
+      features: ["الدروس المجانية", "كل مواضيع البكالوريا وحلولها", "سؤال اليوم"],
       action: (
         <Button asChild size="lg" variant="secondary" className="w-full bg-card-raised">
           <Link to="/login">سجّل مجانًا</Link>

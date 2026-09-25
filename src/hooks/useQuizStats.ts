@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { dzKey } from "@/lib/bac";
 
 // `questions` is a jsonb column, so it arrives typed as Json rather than an
 // array; count it only when it really is one.
@@ -20,7 +21,8 @@ const progress = (completed: number, total: number) => ({
 export interface QuizStats {
   completedQuizzes: number;
   averageScore: number;
-  pointsEarned: number;
+  /** today's daily quiz (Algiers day); overallProgress and below are about it */
+  todaysQuizId: string | null;
   overallProgress: {
     completed: number;
     total: number;
@@ -38,7 +40,7 @@ export const useQuizStats = () => {
   const [stats, setStats] = useState<QuizStats>({
     completedQuizzes: 0,
     averageScore: 0,
-    pointsEarned: 0,
+    todaysQuizId: null,
     overallProgress: { completed: 0, total: 0, percentage: 0 },
     subjectProgress: {
       math: { completed: 0, total: 0, percentage: 0 },
@@ -83,10 +85,10 @@ export const useQuizStats = () => {
           .not("completed_at", "is", null),
         supabase
           .from("quiz_question_results")
-          .select("quiz_type, quiz_subject")
+          .select("quiz_id, question_id, quiz_subject")
           .eq("student_id", user.id)
           .eq("is_correct", true),
-        supabase.from("quizzes_public").select("id, type, subject, questions, max_score"),
+        supabase.from("quizzes_public").select("id, type, subject, date, questions, max_score"),
       ]);
 
       const quizById = new Map((quizzes ?? []).map((q) => [q.id, q]));
@@ -102,22 +104,25 @@ export const useQuizStats = () => {
         ? Math.round((percentages.reduce((sum, p) => sum + p, 0) / percentages.length) * 10) / 10
         : 0;
 
-      // same amounts the server awards (record_points_transaction)
-      const pointsEarned = (correct ?? []).reduce(
-        (sum, r) => sum + (r.quiz_type === "daily" ? 25 : r.quiz_type === "practice" ? 8 : 0),
-        0
-      );
-
-      // progress counts daily quizzes only
-      const daily = (quizzes ?? []).filter((q) => q.type === "daily");
-      const dailyCorrect = (correct ?? []).filter((r) => r.quiz_type === "daily");
+      // "اختبار اليوم" is today's daily quiz. It used to add up every daily
+      // quiz ever published, and count a question again on every retake.
+      const today = dzKey();
+      const daily = (quizzes ?? []).filter((q) => q.type === "daily" && q.date === today);
+      const todaysIds = new Set(daily.map((q) => q.id));
+      const seen = new Set<string>();
+      const dailyCorrect = (correct ?? []).filter((r) => {
+        const key = `${r.quiz_id}:${r.question_id}`;
+        if (!todaysIds.has(r.quiz_id) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       const questionsIn = (list: typeof daily) => list.reduce((sum, q) => sum + questionCount(q.questions), 0);
       const totalQuestions = questionsIn(daily);
 
       setStats({
         completedQuizzes,
         averageScore,
-        pointsEarned,
+        todaysQuizId: daily[0]?.id ?? null,
         overallProgress: progress(dailyCorrect.length, totalQuestions),
         subjectProgress: {
           math: progress(

@@ -131,7 +131,7 @@ export function AdviceTipsManagement() {
         throw error;
       }
 
-      toast.success("تم", { description: `Tip ${editingTip ? "updated" : "added"} successfully.` });
+      toast.success("تم", { description: editingTip ? "تم تعديل النصيحة." : "تمت إضافة النصيحة." });
 
       setShowAddDialog(false);
       setEditingTip(null);
@@ -146,7 +146,7 @@ export function AdviceTipsManagement() {
       fetchTips();
     } catch (error) {
       console.error("Error details:", error);
-      toast.error("خطأ", { description: `Failed to ${editingTip ? "update" : "add"} tip. ${errorMessage(error, "")}` });
+      toast.error("خطأ", { description: `${editingTip ? "تعذّر تعديل النصيحة." : "تعذّرت إضافة النصيحة."} ${errorMessage(error, "")}` });
     }
   };
 
@@ -174,8 +174,10 @@ export function AdviceTipsManagement() {
     let expiryDateFormatted = "";
     if (tip.expiry_date) {
       const date = new Date(tip.expiry_date);
-      // Format: YYYY-MM-DDTHH:mm
-      expiryDateFormatted = date.toISOString().slice(0, 16);
+      // datetime-local shows and returns LOCAL time; a UTC string here moved
+      // the expiry an hour earlier (Algiers is UTC+1) on every save
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+      expiryDateFormatted = local.toISOString().slice(0, 16);
     }
     
     setFormData({

@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
-	content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+	content: ["./src/**/*.{ts,tsx}"],
 	prefix: "",
 	theme: {
 		container: {
@@ -18,7 +18,10 @@ export default {
 				// French units (m/s², kg, N) and KaTeX math sit inline together.
 				sans: ['"Readex Pro"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
 				// headings use the same face; weight and size carry the hierarchy
-				display: ['"Readex Pro"', 'ui-sans-serif', 'system-ui', 'sans-serif']
+				display: ['"Readex Pro"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				// the landing page's accent words, like the serif italics of the
+				// reference the owner chose (recorpsmed.com); used nowhere else
+				accent: ['"Amiri"', '"Readex Pro"', 'serif']
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -109,20 +112,6 @@ export default {
 			boxShadow: {
 				soft: 'var(--shadow-soft)',
 				pop: 'var(--shadow-pop)'
-			},
-			keyframes: {
-				'accordion-down': {
-					from: { height: '0' },
-					to: { height: 'var(--radix-accordion-content-height)' }
-				},
-				'accordion-up': {
-					from: { height: 'var(--radix-accordion-content-height)' },
-					to: { height: '0' }
-				}
-			},
-			animation: {
-				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
 			}
 		}
 	},

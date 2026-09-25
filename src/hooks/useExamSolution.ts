@@ -16,6 +16,10 @@ export interface SolvedQuestion {
   key_concept: string;
   common_mistake?: string;
   memory_tip?: string;
+  /** The question's wording and its exercise's statement, copied from the
+   *  paper by extract_questions; absent until that has run for the paper. */
+  question_text?: string;
+  exercise_text?: string;
 }
 
 export interface ExamSolutionResponse {
@@ -26,7 +30,7 @@ export interface ExamSolutionResponse {
    */
   source: "solution_grounded" | "derived";
   cached: boolean;
-  exam: { id: string; title: string; subject: string; stream: string; year: number };
+  exam: { id: string; title: string; subject: string; stream: string; year: number; exam_url?: string | null };
 }
 
 /**

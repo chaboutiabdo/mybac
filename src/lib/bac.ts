@@ -26,15 +26,6 @@ export const TONE_BG: Record<Tone, string> = {
   sky: "bg-tone-sky",
 }
 
-export const TONE_BG_STRONG: Record<Tone, string> = {
-  pink: "bg-tone-pink-strong",
-  mint: "bg-tone-mint-strong",
-  lav: "bg-tone-lav-strong",
-  peach: "bg-tone-peach-strong",
-  sage: "bg-tone-sage-strong",
-  sky: "bg-tone-sky-strong",
-}
-
 /* ------------------------------------------------------------------ streams */
 
 export interface Stream {
@@ -120,12 +111,6 @@ export const COEFFICIENTS: Record<string, Record<string, number>> = {
   },
 }
 
-/** Coefficient for a subject in a stream, or null when unknown. */
-export function coefficient(stream?: string | null, subject?: string | null): number | null {
-  if (!stream || !subject) return null
-  return COEFFICIENTS[stream]?.[subject] ?? null
-}
-
 /* --------------------------------------------------------------- BAC calendar */
 
 /**
@@ -142,25 +127,6 @@ export function daysUntilBac(from: Date = new Date()): number {
 }
 
 export const BAC_SESSION_LABEL = "دورة جوان 2027"
-
-export const SESSIONS = [
-  { value: "normale", label: "دورة عادية" },
-  { value: "rattrapage", label: "دورة استدراكية" },
-] as const
-
-/* ------------------------------------------------------------------ grading */
-
-/** Percentage (or points out of a max) shown on the BAC's /20 scale. */
-export function outOf20(score: number, max: number): number {
-  if (!max || max <= 0) return 0
-  return Math.round((score / max) * 20 * 10) / 10
-}
-
-/** Formats a mark the way it appears on a bulletin: `14.5` , or `—`. */
-export function formatMark(score?: number | null, max = 20): string {
-  if (score === null || score === undefined) return "—"
-  return outOf20(score, max).toFixed(2).replace(/\.?0+$/, "")
-}
 
 /* ------------------------------------------------------------------- chapters */
 
@@ -200,6 +166,20 @@ export const chapterLabel = (value?: string | null): string =>
   [...MATH_CHAPTERS, ...PHYSICS_CHAPTERS].find((c) => c.value === value)?.label ?? value ?? "—"
 
 /* ---------------------------------------------------------------------- dates */
+
+/*
+ * The Algerian calendar day of an instant, as "YYYY-MM-DD" — the same day
+ * boundary the database uses (AT TIME ZONE 'Africa/Algiers') for the streak,
+ * the daily question and the weekly report. en-CA with 2-digit parts is
+ * YYYY-MM-DD in every ICU build, and the strings sort chronologically.
+ */
+const DZ_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Africa/Algiers",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+export const dzKey = (value: string | number | Date = Date.now()): string => DZ_DAY.format(new Date(value))
 
 /** Algeria uses Gregorian months; `ar-SA` would render Hijri-flavoured output. */
 export const formatDateDZ = (value: string | number | Date): string =>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorState, Loading } from "@/components/ui/states";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { BAC_DATE, BAC_SESSION_LABEL, chapterLabel, formatDateDZ, subjectLabel, subjectTone, TONE_BG } from "@/lib/bac";
+import { BAC_DATE, BAC_SESSION_LABEL, chapterLabel, dzKey, formatDateDZ, subjectLabel, subjectTone, TONE_BG } from "@/lib/bac";
 import { cn, errorMessage } from "@/lib/utils";
 
 /**
@@ -23,19 +23,9 @@ import { cn, errorMessage } from "@/lib/utils";
  * banner and the caption carry the page instead.
  */
 
-/* Latin-digit Algiers day keys ("2026-09-22"). 20260921200000_study_streak.sql
-   makes Africa/Algiers the app's day boundary and says later features must
-   reuse it — WeeklyActivity buckets in browser-local time and already
-   disagrees with the streak, so don't copy that. en-CA with explicit 2-digit
-   options is YYYY-MM-DD in every ICU build, and the strings sort
-   chronologically. */
-const DZ = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Africa/Algiers",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-const dzKey = (value: string | number | Date) => DZ.format(new Date(value));
+/* Day keys come from dzKey (src/lib/bac.ts): Latin-digit Algiers days, the
+   same boundary the streak SQL uses. WeeklyActivity buckets in browser-local
+   time and already disagrees with the streak, so don't copy that. */
 
 const MONTH_LABEL = new Intl.DateTimeFormat("ar-DZ-u-nu-latn", {
   month: "long",
@@ -91,7 +81,6 @@ const EMPTY_DAY: DayInfo = { due: [], active: false };
 type MistakeRow = {
   id: string;
   review_due_at: string | null;
-  last_reviewed_at: string | null;
   quiz_subject: string | null;
   quiz_chapter: string | null;
   question_text: string;
@@ -102,7 +91,6 @@ type MistakeRow = {
 type ProgressRow = {
   id: string;
   next_review_at: string;
-  last_reviewed_at: string | null;
   flashcards: { front: string; subject: string | null; chapter: string | null } | null;
 };
 
@@ -126,17 +114,17 @@ const Calendar = () => {
     try {
       // Everything at once, bucketed client-side: the forward horizon is a week
       // and the history is small, so month changes cost zero round-trips.
-      const [mistakes, progress, attempts, daily] = await Promise.all([
+      const [mistakes, progress, attempts, daily, reviews] = await Promise.all([
         supabase
           .from("mistakes")
-          .select("id, review_due_at, last_reviewed_at, quiz_subject, quiz_chapter, question_text")
+          .select("id, review_due_at, quiz_subject, quiz_chapter, question_text")
           .eq("student_id", user.id)
           .eq("status", "active")
           .order("review_due_at", { ascending: true, nullsFirst: true })
           .limit(200),
         supabase
           .from("student_flashcard_progress")
-          .select("id, next_review_at, last_reviewed_at, flashcards(front, subject, chapter)")
+          .select("id, next_review_at, flashcards(front, subject, chapter)")
           .eq("student_id", user.id)
           .order("next_review_at", { ascending: true })
           .limit(200),
@@ -154,9 +142,18 @@ const Calendar = () => {
           .select("assigned_date, answered_at")
           .eq("student_id", user.id)
           .not("answered_at", "is", null),
+        // Every review ever made (20260925000000_review_log.sql). The items'
+        // own last_reviewed_at is overwritten by each re-review, which is how
+        // study days used to disappear from this calendar and the streak.
+        supabase
+          .from("review_log")
+          .select("reviewed_at")
+          .eq("student_id", user.id)
+          .order("reviewed_at", { ascending: false })
+          .limit(1000),
       ]);
 
-      for (const res of [mistakes, progress, attempts, daily]) {
+      for (const res of [mistakes, progress, attempts, daily, reviews]) {
         if (res.error) throw res.error;
       }
 
@@ -200,7 +197,6 @@ const Calendar = () => {
           chapter: row.quiz_chapter,
           title: row.question_text,
         });
-        if (row.last_reviewed_at) touch(dzKey(row.last_reviewed_at)).active = true;
       }
 
       for (const row of (progress.data ?? []) as unknown as ProgressRow[]) {
@@ -210,7 +206,10 @@ const Calendar = () => {
           chapter: row.flashcards?.chapter ?? null,
           title: row.flashcards?.front ?? "بطاقة",
         });
-        if (row.last_reviewed_at) touch(dzKey(row.last_reviewed_at)).active = true;
+      }
+
+      for (const row of reviews.data ?? []) {
+        touch(dzKey(row.reviewed_at)).active = true;
       }
 
       for (const row of attempts.data ?? []) {

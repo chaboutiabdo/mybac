@@ -93,27 +93,38 @@ const ScopeList = ({ scope }: { scope: LeaderboardScope }) => {
   );
 };
 
-const LeaderboardPage = () => (
-  <div className="mx-auto max-w-2xl space-y-6">
-    <PageHeader title="أفضل الطلاب" subtitle="قارن ترتيبك بزملائك — في الجزائر، في مدينتك، أو في ثانويتك." />
+const LeaderboardPage = () => {
+  const { profile } = useAuth();
 
-    <Tabs defaultValue="all">
-      <TabsList className="w-full">
-        <TabsTrigger value="all" className="flex-1">الكل</TabsTrigger>
-        <TabsTrigger value="city" className="flex-1">مدينتي</TabsTrigger>
-        <TabsTrigger value="school" className="flex-1">ثانويتي</TabsTrigger>
-      </TabsList>
-      <TabsContent value="all">
-        <ScopeList scope="all" />
-      </TabsContent>
-      <TabsContent value="city">
-        <ScopeList scope="city" />
-      </TabsContent>
-      <TabsContent value="school">
-        <ScopeList scope="school" />
-      </TabsContent>
-    </Tabs>
-  </div>
-);
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader title="أفضل الطلاب" subtitle="قارن ترتيبك بزملائك — في الجزائر، في مدينتك، أو في ثانويتك." />
+
+      {/* the leaderboard view leaves admins out, so an admin never finds themself */}
+      {profile?.role === "admin" ? (
+        <p className="rounded-2xl bg-card-raised p-3 text-sm text-muted-foreground">
+          حسابات المشرفين لا تظهر في الترتيب — نقاطك محفوظة لكنها لا تُرتَّب.
+        </p>
+      ) : null}
+
+      <Tabs defaultValue="all">
+        <TabsList className="w-full">
+          <TabsTrigger value="all" className="flex-1">الكل</TabsTrigger>
+          <TabsTrigger value="city" className="flex-1">مدينتي</TabsTrigger>
+          <TabsTrigger value="school" className="flex-1">ثانويتي</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all">
+          <ScopeList scope="all" />
+        </TabsContent>
+        <TabsContent value="city">
+          <ScopeList scope="city" />
+        </TabsContent>
+        <TabsContent value="school">
+          <ScopeList scope="school" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
 
 export default LeaderboardPage;

@@ -27,8 +27,7 @@ import {
   Download,
   Edit,
   Trash2,
-  Calendar,
-  Book
+  Calendar
 } from "lucide-react";
 import { UploadExamDialog } from "./UploadExamDialog";
 import { supabase } from "@/integrations/supabase/client";

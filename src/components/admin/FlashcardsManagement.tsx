@@ -21,9 +21,12 @@ import type { Tables } from "@/integrations/supabase/types";
 import { SUBJECTS, chapterLabel, chaptersFor, subjectLabel } from "@/lib/bac";
 import { errorMessage } from "@/lib/utils";
 
-type Flashcard = Tables<"flashcards">;
+// Every card belongs to one student (20260924000000_personal_ai.sql). The hint
+// is required: profiles is also reachable through student_flashcard_progress,
+// so a bare `profiles(...)` embed is ambiguous.
+type Flashcard = Tables<"flashcards"> & { owner: { name: string | null; email: string | null } | null };
 
-/** Matches the per-chapter CEILING in supabase/functions/gemini-chat/index.ts. */
+/** Matches the per-student, per-chapter CEILING in supabase/functions/gemini-chat/index.ts. */
 const CEILING = 10;
 const ALL = "all";
 
@@ -82,7 +85,7 @@ export function FlashcardsManagement() {
       setLoading(true);
       const { data, error } = await supabase
         .from("flashcards")
-        .select("*")
+        .select("*, owner:profiles!flashcards_owner_id_fkey(name, email)")
         .order("subject")
         .order("chapter")
         .order("created_at", { ascending: false });
@@ -111,9 +114,8 @@ export function FlashcardsManagement() {
     [cards, subject, chapter, onlyProblems],
   );
 
-  // How full each chapter is. Once a chapter hits the ceiling the edge function
-  // answers 409 forever, so this is the number that explains why "generate"
-  // stopped working — and deleting from here is what unblocks it.
+  // How many cards each chapter holds across all students — how much the AI is
+  // being used per chapter. The ceiling is per student, so no /10 here.
   const perChapter = useMemo(() => {
     const counts = new Map<string, number>();
     for (const c of cards) {
@@ -179,7 +181,7 @@ export function FlashcardsManagement() {
         <div>
           <h2 className="text-2xl font-semibold">البطاقات التعليمية</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            الدفتر مشترك بين كل الطلاب. كل فصل يقبل {CEILING} بطاقات كحد أقصى، وبعدها يتوقف التوليد حتى تحذف بطاقة.
+            لكل طالب بطاقاته الخاصة، يولّدها الذكاء الاصطناعي من أخطائه ومستواه. الحد {CEILING} بطاقات لكل طالب في كل فصل.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -226,7 +228,7 @@ export function FlashcardsManagement() {
             <SelectItem value={ALL}>كل الفصول</SelectItem>
             {chaptersFor(subject).map((c) => (
               <SelectItem key={c.value} value={c.value}>
-                {c.label} ({perChapter.get(`${subject}/${c.value}`) ?? 0}/{CEILING})
+                {c.label} ({perChapter.get(`${subject}/${c.value}`) ?? 0})
               </SelectItem>
             ))}
           </SelectContent>
@@ -253,7 +255,8 @@ export function FlashcardsManagement() {
                   <div className="min-w-0">
                     <CardTitle className="text-base">{card.front}</CardTitle>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {subjectLabel(card.subject)} · {chapterLabel(card.chapter)}
+                      {subjectLabel(card.subject)} · {chapterLabel(card.chapter)} ·{" "}
+                      {card.owner?.name || card.owner?.email || "طالب محذوف"}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

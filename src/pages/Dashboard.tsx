@@ -16,7 +16,6 @@ import { EmptyState } from "@/components/ui/states";
 import { useQuizStats } from "@/hooks/useQuizStats";
 import { useStudyStreak } from "@/hooks/useStudyStreak";
 import { useTodaysRevision } from "@/hooks/useTodaysRevision";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -176,7 +175,6 @@ const MySubjects = () => {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const quizStats = useQuizStats();
   // Hoisted, not called inside each widget: with no query cache in this app,
   // StreakCard calling these itself meant four duplicate round-trips per load

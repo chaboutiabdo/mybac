@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Layers, RotateCcw, Sparkles } from "lucide-react";
+import { Layers, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 import FilterPills, { SUBJECT_OPTIONS } from "@/components/FilterPills";
 import FlashcardStudy from "@/components/flashcards/FlashcardStudy";
@@ -11,23 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmptyState, ErrorState, Loading } from "@/components/ui/states";
 import { useFlashcards, type RecallRating } from "@/hooks/useFlashcards";
 import { useGenerateFlashcards } from "@/hooks/useGenerateFlashcards";
-import { useSubscription } from "@/hooks/useSubscription";
 import { chapterLabel, chaptersFor, subjectLabel } from "@/lib/bac";
+import { errorMessage } from "@/lib/utils";
 
 // Radix Select can't take an empty-string item value (that's reserved for
 // "no selection"), so "every chapter in this subject" needs its own sentinel
 // — same pattern as NO_SCHOOL in the admin Students page.
 const ALL_CHAPTERS = "all";
 
+// The route is premium (App.tsx): every deck is private, and only premium
+// students can generate one, so there is no free-student branch here.
 const Flashcards = () => {
-  const navigate = useNavigate();
-  const { isPremium } = useSubscription();
   const [subject, setSubject] = useState<string | null>(null);
   const [chapter, setChapter] = useState("");
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionIndex, setSessionIndex] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
-  const { flashcards, loading, error, refetch, recordReview } = useFlashcards({ subject, chapter });
+  const { flashcards, loading, error, refetch, recordReview, deleteChapter } = useFlashcards({ subject, chapter });
   const { generate, loading: generating } = useGenerateFlashcards();
 
   const pickSubject = (s: string | null) => {
@@ -51,23 +51,30 @@ const Flashcards = () => {
     // repeated, not just `if (!canGenerate) return` -- TS narrows subject/
     // chapter to non-null from this exact shape, not from a derived boolean
     if (!subject || !chapter) return;
-    // Visible to everyone, functionally gated: studying is free, generating
-    // isn't. Not a hard-disabled button — a toast explains why, then hands
-    // the student to /pricing, matching how ProtectedRoute explains a
-    // premium wall instead of a silent redirect.
-    if (!isPremium) {
-      toast.error("توليد بطاقات جديدة ميزة مميّزة", {
-        description: "الدراسة مجانية للجميع، لكن توليد بطاقات جديدة يتطلب اشتراكاً مميّزاً.",
-      });
-      navigate("/pricing");
-      return;
-    }
     try {
       const created = await generate(subject, chapter);
       toast.success(created.length ? `تمت إضافة ${created.length} بطاقة جديدة` : "لا حاجة لبطاقات جديدة الآن");
       refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "تعذّر توليد بطاقات جديدة");
+    }
+  };
+
+  // A chapter holds at most 10 of the student's cards; clearing it is how
+  // they get a fresh batch built from their latest mistakes.
+  const handleDeleteChapter = async () => {
+    if (!subject || !chapter) return;
+    if (!window.confirm(`حذف بطاقاتك في فصل ${chapterLabel(chapter)}؟\nسيُحذف معها سجل مراجعتك لها.`)) return;
+    setDeleting(true);
+    try {
+      const n = await deleteChapter(subject, chapter);
+      setSessionActive(false);
+      setSessionIndex(0);
+      toast.success(`حُذفت ${n} بطاقة`);
+    } catch (err) {
+      toast.error(errorMessage(err, "تعذّر حذف البطاقات"));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -85,9 +92,10 @@ const Flashcards = () => {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="البطاقات التعليمية" subtitle="راجع المفاهيم بسرعة، بطاقة بعد بطاقة" />
+      <PageHeader title="البطاقات التعليمية" subtitle="بطاقاتك وحدك، يولّدها الذكاء الاصطناعي من أخطائك ومستواك" />
 
-      <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      {/* grid-cols-1: the implicit auto column grows to its widest card */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <section className="space-y-4 rounded-card bg-card p-5 shadow-soft">
             <h2 className="text-lg font-medium">اختر الفصل</h2>
@@ -123,8 +131,8 @@ const Flashcards = () => {
               title="لا توجد بطاقات هنا بعد"
               description={
                 canGenerate
-                  ? `كن أول من يولّد بطاقات مراجعة لفصل ${scopeLabel}.`
-                  : "اختر مادة ثم فصلاً محدداً لتوليد بطاقات جديدة."
+                  ? `ولّد بطاقات مبنية على أخطائك ومستواك في ${scopeLabel}.`
+                  : "اختر مادة ثم فصلاً محدداً لتوليد بطاقاتك."
               }
               action={
                 canGenerate ? (
@@ -150,12 +158,24 @@ const Flashcards = () => {
                   ابدأ المراجعة
                 </Button>
                 {canGenerate ? (
-                  <Button variant="outline" onClick={handleGenerate} disabled={generating}>
+                  <Button variant="outline" onClick={handleGenerate} disabled={generating || deleting}>
                     <Sparkles aria-hidden />
                     {generating ? "جارٍ التوليد…" : "ولّد بطاقات جديدة"}
                   </Button>
                 ) : null}
               </div>
+              {canGenerate ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-4 text-muted-foreground"
+                  onClick={handleDeleteChapter}
+                  disabled={deleting || generating}
+                >
+                  <Trash2 aria-hidden />
+                  {deleting ? "جارٍ الحذف…" : "احذف بطاقات هذا الفصل"}
+                </Button>
+              ) : null}
             </div>
           ) : sessionDone ? (
             <EmptyState

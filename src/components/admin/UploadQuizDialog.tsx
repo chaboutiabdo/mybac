@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { SUBJECTS, chaptersFor } from "@/lib/bac";
-import { Info, Loader2 } from "lucide-react";
+import { SUBJECTS, chaptersFor, dzKey } from "@/lib/bac";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +28,6 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
   const [quizData, setQuizData] = useState({
     subject: "",
     chapter: "",
-    difficulty: "",
     type: type
   });
   const [uploading, setUploading] = useState(false);
@@ -80,7 +78,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
   };
 
   const handleUpload = async () => {
-    if (!file || !quizData.subject || !quizData.difficulty) {
+    if (!file || !quizData.subject) {
       toast.error("معلومات ناقصة", { description: "املأ كل الحقول واختر ملف CSV" });
       return;
     }
@@ -94,14 +92,14 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
         throw new Error('No valid questions found in CSV file');
       }
 
-      // Create quiz first - cast type to bypass TypeScript issue
-      const { data: quiz, error: quizError } = await supabase
+      const { error: quizError } = await supabase
         .from('quizzes')
         .insert({
           subject: quizData.subject,
           chapter: quizData.chapter || null,
           type,
-          date: new Date().toISOString().split('T')[0],
+          // the Algiers day: "today's quiz" is matched on it (useQuizStats)
+          date: dzKey(),
           questions: questions.map((q, index) => ({
             id: `q_${index + 1}`,
             question: q.question,
@@ -111,38 +109,16 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
           // a daily question is worth 25, a practice one 8 — this used to be
           // hardcoded to 8, so daily scores exceeded the max ("250/80")
           max_score: questions.length * (type === 'daily' ? 25 : 8)
-        })
-        .select()
-        .single();
+        });
 
       if (quizError) throw quizError;
 
-      // Import questions for admin reference
-      const questionsImport = questions.map(q => ({
-        quiz_id: quiz.id,
-        question_text: q.question,
-        option_a: q.option_a,
-        option_b: q.option_b,
-        option_c: q.option_c,
-        option_d: q.option_d,
-        correct_answer: q.correct_answer,
-        subject: quizData.subject,
-        chapter: quizData.chapter,
-        difficulty: quizData.difficulty
-      }));
-
-      const { error: importError } = await supabase
-        .from('questions_import')
-        .insert(questionsImport);
-
-      if (importError) throw importError;
-
-      toast.success("تم", { description: `Quiz uploaded successfully with ${questions.length} questions` });
+      toast.success("تم", { description: `تم رفع الاختبار (${questions.length} سؤالاً)` });
 
       onQuizUploaded();
       onOpenChange(false);
       setFile(null);
-      setQuizData({ subject: "", chapter: "", difficulty: "", type: type });
+      setQuizData({ subject: "", chapter: "", type: type });
     } catch (error) {
       console.error('Error uploading quiz:', error);
       toast.error("تعذّر الرفع", { description: error instanceof Error ? error.message : "Failed to upload quiz" });
@@ -185,34 +161,18 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="subject">المادة *</Label>
-              <Select value={quizData.subject} onValueChange={(value) => setQuizData({...quizData, subject: value, chapter: ""})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر المادة" />
-                </SelectTrigger>
-                <SelectContent>
-                {SUBJECTS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="difficulty">المستوى *</Label>
-              <Select value={quizData.difficulty} onValueChange={(value) => setQuizData({...quizData, difficulty: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر المستوى" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">سهل</SelectItem>
-                  <SelectItem value="medium">متوسط</SelectItem>
-                  <SelectItem value="hard">صعب</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="subject">المادة *</Label>
+            <Select value={quizData.subject} onValueChange={(value) => setQuizData({...quizData, subject: value, chapter: ""})}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر المادة" />
+              </SelectTrigger>
+              <SelectContent>
+              {SUBJECTS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -264,7 +224,7 @@ export function UploadQuizDialog({ isOpen, onOpenChange, onQuizUploaded, type = 
             <Button 
               onClick={handleUpload}
               className="flex-1"
-              disabled={uploading || !file || !quizData.subject || !quizData.difficulty}
+              disabled={uploading || !file || !quizData.subject}
             >
               {uploading ? (
                 <>

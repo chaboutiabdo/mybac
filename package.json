@@ -19,16 +19,15 @@
     "upload:bac": "node scripts/upload-bac-papers.mjs",
     "security": "node --test scripts/check-security.mjs scripts/attack-suite.mjs",
     "prewarm:solutions": "node scripts/prewarm-exam-solutions.mjs",
+    "scan:api": "node scripts/stackhawk-spec.mjs && hawk scan stackhawk.yml",
     "test": "node --test scripts/latex-repair.test.mjs scripts/gemini-chat.test.mjs"
   },
   "dependencies": {
-    "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-select": "^2.2.5",
-    "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.12",
@@ -49,7 +48,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",

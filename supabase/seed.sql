@@ -110,9 +110,9 @@ INSERT INTO public.videos (title, subject, chapter, type, url, description) VALU
 ('دراسة ظواهر كهربائية',           'Physics', 'electrical_phenomena', 'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الوحدة الثالثة')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO public.advice_tips (title, content, category, priority, is_public, active) VALUES
-('راجع التمارين المحلولة', 'ابدأ بمواضيع السنوات الثلاث الأخيرة قبل الانتقال إلى ما قبلها.', 'study', 3, true, true),
-('نظّم وقتك',              'جلسات من 45 دقيقة مع استراحة 10 دقائق أفضل من ساعات متواصلة.',   'study', 1, true, true)
+INSERT INTO public.advice_tips (title, content, priority, is_public, active) VALUES
+('راجع التمارين المحلولة', 'ابدأ بمواضيع السنوات الثلاث الأخيرة قبل الانتقال إلى ما قبلها.', 3, true, true),
+('نظّم وقتك',              'جلسات من 45 دقيقة مع استراحة 10 دقائق أفضل من ساعات متواصلة.',   1, true, true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.admin_advice (title, content, is_pinned) VALUES

@@ -30,14 +30,44 @@ async function signIn(email) {
   return { client: c, user: data.user };
 }
 
+/** POSTs to gemini-chat as `actor`, or with no user token at all when null. */
+async function callAI(actor, body) {
+  const headers = { "Content-Type": "application/json", apikey: ANON };
+  if (actor) {
+    const { data: sess } = await actor.client.auth.getSession();
+    headers.Authorization = `Bearer ${sess.session?.access_token}`;
+  }
+  return fetch(`${URL}/functions/v1/gemini-chat`, { method: "POST", headers, body: JSON.stringify(body) });
+}
+
+/** How many AI-log rows (the daily-quota counter) `actor` has. */
+const used = async (actor) => (await svc.from("ai_learning_conversations")
+  .select("id", { count: "exact", head: true }).eq("user_id", actor.user.id)).count ?? 0;
+
+/** Puts `actor` at the 60-call daily ceiling; returns the cleanup. */
+async function fillQuota(actor) {
+  const marker = `sec-cap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const { error } = await svc.from("ai_learning_conversations").insert(
+    Array.from({ length: 60 }, () => ({
+      user_id: actor.user.id, question_text: marker, answer_text: "ok", mode: "tutor",
+    })));
+  assert.equal(error, null, `could not seed the quota rows: ${error?.message}`);
+  return () => svc.from("ai_learning_conversations").delete().eq("question_text", marker);
+}
+
 /** Every public table, for the blanket anon / cross-user sweeps. */
 const TABLES = [
-  "admin_advice", "advice_tips", "ai_learning_conversations", "alumni",
-  "alumni_advice", "alumni_files", "alumni_resources", "bookings",
+  "admin_advice", "advice_tips", "ai_learning_conversations", "daily_questions",
   "exam_activity_logs", "exam_ai_solutions", "exam_progress", "exam_simulation_sessions", "exams", "flashcards", "mistakes", "points_transactions",
-  "profiles", "questions_import", "quiz_attempts", "quiz_question_results",
-  "quizzes", "school_students", "schools", "student_flashcard_progress", "student_questions_log",
+  "profiles", "quiz_attempts", "quiz_question_results",
+  "quizzes", "review_log", "school_students", "schools", "student_flashcard_progress",
   "support_requests", "video_activity_logs", "video_progress", "videos",
+];
+
+/** Dropped by 20260925000001_remove_dead_schema.sql. */
+const DROPPED_TABLES = [
+  "alumni", "alumni_advice", "alumni_files", "alumni_resources", "bookings",
+  "questions_import", "student_questions_log",
 ];
 
 let A, B, PREM, ADMIN;      // attacker, victim, premium, admin
@@ -73,21 +103,20 @@ before(async () => {
 });
 
 /**
- * The suite seeds real rows into `flashcards`, which is a SHARED, app-wide deck
- * that students actually study from -- unlike the per-student tables it also
- * writes, every card it leaves behind is visible to every user.
- *
- * It did not clean them up. Three runs left 40 junk cards (front "x", back
- * "y") against 8 real ones, and they reached the student UI: the owner
- * reported flashcards showing junk data. Every seeded card carries a
- * `sec-` chapter prefix, so one delete covers all seven insert sites, and
- * `after` runs even when an assertion above it throws.
+ * The suite seeds real rows into `flashcards`. The deck used to be shared
+ * app-wide, and cards the suite left behind reached real students' screens
+ * (three runs left 40 junk cards against 8 real ones). Decks are private now
+ * (owned by the suite's own accounts), but they are still cleaned: every
+ * seeded card carries a `sec-` prefix on its chapter or front, and `after`
+ * runs even when an assertion above it throws.
  *
  * The student_flashcard_progress rows pointing at them go too, via
  * ON DELETE CASCADE on student_flashcard_progress_flashcard_id_fkey.
  */
 after(async () => {
-  const { error } = await svc.from("flashcards").delete().like("chapter", "sec-%");
+  // Decks are private now, but these fixtures still belong to the suite's
+  // accounts; the sec- prefix (chapter or front) marks every one of them.
+  const { error } = await svc.from("flashcards").delete().or("chapter.like.sec-%,front.like.sec-%");
   if (error) console.error("flashcard cleanup failed:", error.message);
   // Same leak for exams: the solver, SSRF and streak tests insert `sec-` papers
   // that students then saw on /exams — one of them linked to 169.254.169.254.
@@ -303,9 +332,25 @@ describe("IDOR — cross-user reads and writes", () => {
   });
 
   test("student cannot read other users' AI conversations", async () => {
-    const { data } = await A.client.from("ai_learning_conversations")
-      .select("*").neq("student_id", A.user.id);
-    assert.equal(data?.length ?? 0, 0, "IDOR: read another student's AI conversations");
+    // The column is user_id. This test used to filter on student_id, which
+    // doesn't exist: the query errored, returned null, and the test passed
+    // without checking anything.
+    const marker = `sec-conv-${Date.now()}`;
+    const { error: seedError } = await svc.from("ai_learning_conversations").insert({
+      user_id: B.user.id, question_text: marker, answer_text: "private", mode: "tutor",
+    });
+    assert.equal(seedError, null, `could not seed B's conversation: ${seedError?.message}`);
+    try {
+      const { data, error } = await A.client.from("ai_learning_conversations")
+        .select("*").eq("question_text", marker);
+      assert.equal(error, null, `the read errored instead of being filtered: ${error?.message}`);
+      assert.equal(data.length, 0, "IDOR: read another student's AI conversation");
+      // positive control: the owner does see it, so the 0 above is RLS, not a broken query
+      const { data: own } = await B.client.from("ai_learning_conversations").select("id").eq("question_text", marker);
+      assert.equal(own?.length, 1, "a student cannot read their own AI conversation");
+    } finally {
+      await svc.from("ai_learning_conversations").delete().eq("question_text", marker);
+    }
   });
 
   test("student cannot write another user's video_progress", async () => {
@@ -334,7 +379,6 @@ describe("admin-only tables are not student-writable", () => {
     ["schools", { name: "hax", city: "Algiers" }],
     ["advice_tips", { title: "hax", content: "hax", is_public: true }],
     ["admin_advice", { title: "hax", content: "hax", is_pinned: true }],
-    ["alumni", { name: "hax", bac_score: 20 }],
   ];
 
   for (const [table, row] of adminTables) {
@@ -556,7 +600,7 @@ describe("audit findings — regression tests", () => {
     // was pointed at `avatars`, which no longer exists — so it passed on
     // "bucket not found" whatever the policies said
     const c = anonClient();
-    for (const bucket of ["documents", "videos", "alumni-files"]) {
+    for (const bucket of ["documents", "videos"]) {
       const { error } = await c.storage
         .from(bucket)
         .upload(`anon-${Date.now()}.html`, new Blob(["<h1>hi</h1>"]), { contentType: "text/html" });
@@ -851,79 +895,110 @@ describe("error notebook (mistakes)", () => {
 
 /* ═══════════════════════════════════════════════ 13. flashcards ══ */
 describe("flashcards", () => {
-  // Anon-read coverage for the base tables is already handled by the TABLES
-  // sweep above — these tests cover what the sweep can't: RPC/edge-function
-  // gating, the shared-deck property, and write paths.
+  // Every deck is private (20260924000000_personal_ai.sql): a card belongs to
+  // one student. The TABLES sweep covers anon; these cover owner isolation,
+  // the review RPC, and the per-student generation ceiling.
+
+  /**
+   * One card owned by `owner`. Asserts the insert worked: these fixtures used
+   * to fail silently (no owner column yet) and every test then `return`ed as
+   * a pass. Fronts start with "sec-" so after() cleans them up.
+   */
+  const seedCard = async (owner, extra = {}) => {
+    const { data, error } = await svc.from("flashcards").insert({
+      owner_id: owner.user.id,
+      subject: "Math",
+      chapter: `sec-card-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      front: "sec-front", back: "sec-back", source: "admin",
+      ...extra,
+    }).select().single();
+    assert.equal(error, null, `could not seed a flashcard: ${error?.message}`);
+    return data;
+  };
 
   test("gemini-chat generate_flashcards mode rejects an unauthenticated call", async () => {
-    const res = await fetch(`${URL}/functions/v1/gemini-chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: ANON },
-      body: JSON.stringify({ mode: "generate_flashcards", subject: "Math", chapter: "limits" }),
-    });
+    const res = await callAI(null, { mode: "generate_flashcards", subject: "Math", chapter: "limits" });
     assert.ok(res.status === 401 || res.status === 403,
       `AI ABUSE: unauthenticated generate_flashcards call returned ${res.status}`);
   });
 
   test("gemini-chat generate_flashcards mode rejects a free student", async () => {
-    const { data: sess } = await A.client.auth.getSession();
-    const res = await fetch(`${URL}/functions/v1/gemini-chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: ANON,
-        Authorization: `Bearer ${sess.session?.access_token}`,
-      },
-      body: JSON.stringify({ mode: "generate_flashcards", subject: "Math", chapter: "limits" }),
-    });
+    const res = await callAI(A, { mode: "generate_flashcards", subject: "Math", chapter: "limits" });
     assert.ok(res.status === 401 || res.status === 403,
       `AI ABUSE: free student reached generate_flashcards (${res.status})`);
   });
 
   test("anon cannot call record_flashcard_review", async () => {
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-anon-rpc-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
+    const card = await seedCard(A);
     const { error } = await anonClient().rpc("record_flashcard_review", {
       p_flashcard_id: card.id, p_recall_rating: "easy",
     });
     assert.ok(error, "ANON RPC: record_flashcard_review callable without auth");
   });
 
-  test("a free student CAN read flashcards (free-tier study access)", async () => {
-    // Positive control. Without it, an RLS policy that rejected everyone
-    // would still pass the TABLES sweep for the wrong reason. (The comment
-    // here used to say mistakes was premium-gated; it never was at the table
-    // level, and /mistakes is a free route now — premium buys the AI
-    // explanation, which gemini-chat gates server-side.)
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-free-read-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
-    const { data, error } = await A.client.from("flashcards").select("*").eq("id", card.id);
-    assert.ok(!error, `a free student was wrongly denied flashcards read: ${error?.message}`);
-    assert.equal(data?.length, 1, "a free student could not read a shared flashcard");
+  test("a student can read their own cards (positive control)", async () => {
+    // Without this, a policy that rejected everyone would pass every
+    // isolation test below for the wrong reason.
+    const card = await seedCard(A);
+    const { data, error } = await A.client.from("flashcards").select("id").eq("id", card.id);
+    assert.equal(error, null, `a student was denied their own card: ${error?.message}`);
+    assert.equal(data?.length, 1, "a student cannot read their own flashcard");
   });
 
-  test("flashcards seeded for one student are visible to a different (free) student — shared deck, not private", async () => {
-    const chapter = `sec-shared-deck-${Date.now()}`;
-    const { data: seeded } = await svc.from("flashcards").insert({
-      subject: "Math", chapter, front: "shared front", back: "shared back", source: "ai_generated",
-    }).select().single();
-    if (!seeded) return;
+  test("a student cannot see another student's cards — every deck is private", async () => {
+    const card = await seedCard(B, { front: "sec-private-front" });
+    const { data, error } = await A.client.from("flashcards").select("id").eq("id", card.id);
+    assert.equal(error, null, `the read errored instead of being filtered: ${error?.message}`);
+    assert.equal(data.length, 0, "PRIVACY: a student read another student's flashcard");
+    const { data: all } = await A.client.from("flashcards").select("owner_id");
+    assert.ok((all ?? []).every((c) => c.owner_id === A.user.id), "PRIVACY: another student's card is in A's deck");
+  });
 
-    const { data, error } = await A.client.from("flashcards").select("id, front").eq("id", seeded.id);
-    assert.ok(!error, `free student could not query flashcards: ${error?.message}`);
-    assert.equal(data?.length, 1, "SHARED DECK BROKEN: a free student cannot see a shared generated card");
-    assert.equal(data?.[0]?.front, "shared front");
+  test("an admin can see any student's card, with its owner", async () => {
+    const card = await seedCard(B);
+    const { data, error } = await ADMIN.client.from("flashcards")
+      .select("id, owner:profiles!flashcards_owner_id_fkey(email)").eq("id", card.id);
+    assert.equal(error, null, `admin read failed: ${error?.message}`);
+    assert.equal(data?.length, 1, "an admin cannot review a student's card");
+    assert.equal(data[0].owner?.email, B.user.email, "the admin view shows the wrong owner");
+  });
+
+  test("a student cannot create, edit or give away a card (only gemini-chat writes cards)", async () => {
+    const { error: insErr } = await A.client.from("flashcards").insert({
+      owner_id: A.user.id, subject: "Math", chapter: "sec-own-insert", front: "sec-x", back: "y", source: "admin",
+    });
+    assert.ok(insErr, "PRIVILEGE: a student inserted a card directly, bypassing generation limits");
+
+    const card = await seedCard(A);
+    await A.client.from("flashcards").update({ front: "sec-edited" }).eq("id", card.id);
+    await A.client.from("flashcards").update({ owner_id: B.user.id }).eq("id", card.id);
+    const { data: after } = await svc.from("flashcards").select("front, owner_id").eq("id", card.id).single();
+    assert.equal(after.front, "sec-front", "PRIVILEGE: a student edited a card");
+    assert.equal(after.owner_id, A.user.id, "PRIVILEGE: a student handed a card to someone else");
+  });
+
+  test("a student can delete their own card, never another student's", async () => {
+    const mine = await seedCard(A);
+    const theirs = await seedCard(B);
+    await A.client.from("flashcards").delete().eq("id", mine.id);
+    await A.client.from("flashcards").delete().eq("id", theirs.id);
+    const { data: left } = await svc.from("flashcards").select("id").in("id", [mine.id, theirs.id]);
+    const ids = (left ?? []).map((r) => r.id);
+    assert.ok(!ids.includes(mine.id), "a student could not delete their own card (needed to regenerate a chapter)");
+    assert.ok(ids.includes(theirs.id), "IDOR: a student deleted another student's card");
+  });
+
+  test("record_flashcard_review refuses another student's card", async () => {
+    const card = await seedCard(B);
+    const { error } = await A.client.rpc("record_flashcard_review", { p_flashcard_id: card.id, p_recall_rating: "easy" });
+    assert.ok(error, "IDOR: A reviewed B's private card");
+    const { data: rows } = await svc.from("student_flashcard_progress")
+      .select("id").eq("flashcard_id", card.id).eq("student_id", A.user.id);
+    assert.equal(rows?.length ?? 0, 0, "a progress row was created on another student's card");
   });
 
   test("student cannot INSERT their own flashcard progress row directly (no client INSERT policy)", async () => {
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-progress-owninsert-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
+    const card = await seedCard(A);
     const { error } = await A.client.from("student_flashcard_progress").insert({
       student_id: A.user.id, flashcard_id: card.id, recall_rating: "easy",
       next_review_at: new Date().toISOString(),
@@ -932,10 +1007,7 @@ describe("flashcards", () => {
   });
 
   test("student cannot write another student's flashcard progress directly", async () => {
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-progress-write-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
+    const card = await seedCard(B);
     const { error } = await A.client.from("student_flashcard_progress").insert({
       student_id: B.user.id, flashcard_id: card.id, recall_rating: "easy",
       next_review_at: new Date().toISOString(),
@@ -943,63 +1015,79 @@ describe("flashcards", () => {
     assert.ok(error, "IDOR: student inserted a flashcard-progress row for another student");
   });
 
-  test("record_flashcard_review only ever writes the caller's own row (no id-guessing surface)", async () => {
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-review-own-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
-
+  test("record_flashcard_review only ever writes the caller's own row", async () => {
+    const card = await seedCard(A);
     const { data: result, error } = await A.client.rpc("record_flashcard_review", {
       p_flashcard_id: card.id, p_recall_rating: "easy",
     });
     assert.ok(!error, `a real review was rejected: ${error?.message}`);
     assert.equal(result?.student_id, A.user.id, "record_flashcard_review wrote a row for the wrong student");
-
-    const { data: bRow } = await svc.from("student_flashcard_progress")
-      .select("id").eq("flashcard_id", card.id).eq("student_id", B.user.id);
-    assert.equal(bRow?.length ?? 0, 0, "IDOR: another student's progress row was created by A's review call");
   });
 
   test("student cannot read another student's flashcard progress directly", async () => {
-    // useTodaysRevision is the first code to .select() student_flashcard_progress
-    // directly (stage 3 only ever read it via an embed under flashcards) — this
-    // makes its student_id = auth.uid() SELECT policy load-bearing on its own.
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-progress-read-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
-    const { data: row } = await svc.from("student_flashcard_progress").insert({
+    // useTodaysRevision selects student_flashcard_progress directly, so its
+    // student_id = auth.uid() SELECT policy is load-bearing on its own.
+    const card = await seedCard(B);
+    const { data: row, error: seedError } = await svc.from("student_flashcard_progress").insert({
       student_id: B.user.id, flashcard_id: card.id, recall_rating: "easy",
       next_review_at: new Date().toISOString(),
     }).select().single();
-    if (!row) return;
-    const { data } = await A.client.from("student_flashcard_progress").select("*").eq("student_id", B.user.id);
+    assert.equal(seedError, null, `could not seed B's progress: ${seedError?.message}`);
+    const { data } = await A.client.from("student_flashcard_progress").select("*").eq("id", row.id);
     assert.equal(data?.length ?? 0, 0, "IDOR: read another student's flashcard progress");
   });
 
   test("reviewing the same card twice updates in place, not a duplicate row", async () => {
-    const { data: card } = await svc.from("flashcards").insert({
-      subject: "Math", chapter: `sec-review-twice-${Date.now()}`, front: "x", back: "y", source: "admin",
-    }).select().single();
-    if (!card) return;
-
+    const card = await seedCard(A);
     const { data: first, error: err1 } = await A.client.rpc("record_flashcard_review", {
       p_flashcard_id: card.id, p_recall_rating: "hard",
     });
     assert.ok(!err1, `first review failed: ${err1?.message}`);
-
     const { data: second, error: err2 } = await A.client.rpc("record_flashcard_review", {
       p_flashcard_id: card.id, p_recall_rating: "easy",
     });
     assert.ok(!err2, `second review failed: ${err2?.message}`);
-
     assert.equal(second?.id, first?.id, "DUPLICATE: reviewing twice created a second progress row");
     assert.equal(second?.review_count, 2, "review_count did not increment on a repeat review");
     assert.equal(second?.recall_rating, "easy", "the second rating did not overwrite the first");
+  });
 
-    const { data: allRows } = await svc.from("student_flashcard_progress")
-      .select("id").eq("student_id", A.user.id).eq("flashcard_id", card.id);
-    assert.equal(allRows?.length, 1, "DUPLICATE: more than one progress row exists for this student+card");
+  // ── the generation ceiling is per student (10 cards per chapter). Neither
+  // test reaches Gemini: the ceiling answers 409 before any quota is used, and
+  // the other is stopped by the daily ceiling.
+  const fillChapter = async (owner) => {
+    const tag = `sec-full-${Date.now()}`;
+    const { error } = await svc.from("flashcards").insert(Array.from({ length: 10 }, (_, i) => ({
+      owner_id: owner.user.id, subject: "Math", chapter: "limits",
+      front: `${tag}-${i}`, back: "sec-back", source: "admin",
+    })));
+    assert.equal(error, null, `could not fill the chapter: ${error?.message}`);
+    return () => svc.from("flashcards").delete().like("front", `${tag}-%`);
+  };
+
+  test("another student's full chapter does not block you", async () => {
+    // The old ceiling was global: once anyone filled a chapter, everyone got 409.
+    const clearB = await fillChapter(B);
+    const release = await fillQuota(PREM);
+    try {
+      const res = await callAI(PREM, { mode: "generate_flashcards", subject: "Math", chapter: "limits" });
+      assert.equal(res.status, 429, `expected the daily ceiling, got ${res.status} (409 = B's cards counted against PREM)`);
+    } finally {
+      await release();
+      await clearB();
+    }
+  });
+
+  test("your own full chapter answers 409 and costs no quota slot", async () => {
+    const clear = await fillChapter(PREM);
+    try {
+      const before = await used(PREM);
+      const res = await callAI(PREM, { mode: "generate_flashcards", subject: "Math", chapter: "limits" });
+      assert.equal(res.status, 409, `a full chapter answered ${res.status}`);
+      assert.equal(await used(PREM), before, "a refused generation still took a quota slot");
+    } finally {
+      await clear();
+    }
   });
 });
 
@@ -1265,17 +1353,6 @@ describe("score integrity", () => {
         `SCORE DRIFT: total_score ${score} but the ledger says ${ledger}`);
     }
   });
-
-  test("a student cannot create a booking (70 points a row)", async () => {
-    const { data: alum } = await svc.from("alumni")
-      .insert({ name: "sec booking probe" }).select("id").single();
-    if (!alum) return;
-    const { error } = await A.client.from("bookings")
-      .insert({ alumni_id: alum.id, student_id: A.user.id, topic: "probe", phone: "0550000000" });
-    await svc.from("bookings").delete().eq("alumni_id", alum.id);
-    await svc.from("alumni").delete().eq("id", alum.id);
-    assert.ok(error, "POINTS FARM: a student created a booking, worth 70 points each");
-  });
 });
 
 /* ════════════════════════════════════════════ 14. account identity ══ */
@@ -1391,11 +1468,6 @@ describe("storage boundaries", () => {
     await svc.storage.from("videos").remove([path]);
     assert.equal(ok, true, "a paying student cannot play the premium videos they paid for");
   });
-
-  test("the alumni-files bucket is not anonymously readable", async () => {
-    const { data } = await anonClient().storage.from("alumni-files").list();
-    assert.equal(data?.length ?? 0, 0, "STORAGE LEAK: a public bucket is listable by anyone");
-  });
 });
 
 /* ═════════════════════════════════════════ 16. AI abuse limits ══ */
@@ -1421,9 +1493,16 @@ describe("gemini-chat abuse limits", () => {
   });
 
   test("a normal question is not refused (positive control)", async () => {
-    const res = await post(PREM, { question: "ما هي النهاية؟", subject: "Math", chapter: "limits" });
-    assert.notEqual(res.status, 400, "a normal tutor question was rejected as invalid");
-    assert.ok(res.status !== 401 && res.status !== 403, `a premium student was denied the tutor (${res.status})`);
+    // Run at the daily ceiling: a valid question from a premium student gets
+    // past every input check and stops at 429 — so this proves it was not
+    // refused as invalid, without spending a real Gemini call on every run.
+    const release = await fillQuota(PREM);
+    try {
+      const res = await post(PREM, { question: "ما هي النهاية؟", subject: "Math", chapter: "limits" });
+      assert.equal(res.status, 429, `a normal tutor question answered ${res.status} (400 = refused as invalid)`);
+    } finally {
+      await release();
+    }
   });
 
   test("an unknown subject or chapter is refused", async () => {
@@ -1662,9 +1741,9 @@ describe("exam simulator", () => {
 /* ═══════════════════════════════════════════════ 17. AI exam solver ══ */
 describe("AI exam solver", () => {
   // The premium wall for this feature IS the absence of a client SELECT policy
-  // on exam_ai_solutions, plus gemini-chat's role check. Unlike flashcards
-  // (where a free student SHOULD read the shared deck), nobody but an admin may
-  // read this table directly — a cached solution is the premium artifact. The
+  // on exam_ai_solutions, plus gemini-chat's role check. The solution cache is
+  // shared by every premium student, yet nobody but an admin may read this
+  // table directly — a cached solution is the premium artifact. The
   // anon sweep above covers anon; these cover what it can't.
   const seedSolution = async () => {
     const { data: exam } = await svc.from("exams").insert({
@@ -1704,6 +1783,32 @@ describe("AI exam solver", () => {
     const { data, error } = await ADMIN.client.from("exam_ai_solutions").select("*").eq("id", seeded.row.id);
     assert.ok(!error, `admin read failed: ${error?.message}`);
     assert.equal(data?.length, 1, "an admin cannot inspect a cached AI solution");
+  });
+
+  test("only an admin can run extract_questions (it reads a whole paper)", async () => {
+    const seeded = await seedSolution();
+    if (!seeded) return;
+    const before = await used(PREM);
+    const res = await callAI(PREM, { mode: "extract_questions", exam_id: seeded.exam.id });
+    assert.equal(res.status, 403, `a premium student ran the admin-only extraction (${res.status})`);
+    assert.equal(await used(PREM), before, "the refused call was metered");
+    const anon = await callAI(null, { mode: "extract_questions", exam_id: seeded.exam.id });
+    assert.equal(anon.status, 401, `anon reached extract_questions (${anon.status})`);
+    const { data: after } = await svc.from("exam_ai_solutions").select("solution").eq("id", seeded.row.id).single();
+    assert.deepEqual(after?.solution, seeded.row.solution, "a refused extraction changed the cached solution");
+  });
+
+  test("extract_questions skips a paper whose questions already have their text, at no cost", async () => {
+    const seeded = await seedSolution();
+    if (!seeded) return;
+    const withText = seeded.row.solution.map((q) => ({ ...q, question_text: "نص السؤال" }));
+    await svc.from("exam_ai_solutions").update({ solution: withText }).eq("id", seeded.row.id);
+    const before = await used(ADMIN);
+    const res = await callAI(ADMIN, { mode: "extract_questions", exam_id: seeded.exam.id });
+    const body = await res.json();
+    assert.equal(res.status, 200, body.error);
+    assert.equal(body.cached, true, "an already-extracted paper was sent to the AI again");
+    assert.equal(await used(ADMIN), before, "a no-op extraction was metered");
   });
 
   test("a student cannot INSERT / UPDATE / DELETE a cached solution", async () => {
@@ -1818,18 +1923,6 @@ describe("AI exam solver", () => {
       body: JSON.stringify({ mode: "solve_exam", exam_id: examId }),
     });
   };
-  const used = async (actor) => (await svc.from("ai_learning_conversations")
-    .select("id", { count: "exact", head: true }).eq("user_id", actor.user.id)).count ?? 0;
-  /** Puts `actor` at the 60-call daily ceiling; returns the cleanup. */
-  const fillQuota = async (actor) => {
-    const marker = `sec-cap-${Date.now()}`;
-    const { error } = await svc.from("ai_learning_conversations").insert(
-      Array.from({ length: 60 }, () => ({
-        user_id: actor.user.id, question_text: marker, answer_text: "ok", mode: "tutor",
-      })));
-    assert.equal(error, null, `could not seed the quota rows: ${error?.message}`);
-    return () => svc.from("ai_learning_conversations").delete().eq("question_text", marker);
-  };
   const paperAt = async (exam_url) => {
     const { data: exam } = await svc.from("exams").insert({
       title: `sec-solver-${Date.now()}`, subject: "Math", stream: "sciences", year: 2024, exam_url,
@@ -1899,6 +1992,79 @@ describe("AI exam solver", () => {
   });
   // The IPv6 / trailing-dot SSRF cases live in gemini-chat.test.mjs: from out
   // here a refused host and a refused connection both answer 502.
+
+  // ── exam_help: a student's own questions about one solved question. None
+  // of these reaches Gemini: each is refused, or answered from the student's
+  // own saved answers, before it.
+  const help = (actor, examId, extra = {}) => callAI(actor, {
+    mode: "exam_help", exam_id: examId, question_index: 0, question_number: "1", question: "لماذا هذه الخطوة؟", ...extra,
+  });
+
+  test("exam_help refuses an unauthenticated call and a free student", async () => {
+    const seeded = await seedSolution();
+    assert.ok(seeded, "could not seed a cached solution");
+    const anon = await help(null, seeded.exam.id);
+    assert.ok(anon.status === 401 || anon.status === 403, `AI ABUSE: unauthenticated exam_help returned ${anon.status}`);
+    const free = await help(A, seeded.exam.id);
+    assert.equal(free.status, 403, `AI ABUSE: a free student reached exam_help (${free.status})`);
+  });
+
+  test("exam_help on a paper with no saved solution, or a question that isn't there, costs nothing", async () => {
+    const seeded = await seedSolution();
+    const unsolved = await paperAt(`exams/sec-missing-${Date.now()}.pdf`);
+    const before = await used(PREM);
+    const r1 = await help(PREM, crypto.randomUUID());
+    const r2 = await help(PREM, unsolved.id);
+    const r3 = await help(PREM, seeded.exam.id, { question_index: 7 });
+    const r4 = await help(PREM, seeded.exam.id, { question_number: "2" });
+    assert.equal(r1.status, 404, `unknown exam answered ${r1.status}`);
+    assert.equal(r2.status, 404, `a paper with no solution answered ${r2.status}`);
+    assert.equal(r3.status, 404, `a question index past the end answered ${r3.status}`);
+    assert.equal(r4.status, 409, `a question number that doesn't match answered ${r4.status}`);
+    assert.equal(await used(PREM), before, "a refused exam_help call still took a quota slot");
+  });
+
+  test("a question the student already asked comes back from their own saved answers, even at the daily ceiling", async () => {
+    const seeded = await seedSolution();
+    const { error: seedError } = await svc.from("ai_learning_conversations").insert({
+      user_id: PREM.user.id, mode: "exam_help", exam_id: seeded.exam.id, question_ref: "0|1",
+      question_text: "لماذا هذه الخطوة؟", answer_text: "sec-saved-answer", subject: "Math",
+    });
+    // also the positive control for the mode CHECK: exam_help rows can be counted
+    assert.equal(seedError, null, `exam_help rows can't be stored: ${seedError?.message}`);
+    const release = await fillQuota(PREM);
+    try {
+      // different spacing and question mark, same question
+      const same = await help(PREM, seeded.exam.id, { question: "لماذا  هذه الخطوة ؟" });
+      const body = await same.json();
+      assert.equal(same.status, 200, `a saved answer was refused at the ceiling (${same.status})`);
+      assert.equal(body.cached, true);
+      assert.equal(body.answer, "sec-saved-answer");
+      const fresh = await help(PREM, seeded.exam.id, { question: "ما معنى هذا الرمز؟" });
+      assert.equal(fresh.status, 429, `a new question at the ceiling answered ${fresh.status}`);
+    } finally {
+      await release();
+      await svc.from("ai_learning_conversations").delete().eq("answer_text", "sec-saved-answer");
+    }
+  });
+
+  test("another student's saved answer is never served to you", async () => {
+    const seeded = await seedSolution();
+    await svc.from("ai_learning_conversations").insert({
+      user_id: B.user.id, mode: "exam_help", exam_id: seeded.exam.id, question_ref: "0|1",
+      question_text: "لماذا هذه الخطوة؟", answer_text: "sec-b-private-answer", subject: "Math",
+    });
+    const release = await fillQuota(PREM);
+    try {
+      const res = await help(PREM, seeded.exam.id);
+      const body = await res.json().catch(() => ({}));
+      assert.notEqual(body.answer, "sec-b-private-answer", "PRIVACY: B's saved answer was served to PREM");
+      assert.equal(res.status, 429, `expected the daily ceiling, got ${res.status}`);
+    } finally {
+      await release();
+      await svc.from("ai_learning_conversations").delete().eq("answer_text", "sec-b-private-answer");
+    }
+  });
 });
 
 /* ═══════════════════════════════════════════ exam download counter ══ */
@@ -1930,6 +2096,77 @@ describe("exam download counter", () => {
 
     await A.client.from("exams").update({ downloads: 999 }).eq("id", exam.id);
     assert.equal(await downloads(exam.id), 2, "FORGERY: a student set the download counter directly");
+  });
+});
+
+/* ═══════════════════════════════════════════════ personal AI ══ */
+describe("personal AI", () => {
+  test("a mistake's saved explanation is reused only until the student misses it again", async () => {
+    // The cache ignored the student's latest answer: missing the question
+    // again (maybe with another letter) kept serving the old explanation.
+    const { data: quiz } = await svc.from("quizzes").select("id").limit(1).single();
+    assert.ok(quiz, "no quiz to hang the mistake on");
+    const hourAgo = new Date(Date.now() - 3600e3).toISOString();
+    const { data: mistake, error } = await svc.from("mistakes").insert({
+      student_id: PREM.user.id, quiz_id: quiz.id, question_id: `sec-explain-${Date.now()}`,
+      question_text: "sec-question", correct_answer: "A", student_answer: "B",
+      quiz_subject: "Math", quiz_chapter: "limits", last_mistaken_at: hourAgo,
+    }).select("id").single();
+    assert.equal(error, null, `could not seed the mistake: ${error?.message}`);
+    await svc.from("ai_learning_conversations").insert({
+      user_id: PREM.user.id, mode: "explain_mistake", mistake_id: mistake.id,
+      question_text: "sec-question", answer_text: "sec-old-explanation",
+      created_at: new Date(Date.now() - 1800e3).toISOString(),
+    });
+    const release = await fillQuota(PREM);
+    try {
+      const first = await callAI(PREM, { mode: "explain_mistake", mistake_id: mistake.id });
+      const body = await first.json();
+      assert.equal(first.status, 200, `a saved explanation was refused at the ceiling (${first.status})`);
+      assert.equal(body.answer, "sec-old-explanation");
+
+      // missed again now: the old explanation is stale, a new one is needed
+      await svc.from("mistakes").update({ last_mistaken_at: new Date().toISOString(), student_answer: "C" }).eq("id", mistake.id);
+      const again = await callAI(PREM, { mode: "explain_mistake", mistake_id: mistake.id });
+      const againBody = await again.json().catch(() => ({}));
+      assert.notEqual(againBody.answer, "sec-old-explanation", "STALE: an explanation of the previous wrong answer was served");
+      assert.equal(again.status, 429, `expected a fresh call (stopped by the ceiling), got ${again.status}`);
+    } finally {
+      await release();
+      await svc.from("ai_learning_conversations").delete().eq("mistake_id", mistake.id);
+      await svc.from("mistakes").delete().eq("id", mistake.id);
+    }
+  });
+
+  test("a student cannot delete their AI log rows (they are the daily quota counter)", async () => {
+    const marker = `sec-keep-${Date.now()}`;
+    await svc.from("ai_learning_conversations").insert({ user_id: A.user.id, question_text: marker, answer_text: "x", mode: "tutor" });
+    await A.client.from("ai_learning_conversations").delete().eq("question_text", marker);
+    const { data } = await svc.from("ai_learning_conversations").select("id").eq("question_text", marker);
+    await svc.from("ai_learning_conversations").delete().eq("question_text", marker);
+    assert.equal(data?.length, 1, "QUOTA BYPASS: a student deleted their own AI log rows");
+  });
+
+  test("deleting an account removes its AI conversations and activity logs", async () => {
+    // These tables had no foreign key: a deleted student's questions and
+    // activity stayed in the database for ever.
+    const { data: created, error } = await svc.auth.admin.createUser({
+      email: `sec-cascade-${Date.now()}@${DOMAIN}`, password: PASSWORD, email_confirm: true,
+    });
+    assert.equal(error, null, `could not create the throwaway user: ${error?.message}`);
+    const id = created.user.id;
+    const { data: exam } = await svc.from("exams").select("id, title, subject, year, stream").limit(1).single();
+    const { error: e1 } = await svc.from("ai_learning_conversations").insert({ user_id: id, question_text: "sec-q", answer_text: "a", mode: "tutor" });
+    const { error: e2 } = await svc.from("exam_activity_logs").insert({
+      student_id: id, exam_id: exam.id, action: "viewed", exam_title: exam.title, subject: exam.subject, year: exam.year, stream: exam.stream,
+    });
+    assert.equal(e1 ?? e2, null, `could not seed the rows: ${(e1 ?? e2)?.message}`);
+
+    await svc.auth.admin.deleteUser(id);
+    const { data: convs } = await svc.from("ai_learning_conversations").select("id").eq("user_id", id);
+    const { data: logs } = await svc.from("exam_activity_logs").select("id").eq("student_id", id);
+    assert.equal(convs?.length ?? 0, 0, "ORPHANS: a deleted account's AI conversations remain");
+    assert.equal(logs?.length ?? 0, 0, "ORPHANS: a deleted account's activity logs remain");
   });
 });
 
@@ -2029,6 +2266,110 @@ describe("study streak", () => {
     });
 
     assert.equal(await read(), 0, "passive exam viewing counted as a study day");
+  });
+
+  test("re-reviewing an item on a new day keeps yesterday's study day", async () => {
+    // "My streak resets every day": study days came from each item's
+    // last_reviewed_at, which the next review overwrites. review_log keeps
+    // every review (20260925000000_review_log.sql), so yesterday survives.
+    const student = await signIn(studentEmails[26]);
+    const { data: quiz } = await svc.from("quizzes").select("id").limit(1).single();
+    if (!quiz) return;
+    const clean = async () => {
+      await svc.from("mistakes").delete().eq("student_id", student.user.id);
+      await svc.from("review_log").delete().eq("student_id", student.user.id);
+    };
+    const read = async () => {
+      const { data } = await student.client.rpc("get_study_stats");
+      return (Array.isArray(data) ? data[0] : data)?.current_streak ?? 0;
+    };
+
+    await clean();
+    assert.equal(await read(), 0, "test fixture is polluted: studentEmails[26] already has study activity");
+
+    const { data: mistake, error } = await svc.from("mistakes").insert({
+      student_id: student.user.id, quiz_id: quiz.id, question_id: "sec-rereview",
+      question_text: "q", correct_answer: "A",
+    }).select("id").single();
+    if (error) throw new Error(`fixture insert failed: ${error.message}`);
+
+    // midday yesterday by the Algiers calendar, then now: the second review
+    // overwrites the first on the mistake row itself
+    const todayDz = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Algiers" }).format(new Date());
+    const yesterday = new Date(`${todayDz}T11:00:00Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    await svc.from("mistakes").update({ last_reviewed_at: yesterday.toISOString() }).eq("id", mistake.id);
+    await svc.from("mistakes").update({ last_reviewed_at: new Date().toISOString() }).eq("id", mistake.id);
+
+    const streak = await read();
+    await clean();
+    assert.equal(streak, 2, `yesterday's review was lost when the item was reviewed again today (streak ${streak})`);
+  });
+});
+
+/* ═════════════════════════════════════════ 18b. review log ══ */
+describe("review log", () => {
+  test("a student reads only their own review log, and cannot write or erase it", async () => {
+    const { data: row, error } = await svc.from("review_log")
+      .insert({ student_id: B.user.id, kind: "mistake", item_id: crypto.randomUUID() })
+      .select("id").single();
+    if (error) throw new Error(`fixture insert failed: ${error.message}`);
+    try {
+      const { data: peek } = await A.client.from("review_log").select("id").eq("student_id", B.user.id);
+      assert.equal(peek?.length ?? 0, 0, "LEAK: a student read another student's review log");
+
+      const { data: own } = await B.client.from("review_log").select("id").eq("id", row.id);
+      assert.equal(own?.length, 1, "a student cannot read their own review log");
+
+      const { error: insErr } = await B.client.from("review_log")
+        .insert({ student_id: B.user.id, kind: "mistake", item_id: crypto.randomUUID() });
+      assert.ok(insErr, "FORGERY: a student wrote their own study days");
+
+      await B.client.from("review_log").update({ reviewed_at: "2020-01-01T00:00:00Z" }).eq("id", row.id);
+      await B.client.from("review_log").delete().eq("id", row.id);
+      const { data: after } = await svc.from("review_log").select("reviewed_at").eq("id", row.id);
+      assert.equal(after?.length, 1, "a student erased a review from their log");
+      assert.ok(!after[0].reviewed_at.startsWith("2020"), "a student rewrote a review's date");
+    } finally {
+      await svc.from("review_log").delete().eq("id", row.id);
+    }
+  });
+});
+
+/* ═════════════════════════════════ 18c. dead weight removed ══ */
+describe("dead weight removal", () => {
+  test("the dead tables are gone", async () => {
+    for (const table of DROPPED_TABLES) {
+      const { error } = await svc.from(table).select("*").limit(1);
+      assert.equal(error?.code, "PGRST205", `${table} still exists`);
+    }
+  });
+
+  test("an admin can edit a tip, including one aimed at a single student", async () => {
+    // Every advice_tips UPDATE used to fail (a trigger set a missing
+    // updated_at), and a never-matching admin policy hid targeted tips.
+    const { data: tip, error } = await svc.from("advice_tips")
+      .insert({ title: "sec-tip", content: "x", is_public: false, target_user_id: A.user.id })
+      .select("id").single();
+    if (error) throw new Error(`fixture insert failed: ${error.message}`);
+    try {
+      const { data: seen } = await ADMIN.client.from("advice_tips").select("id").eq("id", tip.id);
+      assert.equal(seen?.length, 1, "an admin cannot see a tip aimed at one student");
+      const { error: upErr } = await ADMIN.client.from("advice_tips")
+        .update({ title: "sec-tip-edited" }).eq("id", tip.id);
+      assert.equal(upErr, null, `editing a tip failed: ${upErr?.message}`);
+      const { data: after } = await svc.from("advice_tips").select("title").eq("id", tip.id).single();
+      assert.equal(after?.title, "sec-tip-edited", "the admin's edit did not stick");
+    } finally {
+      await svc.from("advice_tips").delete().eq("id", tip.id);
+    }
+  });
+
+  test("signing up again with a registered email says so", async () => {
+    // The sign-up form sends the student to sign in on exactly this code
+    // (AuthContext) instead of letting them open a second, empty account.
+    const { error } = await anonClient().auth.signUp({ email: studentEmails[0], password: "Another-pass-123" });
+    assert.equal(error?.code, "user_already_exists", `got ${error?.code ?? "no error"}`);
   });
 });
 

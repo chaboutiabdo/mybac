@@ -25,14 +25,13 @@ import { EmptyState, Loading } from "@/components/ui/states";
 import { SchoolDetailDialog } from "./SchoolDetailDialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { formatDateDZ } from "@/lib/bac";
+import { dzKey, formatDateDZ } from "@/lib/bac";
 import { errorMessage } from "@/lib/utils";
 
 type SchoolRow = Tables<"schools"> & { studentsCount: number };
 type Inquiry = Pick<Tables<"support_requests">, "id" | "name" | "email" | "phone" | "message" | "created_at">;
 
-const today = () => new Date().toISOString().slice(0, 10);
-const emptyForm = () => ({ name: "", city: "", contractDate: today() });
+const emptyForm = () => ({ name: "", city: "", contractDate: dzKey() });
 
 export function SchoolsManagement() {
   const [searchTerm, setSearchTerm] = useState("");

@@ -56,7 +56,10 @@ export function useTodaysRevision() {
         .order("next_review_at", { ascending: true })
         .limit(100);
       if (error) throw error;
-      const rows = (data ?? []) as DueProgressRow[];
+      // A row whose card the student can no longer see (deleted, or no longer
+      // theirs) embeds null; spreading it would hand the study card undefined
+      // text. Such a row is simply not due any more.
+      const rows = ((data ?? []) as DueProgressRow[]).filter((r) => r.flashcards);
       setDueCards(
         rows.map(({ flashcards: cardData, ...progress }) => ({
           ...cardData,

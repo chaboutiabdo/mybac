@@ -67,7 +67,22 @@ export function QuizzesManagement() {
   const totalQuestions = quizzes.reduce((acc, quiz) => acc + questionCount(quiz.questions), 0);
 
   const deleteQuiz = async (quizId: string) => {
-    if (!confirm('Are you sure you want to delete this quiz?')) return;
+    // Deleting cascades to every student's attempts, results, mistakes, daily
+    // questions and simulator sessions for this quiz (their points stay), so
+    // say how many students lose what before asking.
+    const { data: attempts, error: countError } = await supabase
+      .from('quiz_attempts')
+      .select('student_id')
+      .eq('quiz_id', quizId);
+    if (countError) {
+      toast.error("خطأ", { description: "تعذّر التحقق من المحاولات المرتبطة بالاختبار، لم يُحذف شيء." });
+      return;
+    }
+    const students = new Set(attempts.map(a => a.student_id)).size;
+    const warning = attempts.length
+      ? `سيُحذف معه ${attempts.length} محاولة لـ ${students} طالب، مع نتائجهم وأخطائهم المرتبطة به (نقاطهم تبقى).`
+      : 'لم يحاول أي طالب هذا الاختبار بعد.';
+    if (!confirm(`حذف هذا الاختبار نهائياً؟\n${warning}`)) return;
 
     try {
       const { error } = await supabase

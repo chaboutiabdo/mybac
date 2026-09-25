@@ -1,0 +1,21 @@
+# HawkScan of the built SPA, served the way Cloudflare Pages serves it (so public/_headers applies):
+#   npm run build && npx wrangler pages dev dist --port 8788 --ip 127.0.0.1
+# The Vite dev server sends none of the production headers — don't scan it.
+app:
+  applicationId: ${APP_ID:dc484c70-2855-4080-9f34-8dc507ab47c0}
+  env: ${APP_ENV:Frontend}
+  host: ${APP_HOST:http://127.0.0.1:8788}
+hawk:
+  spider:
+    ajax: true
+    ajaxBrowser: CHROME_HEADLESS
+    maxDurationMinutes: 3
+tags:
+  - name: _STACKHAWK_AGENT
+    value: ${HAWK_AGENT:none}
+  - name: _STACKHAWK_GIT_COMMIT_SHA
+    value: ${COMMIT_SHA:none}
+  - name: _STACKHAWK_GIT_BRANCH
+    value: ${BRANCH_NAME:none}
+  - name: git_origin
+    value: chaboutiabdo/mybac

@@ -51,7 +51,8 @@ const AdminDashboard = () => {
           onSectionChange={(next) => navigate(`/admin/${next}`)}
         />
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-[1320px] px-4 py-6 sm:px-6">
+          {/* same cap as the student frame (AppShell): tables use the width */}
+          <div className="mx-auto max-w-[1920px] px-4 py-6 sm:px-6">
             <Section />
           </div>
         </main>

@@ -35,7 +35,7 @@ import { errorMessage, passwordProblem } from "@/lib/utils";
  * The notifications, appearance and language cards used to live here as local
  * state that was never read or persisted — the switches did nothing, the dark
  * mode toggle pointed at a theme that no longer exists, and the language select
- * was not wired to LanguageContext. They are gone, along with a "Download my
+ * was not wired to anything. They are gone, along with a "Download my
  * data" button that had no handler.
  */
 const Settings = () => {

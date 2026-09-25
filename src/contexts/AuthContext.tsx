@@ -130,13 +130,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        // Supabase says "already registered" in as many words, which turns the
-        // signup form into an account-existence oracle. The detail stays in the
-        // console for whoever is debugging.
         console.error("Sign up error:", error);
-        toast.error("تعذّر إنشاء الحساب", {
-          description: "تحقّق من بياناتك وحاول مرة أخرى.",
-        });
+        // With email confirmation off the API answers user_already_exists to
+        // anyone who asks, so a vague message here hid nothing. It only sent
+        // returning students off to open a second, empty account.
+        if (error.code === "user_already_exists") {
+          toast.error("هذا البريد مسجّل من قبل", {
+            description: "سجّل الدخول بكلمة مرورك — تقدّمك محفوظ في حسابك.",
+          });
+        } else {
+          toast.error("تعذّر إنشاء الحساب", {
+            description: "تحقّق من بياناتك وحاول مرة أخرى.",
+          });
+        }
         return { error };
       }
 

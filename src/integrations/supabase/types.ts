@@ -64,7 +64,6 @@ export type Database = {
       advice_tips: {
         Row: {
           active: boolean | null
-          category: string | null
           content: string
           created_at: string
           expiry_date: string | null
@@ -76,7 +75,6 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
-          category?: string | null
           content: string
           created_at?: string
           expiry_date?: string | null
@@ -88,7 +86,6 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
-          category?: string | null
           content?: string
           created_at?: string
           expiry_date?: string | null
@@ -105,9 +102,11 @@ export type Database = {
           answer_text: string
           chapter: string | null
           created_at: string
+          exam_id: string | null
           id: string
           mistake_id: string | null
           mode: string
+          question_ref: string | null
           question_text: string
           subject: string | null
           user_id: string
@@ -116,9 +115,11 @@ export type Database = {
           answer_text: string
           chapter?: string | null
           created_at?: string
+          exam_id?: string | null
           id?: string
           mistake_id?: string | null
           mode?: string
+          question_ref?: string | null
           question_text: string
           subject?: string | null
           user_id: string
@@ -127,14 +128,23 @@ export type Database = {
           answer_text?: string
           chapter?: string | null
           created_at?: string
+          exam_id?: string | null
           id?: string
           mistake_id?: string | null
           mode?: string
+          question_ref?: string | null
           question_text?: string
           subject?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_learning_conversations_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_learning_conversations_mistake_id_fkey"
             columns: ["mistake_id"]
@@ -142,231 +152,9 @@ export type Database = {
             referencedRelation: "mistakes"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      alumni: {
-        Row: {
-          advice: string | null
-          available_for_mentoring: boolean | null
-          avatar_url: string | null
-          bac_score: number | null
-          created_at: string
-          field_of_study: string | null
-          id: string
-          linkedin_url: string | null
-          name: string
-          university: string | null
-          updated_at: string
-        }
-        Insert: {
-          advice?: string | null
-          available_for_mentoring?: boolean | null
-          avatar_url?: string | null
-          bac_score?: number | null
-          created_at?: string
-          field_of_study?: string | null
-          id?: string
-          linkedin_url?: string | null
-          name: string
-          university?: string | null
-          updated_at?: string
-        }
-        Update: {
-          advice?: string | null
-          available_for_mentoring?: boolean | null
-          avatar_url?: string | null
-          bac_score?: number | null
-          created_at?: string
-          field_of_study?: string | null
-          id?: string
-          linkedin_url?: string | null
-          name?: string
-          university?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      alumni_advice: {
-        Row: {
-          alumni_id: string
-          category: string
-          content: string
-          created_at: string
-          id: string
-          is_featured: boolean | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          alumni_id: string
-          category?: string
-          content: string
-          created_at?: string
-          id?: string
-          is_featured?: boolean | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          alumni_id?: string
-          category?: string
-          content?: string
-          created_at?: string
-          id?: string
-          is_featured?: boolean | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "alumni_advice_alumni_id_fkey"
-            columns: ["alumni_id"]
-            isOneToOne: false
-            referencedRelation: "alumni"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      alumni_files: {
-        Row: {
-          alumni_id: string
-          created_at: string
-          description: string | null
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
-          id: string
-          updated_at: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          alumni_id: string
-          created_at?: string
-          description?: string | null
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
-          id?: string
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          alumni_id?: string
-          created_at?: string
-          description?: string | null
-          file_name?: string
-          file_path?: string
-          file_size?: number
-          file_type?: string
-          id?: string
-          updated_at?: string
-          uploaded_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "alumni_files_alumni_id_fkey"
-            columns: ["alumni_id"]
-            isOneToOne: false
-            referencedRelation: "alumni"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "alumni_files_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      alumni_resources: {
-        Row: {
-          alumni_id: string | null
-          created_at: string | null
-          file_url: string
-          id: string
-          resource_type: string
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          alumni_id?: string | null
-          created_at?: string | null
-          file_url: string
-          id?: string
-          resource_type: string
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          alumni_id?: string | null
-          created_at?: string | null
-          file_url?: string
-          id?: string
-          resource_type?: string
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "alumni_resources_alumni_id_fkey"
-            columns: ["alumni_id"]
-            isOneToOne: false
-            referencedRelation: "alumni"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bookings: {
-        Row: {
-          alumni_id: string
-          created_at: string
-          id: string
-          notes: string | null
-          phone: string
-          status: Database["public"]["Enums"]["booking_status"]
-          student_id: string
-          time_preference: string | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          alumni_id: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          phone: string
-          status?: Database["public"]["Enums"]["booking_status"]
-          student_id: string
-          time_preference?: string | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          alumni_id?: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          phone?: string
-          status?: Database["public"]["Enums"]["booking_status"]
-          student_id?: string
-          time_preference?: string | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_alumni_id_fkey"
-            columns: ["alumni_id"]
-            isOneToOne: false
-            referencedRelation: "alumni"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_student_id_fkey"
-            columns: ["student_id"]
+            foreignKeyName: "ai_learning_conversations_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
@@ -448,7 +236,6 @@ export type Database = {
         Row: {
           action: string
           created_at: string
-          difficulty: string | null
           exam_id: string
           exam_title: string
           id: string
@@ -460,7 +247,6 @@ export type Database = {
         Insert: {
           action: string
           created_at?: string
-          difficulty?: string | null
           exam_id: string
           exam_title: string
           id?: string
@@ -472,7 +258,6 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string
-          difficulty?: string | null
           exam_id?: string
           exam_title?: string
           id?: string
@@ -481,7 +266,15 @@ export type Database = {
           subject?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exam_activity_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       exam_ai_solutions: {
         Row: {
@@ -526,7 +319,6 @@ export type Database = {
       }
       exam_progress: {
         Row: {
-          completed_at: string | null
           exam_id: string
           id: string
           solved_with_ai: boolean | null
@@ -535,7 +327,6 @@ export type Database = {
           viewed_solution: boolean | null
         }
         Insert: {
-          completed_at?: string | null
           exam_id: string
           id?: string
           solved_with_ai?: boolean | null
@@ -544,7 +335,6 @@ export type Database = {
           viewed_solution?: boolean | null
         }
         Update: {
-          completed_at?: string | null
           exam_id?: string
           id?: string
           solved_with_ai?: boolean | null
@@ -690,6 +480,7 @@ export type Database = {
           created_at: string
           front: string
           id: string
+          owner_id: string
           source: string
           subject: string
           updated_at: string
@@ -701,6 +492,7 @@ export type Database = {
           created_at?: string
           front: string
           id?: string
+          owner_id: string
           source?: string
           subject: string
           updated_at?: string
@@ -712,11 +504,20 @@ export type Database = {
           created_at?: string
           front?: string
           id?: string
+          owner_id?: string
           source?: string
           subject?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       mistakes: {
         Row: {
@@ -869,9 +670,6 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           stream: string | null
           subscription_status: string | null
-          subscription_tier:
-            | Database["public"]["Enums"]["subscription_tier"]
-            | null
           total_score: number
           updated_at: string
           user_id: string
@@ -885,9 +683,6 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           stream?: string | null
           subscription_status?: string | null
-          subscription_tier?:
-            | Database["public"]["Enums"]["subscription_tier"]
-            | null
           total_score?: number
           updated_at?: string
           user_id: string
@@ -901,74 +696,11 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           stream?: string | null
           subscription_status?: string | null
-          subscription_tier?:
-            | Database["public"]["Enums"]["subscription_tier"]
-            | null
           total_score?: number
           updated_at?: string
           user_id?: string
         }
         Relationships: []
-      }
-      questions_import: {
-        Row: {
-          chapter: string | null
-          correct_answer: string
-          created_at: string | null
-          difficulty: string | null
-          id: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
-          question_text: string
-          quiz_id: string | null
-          subject: string
-        }
-        Insert: {
-          chapter?: string | null
-          correct_answer: string
-          created_at?: string | null
-          difficulty?: string | null
-          id?: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
-          question_text: string
-          quiz_id?: string | null
-          subject: string
-        }
-        Update: {
-          chapter?: string | null
-          correct_answer?: string
-          created_at?: string | null
-          difficulty?: string | null
-          id?: string
-          option_a?: string
-          option_b?: string
-          option_c?: string
-          option_d?: string
-          question_text?: string
-          quiz_id?: string | null
-          subject?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_import_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "questions_import_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes_public"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       quiz_attempts: {
         Row: {
@@ -1045,7 +777,6 @@ export type Database = {
           selected_choice_index: number | null
           student_answer: string | null
           student_id: string
-          time_spent: number | null
         }
         Insert: {
           correct_answer: string
@@ -1063,7 +794,6 @@ export type Database = {
           selected_choice_index?: number | null
           student_answer?: string | null
           student_id: string
-          time_spent?: number | null
         }
         Update: {
           correct_answer?: string
@@ -1081,7 +811,6 @@ export type Database = {
           selected_choice_index?: number | null
           student_answer?: string | null
           student_id?: string
-          time_spent?: number | null
         }
         Relationships: [
           {
@@ -1146,6 +875,38 @@ export type Database = {
           type?: Database["public"]["Enums"]["quiz_type"]
         }
         Relationships: []
+      }
+      review_log: {
+        Row: {
+          id: number
+          item_id: string
+          kind: string
+          reviewed_at: string
+          student_id: string
+        }
+        Insert: {
+          id?: never
+          item_id: string
+          kind: string
+          reviewed_at?: string
+          student_id: string
+        }
+        Update: {
+          id?: never
+          item_id?: string
+          kind?: string
+          reviewed_at?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_log_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       school_students: {
         Row: {
@@ -1264,45 +1025,6 @@ export type Database = {
           },
         ]
       }
-      student_questions_log: {
-        Row: {
-          ai_response: string | null
-          context_id: string | null
-          context_type: string | null
-          created_at: string
-          id: string
-          question_text: string
-          satisfaction_rating: number | null
-          student_id: string
-          subject: string | null
-          topic: string | null
-        }
-        Insert: {
-          ai_response?: string | null
-          context_id?: string | null
-          context_type?: string | null
-          created_at?: string
-          id?: string
-          question_text: string
-          satisfaction_rating?: number | null
-          student_id: string
-          subject?: string | null
-          topic?: string | null
-        }
-        Update: {
-          ai_response?: string | null
-          context_id?: string | null
-          context_type?: string | null
-          created_at?: string
-          id?: string
-          question_text?: string
-          satisfaction_rating?: number | null
-          student_id?: string
-          subject?: string | null
-          topic?: string | null
-        }
-        Relationships: []
-      }
       support_requests: {
         Row: {
           created_at: string
@@ -1348,8 +1070,6 @@ export type Database = {
           chapter: string | null
           created_at: string
           id: string
-          position: number | null
-          session_id: string | null
           student_id: string
           subject: string
           video_id: string
@@ -1360,8 +1080,6 @@ export type Database = {
           chapter?: string | null
           created_at?: string
           id?: string
-          position?: number | null
-          session_id?: string | null
           student_id: string
           subject: string
           video_id: string
@@ -1372,14 +1090,20 @@ export type Database = {
           chapter?: string | null
           created_at?: string
           id?: string
-          position?: number | null
-          session_id?: string | null
           student_id?: string
           subject?: string
           video_id?: string
           video_title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "video_activity_logs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       video_progress: {
         Row: {
@@ -1387,7 +1111,6 @@ export type Database = {
           id: string
           student_id: string
           video_id: string
-          watch_time: number | null
           watched: boolean | null
         }
         Insert: {
@@ -1395,7 +1118,6 @@ export type Database = {
           id?: string
           student_id: string
           video_id: string
-          watch_time?: number | null
           watched?: boolean | null
         }
         Update: {
@@ -1403,7 +1125,6 @@ export type Database = {
           id?: string
           student_id?: string
           video_id?: string
-          watch_time?: number | null
           watched?: boolean | null
         }
         Relationships: [
@@ -1436,7 +1157,6 @@ export type Database = {
           type: Database["public"]["Enums"]["video_type"]
           updated_at: string
           url: string | null
-          views: number | null
         }
         Insert: {
           chapter?: string | null
@@ -1450,7 +1170,6 @@ export type Database = {
           type: Database["public"]["Enums"]["video_type"]
           updated_at?: string
           url?: string | null
-          views?: number | null
         }
         Update: {
           chapter?: string | null
@@ -1464,7 +1183,6 @@ export type Database = {
           type?: Database["public"]["Enums"]["video_type"]
           updated_at?: string
           url?: string | null
-          views?: number | null
         }
         Relationships: []
       }
@@ -1667,9 +1385,7 @@ export type Database = {
       }
     }
     Enums: {
-      booking_status: "pending" | "confirmed" | "completed" | "cancelled"
       quiz_type: "daily" | "normal" | "practice"
-      subscription_tier: "basic" | "offer1" | "offer2"
       user_role: "student" | "premium" | "admin"
       video_type: "youtube" | "premium"
     }
@@ -1802,9 +1518,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      booking_status: ["pending", "confirmed", "completed", "cancelled"],
       quiz_type: ["daily", "normal", "practice"],
-      subscription_tier: ["basic", "offer1", "offer2"],
       user_role: ["student", "premium", "admin"],
       video_type: ["youtube", "premium"],
     },

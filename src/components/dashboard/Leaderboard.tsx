@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trophy } from "lucide-react";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { TONE_BG, type Tone } from "@/lib/bac";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const PODIUM: Tone[] = ["peach", "lav", "pink"];
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+  const { profile } = useAuth();
 
   useEffect(() => {
     // reads the `leaderboard` view, not `profiles`: the view exposes only
@@ -71,6 +73,9 @@ const Leaderboard = () => {
           ))
         )}
       </ol>
+      {profile?.role === "admin" ? (
+        <p className="mt-3 text-center text-[13px] text-muted-foreground">حسابات المشرفين لا تظهر في الترتيب.</p>
+      ) : null}
     </section>
   );
 };

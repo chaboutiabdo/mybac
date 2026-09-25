@@ -8,18 +8,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BookOpen, 
-  Play, 
-  FileText, 
-  MessageSquare,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Trophy
-} from "lucide-react";
+import { BookOpen, Play, FileText, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface StudentActivityDialogProps {
@@ -56,14 +47,6 @@ interface ExamActivity {
   created_at: string;
 }
 
-interface QuestionActivity {
-  id: string;
-  question_text: string;
-  subject?: string | null;
-  created_at: string;
-  ai_response?: string | null;
-}
-
 export function StudentActivityDialog({ 
   isOpen, 
   onOpenChange, 
@@ -73,7 +56,6 @@ export function StudentActivityDialog({
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [videoActivities, setVideoActivities] = useState<VideoActivity[]>([]);
   const [examActivities, setExamActivities] = useState<ExamActivity[]>([]);
-  const [questionActivities, setQuestionActivities] = useState<QuestionActivity[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -117,19 +99,6 @@ export function StudentActivityDialog({
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // Fetch question activity
-      const { data: questionData } = await supabase
-        .from('student_questions_log')
-        .select('id, question_text, subject, created_at, ai_response')
-        .eq('student_id', studentId)
-        .order('created_at', { ascending: false })
-        .limit(30);
-
-      console.log('Quiz data:', quizData);
-      console.log('Video data:', videoData);
-      console.log('Exam data:', examData);
-      console.log('Question data:', questionData);
-
       // Transform quiz data properly
       const transformedQuizResults = quizData?.map(item => ({
         id: item.id,
@@ -144,7 +113,6 @@ export function StudentActivityDialog({
       setQuizResults(transformedQuizResults);
       setVideoActivities(videoData || []);
       setExamActivities(examData || []);
-      setQuestionActivities(questionData || []);
     } catch (error) {
       console.error('Error fetching student activity:', error);
     } finally {
@@ -194,7 +162,7 @@ export function StudentActivityDialog({
         </DialogHeader>
 
         <Tabs defaultValue="quizzes" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="quizzes">
               <BookOpen className="h-4 w-4 me-2" />
               Quizzes ({quizResults.length})
@@ -206,10 +174,6 @@ export function StudentActivityDialog({
             <TabsTrigger value="exams">
               <FileText className="h-4 w-4 me-2" />
               Exams ({examActivities.length})
-            </TabsTrigger>
-            <TabsTrigger value="questions">
-              <MessageSquare className="h-4 w-4 me-2" />
-              Questions ({questionActivities.length})
             </TabsTrigger>
           </TabsList>
 
@@ -294,39 +258,6 @@ export function StudentActivityDialog({
             </div>
           </TabsContent>
 
-          <TabsContent value="questions" className="space-y-4">
-            <div className="grid gap-4">
-              {questionActivities.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">لا توجد أسئلة</p>
-              ) : (
-                questionActivities.map((question) => (
-                  <Card key={question.id}>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-base">{question.question_text}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {question.subject || 'General'} • {formatDate(question.created_at)}
-                            </p>
-                          </div>
-                          <Badge variant="secondary" className="text-sm">
-                            سؤال للمعلّم الذكي
-                          </Badge>
-                        </div>
-                        {question.ai_response && (
-                          <div className="mt-2 p-2 bg-card-raised/60 rounded text-base">
-                            <p className="text-sm text-muted-foreground mb-1">إجابة المعلّم الذكي:</p>
-                            <p className="line-clamp-2">{question.ai_response}</p>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>

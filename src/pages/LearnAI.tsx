@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Bot, Brain, Loader2, Send, Sparkles, User } from "lucide-react";
 import { toast } from "sonner";
 
@@ -9,9 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { invokeAI } from "@/lib/ai";
+import { supabase } from "@/integrations/supabase/client";
+import { invokeAI, PENDING_ANSWER } from "@/lib/ai";
 import { chaptersFor } from "@/lib/bac";
 import { cn, errorMessage } from "@/lib/utils";
+
+type ChatMessage = { role: "user" | "ai"; content: string };
+
+// How much of a chapter's past conversation the page shows. The model itself
+// only sees the last 3 exchanges (gemini-chat reads them from the same rows).
+const HISTORY_SHOWN = 20;
 
 const STUDY_TIPS = [
   "اقرأ المفاهيم الأساسية أولاً",
@@ -21,36 +29,82 @@ const STUDY_TIPS = [
 ];
 
 const LearnAI = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [subject, setSubject] = useState<string | null>(null);
   const [chapter, setChapter] = useState("");
   const [question, setQuestion] = useState("");
-  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  // the chapter on screen right now, read when a slow answer comes back
+  const scopeRef = useRef("");
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Each student's own conversation per chapter, saved by gemini-chat (every
+  // answered question is a row of theirs). A reload used to show an empty
+  // chat, and switching subject used to keep the other subject's messages.
+  useEffect(() => {
+    scopeRef.current = `${subject ?? ""}|${chapter}`;
+    setChatMessages([]);
+    setHistoryLoading(false);
+    if (!user || !subject || !chapter) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    supabase
+      .from("ai_learning_conversations")
+      .select("question_text, answer_text")
+      // explicit: an admin's RLS reaches everyone's rows
+      .eq("user_id", user.id)
+      .eq("mode", "tutor")
+      .eq("subject", subject)
+      .eq("chapter", chapter)
+      .neq("answer_text", PENDING_ANSWER)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_SHOWN)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) console.error("Error loading the conversation:", error);
+        setChatMessages(
+          (data ?? [])
+            .reverse()
+            .flatMap((r): ChatMessage[] =>
+              r.question_text && r.answer_text
+                ? [{ role: "user", content: r.question_text }, { role: "ai", content: r.answer_text }]
+                : []
+            )
+        );
+        setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, subject, chapter]);
 
   const handleAskQuestion = async () => {
     if (!question.trim() || isLoading || !user) return;
 
     setIsLoading(true);
     const userQuestion = question;
-    // the chat so far, so "more info" continues the last answer (the function caps it)
-    const history = chatMessages.slice(-6);
+    const askedIn = scopeRef.current;
     setQuestion("");
     setChatMessages((prev) => [...prev, { role: "user", content: userQuestion }]);
 
     try {
+      // No history in the body: the function reads this student's saved turns
+      // itself, so a failed question can never shift the roles of later ones.
       const data = await invokeAI<{ answer?: string }>({
         question: userQuestion,
         subject: subject ?? "",
         chapter,
-        history,
       });
       if (!data?.answer) throw new Error("تعذّر توليد إجابة، جرّب صياغة أخرى.");
+      // Switched chapter while waiting: the answer is saved and shows up when
+      // the student comes back; it doesn't belong in this chat.
+      if (scopeRef.current !== askedIn) return;
       setChatMessages((prev) => [...prev, { role: "ai", content: data.answer as string }]);
     } catch (error) {
       console.error("Error asking question:", error);
@@ -59,9 +113,15 @@ const LearnAI = () => {
       // error, so a student who had simply run out of questions was told the
       // connection had failed.
       toast.error(errorMessage(error, "تعذّر الحصول على الإجابة، حاول مرة أخرى."));
-      // The apology deliberately does NOT go into chatMessages: it was being
-      // sent straight back as history on the next question, so the model spent
-      // quota reading our own error text.
+      // The unanswered question leaves the chat and goes back in the box, so
+      // the student can resend it without retyping.
+      if (scopeRef.current === askedIn) {
+        setChatMessages((prev) => {
+          const i = prev.map((m) => m.role === "user" && m.content === userQuestion).lastIndexOf(true);
+          return i < 0 ? prev : [...prev.slice(0, i), ...prev.slice(i + 1)];
+        });
+        setQuestion((current) => current || userQuestion);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +133,9 @@ const LearnAI = () => {
     <div className="space-y-8">
       <PageHeader title="المعلّم الذكي" subtitle="اسأل بالعربية، واحصل على شرح خطوة بخطوة كما في ورقة الامتحان" />
 
-      <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+      {/* grid-cols-1, not the implicit auto column: that one grows to fit its
+          widest content, so a long formula widened the page on phones */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <section className="space-y-4 rounded-card bg-card p-5 shadow-soft">
             <h2 className="text-lg font-medium">اختر الموضوع</h2>
@@ -99,6 +161,14 @@ const LearnAI = () => {
                 ))}
               </SelectContent>
             </Select>
+            {!profile?.stream && (
+              <p className="text-sm text-muted-foreground">
+                <Link to="/settings" className="text-foreground underline underline-offset-4">
+                  حدّد شعبتك في الإعدادات
+                </Link>{" "}
+                ليكيّف المعلّم شرحه معك.
+              </p>
+            )}
           </section>
 
           {chapter && (
@@ -129,7 +199,12 @@ const LearnAI = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-5">
-            {chatMessages.length === 0 ? (
+            {chatMessages.length === 0 && historyLoading ? (
+              <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                جارٍ تحميل محادثتك…
+              </div>
+            ) : chatMessages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
                 {/* the sparkle sits on the brain, not somewhere in the row */}
                 <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-tone-lav">
@@ -157,10 +232,12 @@ const LearnAI = () => {
                       >
                         {mine ? <User className="h-4 w-4" aria-hidden /> : <Bot className="h-4 w-4" aria-hidden />}
                       </span>
+                      {/* an answer takes the whole row: shrink-wrapped, a
+                          table or formula answer left a wide empty band beside it */}
                       <div
                         className={cn(
-                          "max-w-[85%] rounded-3xl px-4 py-3",
-                          mine ? "bg-primary text-primary-foreground" : "bg-card-raised shadow-soft"
+                          "min-w-0 rounded-3xl px-4 py-3",
+                          mine ? "max-w-[85%] bg-primary text-primary-foreground" : "flex-1 bg-card-raised shadow-soft"
                         )}
                       >
                         {mine ? (
@@ -220,8 +297,11 @@ const LearnAI = () => {
             </div>
             <div className="mt-2 space-y-0.5 text-center text-[13px] text-muted-foreground">
               <p>Enter للإرسال، Shift+Enter لسطر جديد</p>
-              {/* the free Gemini tier lets Google's reviewers read questions */}
-              <p>لا تكتب معلومات شخصية في أسئلتك، فقد يطّلع عليها مزوّد الذكاء الاصطناعي</p>
+              {/* the free Gemini tier lets Google's reviewers read what is sent */}
+              <p>
+                ليكيّف المعلّم شرحه معك يُرسَل إليه شعبتك ومستواك في الفصول وبعض أخطائك، دون اسمك أو بريدك. لا تكتب
+                معلومات شخصية في أسئلتك، فقد يطّلع عليها مزوّد الذكاء الاصطناعي.
+              </p>
             </div>
           </div>
         </section>

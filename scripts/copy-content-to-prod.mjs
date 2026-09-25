@@ -1,8 +1,9 @@
 /**
  * Copies the real content from the LOCAL stack to the hosted (production)
- * project: the BAC papers (exams rows + their PDFs), the cached AI solutions
- * and the shared flashcard deck. Nothing else locally is real content — the
- * quizzes, videos, tips and users are seed placeholders or test data.
+ * project: the BAC papers (exams rows + their PDFs) and the cached AI
+ * solutions. Nothing else locally is real content — the quizzes, videos, tips
+ * and users are seed placeholders or test data, and flashcards are each
+ * student's private deck (20260924000000_personal_ai.sql), never copied.
  *
  *   node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs           dry run
  *   node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs --apply   write
@@ -57,7 +58,6 @@ async function upsert(table, rows, onConflict, size) {
 
 const exams = await all(local, "exams", "id, title, subject, stream, year, exam_url, solution_url, difficulty, questions, created_at");
 const solutions = await all(local, "exam_ai_solutions", "exam_id, solution, source, model, prompt_version, created_at");
-const cards = await all(local, "flashcards", "id, subject, chapter, front, back, concept, source, created_at");
 
 if (!exams.length) fail("no local exams — is the local stack running?");
 const paths = [...new Set(exams.flatMap((e) => [e.exam_url, e.solution_url]).filter(Boolean))];
@@ -69,7 +69,7 @@ const localIds = new Set(exams.map((e) => e.id));
 const foreign = prodExams.filter((e) => !localIds.has(e.id));
 if (foreign.length) fail(`production already has ${foreign.length} exam(s) that aren't local (uploaded by hand?): ${foreign.slice(0, 5).map((e) => e.id).join(", ")}`);
 
-console.log(`local: ${exams.length} exams, ${solutions.length} AI solutions, ${cards.length} flashcards, ${paths.length} PDFs`);
+console.log(`local: ${exams.length} exams, ${solutions.length} AI solutions, ${paths.length} PDFs`);
 console.log(`target: ${PROD_URL} (${prodExams.length} exams there now)`);
 if (!APPLY) {
   console.log("\ndry run — nothing written. Rerun with --apply.");
@@ -78,12 +78,12 @@ if (!APPLY) {
 
 /* ---------------------------------------------------------------- write, FK order */
 
-await upsert("exams", exams.map((e) => ({ ...e, downloads: 0 })), "id", 50);
+// No `downloads`: it used to be sent as 0, so every rerun (new papers, the
+// question texts) reset the live counters. New rows get the column default, 0.
+await upsert("exams", exams, "id", 50);
 console.log(`✓ exams: ${exams.length}`);
 await upsert("exam_ai_solutions", solutions, "exam_id,prompt_version", 20);
 console.log(`✓ exam_ai_solutions: ${solutions.length}`);
-await upsert("flashcards", cards, "id", 50);
-console.log(`✓ flashcards: ${cards.length}`);
 
 let uploaded = 0, skipped = 0, bytes = 0;
 for (const [i, p] of paths.entries()) {
@@ -108,9 +108,8 @@ console.log(`✓ PDFs: ${uploaded} uploaded (${(bytes / 1048576).toFixed(0)} MB)
 const after = {
   exams: (await all(prod, "exams", "id")).length,
   exam_ai_solutions: (await all(prod, "exam_ai_solutions", "exam_id")).length,
-  flashcards: (await all(prod, "flashcards", "id")).length,
 };
-const want = { exams: exams.length, exam_ai_solutions: solutions.length, flashcards: cards.length };
+const want = { exams: exams.length, exam_ai_solutions: solutions.length };
 for (const t of Object.keys(want)) {
   if (after[t] !== want[t]) fail(`${t}: production has ${after[t]}, expected ${want[t]}`);
 }

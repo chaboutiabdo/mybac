@@ -68,9 +68,9 @@ const TILES: Tile[] = [
     tone: "mint",
     icon: Layers,
     label: "البطاقات التعليمية",
-    premium: false,
-    title: "راجع المفاهيم ببطاقات سريعة",
-    meta: "مجاني للجميع",
+    premium: true,
+    title: "بطاقات خاصة بك يولّدها الذكاء الاصطناعي من أخطائك",
+    meta: "بطاقاتك وحدك",
   },
   {
     to: "/mistakes",

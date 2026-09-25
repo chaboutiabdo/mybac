@@ -28,5 +28,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# written by scripts/stackhawk-spec.mjs before each API scan
+stackhawk-openapi.json
+# local state of `wrangler pages dev` (the frontend scan serves dist/ with it)
+.wrangler/
+
 # the owner's local reports (the security audit describes live findings)
 docs/

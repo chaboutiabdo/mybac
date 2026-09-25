@@ -12,8 +12,8 @@ export type FlashcardWithProgress = Flashcard & { student_flashcard_progress: Fl
 // useMistakes.ts hand-declares MistakeStatusFilter instead of deriving it).
 export type RecallRating = "hard" | "medium" | "easy";
 
-// A study session is a few dozen cards. Without a cap, "الكل" selects every
-// row in the table, which is how 40 junk cards reached the page at once.
+// A student's whole deck is at most 16 chapters x 10 cards; the cap is a
+// guard, not a page size.
 const MAX_CARDS = 200;
 
 export function useFlashcards({ subject, chapter }: { subject: string | null; chapter: string }) {
@@ -31,23 +31,22 @@ export function useFlashcards({ subject, chapter }: { subject: string | null; ch
     setLoading(true);
     setError(null);
     try {
-      // subject/chapter are both optional filters, not a required pair:
-      // no subject = every card in the app ("الكل"), a subject with no
-      // chapter = every card in that subject.
+      // Every deck is private (20260924000000_personal_ai.sql). The explicit
+      // owner filter is not redundant with RLS: an admin's policy reaches every
+      // student's cards, and their own study screen must show only theirs.
+      // subject/chapter are both optional: no subject = the student's whole
+      // deck ("الكل"), a subject with no chapter = that subject's cards.
       //
-      // One round trip: student_flashcard_progress rides along embedded.
-      // RLS on that table (student_id = auth.uid()) already narrows the
-      // embed to the caller's own row per card — 0 or 1, never another
-      // student's — so no extra .eq() on the embed is needed.
+      // One round trip: student_flashcard_progress rides along embedded. A
+      // card can only be reviewed by its owner (record_flashcard_review), so
+      // the embed is the caller's own row — 0 or 1.
       let query = supabase
         .from("flashcards")
         .select("*, student_flashcard_progress(*)")
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: true });
       if (subject) query = query.eq("subject", subject);
       if (chapter) query = query.eq("chapter", chapter);
-      // With no subject this is "every card in the database". A study session
-      // is a few dozen cards, so the cap costs nothing and stops one bad batch
-      // from dragging the whole deck into the page.
       const { data, error: fetchError } = await query.limit(MAX_CARDS);
       if (fetchError) throw fetchError;
       setFlashcards((data ?? []) as FlashcardWithProgress[]);
@@ -76,5 +75,27 @@ export function useFlashcards({ subject, chapter }: { subject: string | null; ch
     );
   }, []);
 
-  return { flashcards, loading, error, refetch: fetchFlashcards, recordReview };
+  /**
+   * Deletes the student's own cards in one chapter (and, by cascade, their
+   * review history), so a full chapter can be generated again. Returns how
+   * many went.
+   */
+  const deleteChapter = useCallback(
+    async (deckSubject: string, deckChapter: string) => {
+      if (!user) return 0;
+      const { data, error: deleteError } = await supabase
+        .from("flashcards")
+        .delete()
+        .eq("owner_id", user.id)
+        .eq("subject", deckSubject)
+        .eq("chapter", deckChapter)
+        .select("id");
+      if (deleteError) throw deleteError;
+      await fetchFlashcards();
+      return data?.length ?? 0;
+    },
+    [user, fetchFlashcards]
+  );
+
+  return { flashcards, loading, error, refetch: fetchFlashcards, recordReview, deleteChapter };
 }

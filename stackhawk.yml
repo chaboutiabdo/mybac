@@ -1,0 +1,42 @@
+# HawkScan DAST against the LOCAL Supabase stack (npx supabase start). Never point this at production.
+# Surface: PostgREST (tables, views, rpc/*) — where RLS and SECURITY DEFINER code live.
+# Out of scope: /functions/v1/gemini-chat (a scan would burn the Gemini free-tier quota),
+# /auth/v1 and /storage/v1 (upstream Supabase services). The SPA has its own config: stackhawk-frontend.yml.
+app:
+  applicationId: ${APP_ID:dc484c70-2855-4080-9f34-8dc507ab47c0}
+  env: ${APP_ENV:Development}
+  host: ${APP_HOST:http://127.0.0.1:54421/rest/v1}
+  # PostgREST serves its spec per role and HawkScan fetches `path:` anonymously, which hides every
+  # student RPC. scripts/stackhawk-spec.mjs saves the student's view first: run `npm run scan:api`.
+  openApiConf:
+    filePath: stackhawk-openapi.json
+  authentication:
+    # seed.sql creates this student on every db reset
+    usernamePassword:
+      type: JSON
+      loginPath: ${SUPABASE_LOGIN_URL:http://127.0.0.1:54421/auth/v1/token?grant_type=password}
+      usernameField: email
+      passwordField: password
+      scanUsername: ${SCAN_USERNAME:student@mybac.test}
+      scanPassword: ${SCAN_PASSWORD:Test1234!}
+    tokenExtraction:
+      type: TOKEN_PATH
+      value: "$.access_token"
+    tokenAuthorization:
+      type: HEADER
+      value: Authorization
+      tokenType: Bearer
+      isJWT: true
+    # anon: 401 "permission denied for view quizzes_public"; student: 200
+    testPath:
+      path: /rest/v1/quizzes_public
+      success: ".*200.*"
+tags:
+  - name: _STACKHAWK_AGENT
+    value: ${HAWK_AGENT:none}
+  - name: _STACKHAWK_GIT_COMMIT_SHA
+    value: ${COMMIT_SHA:none}
+  - name: _STACKHAWK_GIT_BRANCH
+    value: ${BRANCH_NAME:none}
+  - name: git_origin
+    value: chaboutiabdo/mybac

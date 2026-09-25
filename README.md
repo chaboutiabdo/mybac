@@ -37,9 +37,21 @@ ALLOWED_ORIGIN=http://localhost:8080
 npx supabase functions serve gemini-chat --env-file supabase/functions/.env
 ```
 
+### New migrations: `migration up`, never `db reset`
+
+`supabase db reset` rebuilds the local database from scratch: every account
+you signed up with and all of its points, streak and progress are gone. (That
+happened on 22 Sep 2026.) Back up, then apply only what's new:
+
+```bash
+npx supabase db dump --local --data-only -f backup.sql   # keep it outside the repo
+npx supabase migration up
+npm run types:gen
+```
+
 ### Test accounts
 
-Seeded by `supabase/seed.sql` on every `supabase db reset`. Password for all
+Seeded by `supabase/seed.sql` when the stack is first created. Password for all
 three: `Test1234!`
 
 | Role | Email |
@@ -48,8 +60,8 @@ three: `Test1234!`
 | Premium | `premium@mybac.test` |
 | Admin | `admin@mybac.test` |
 
-> `seed.sql` creates accounts with a known password. It runs on `db reset`
-> against the **local** stack only — never point it at production.
+> `seed.sql` creates accounts with a known password. It runs against the
+> **local** stack only — never point it at production.
 
 ---
 
@@ -66,9 +78,9 @@ three: `Test1234!`
 | `npm run types:gen` | Regenerate `src/integrations/supabase/types.ts` |
 | `npm run seed:testusers` | 55 users (40 student, 10 premium, 5 admin) for security testing |
 | `npm run upload:bac` | Upload the BAC past-paper archive (`BAC_DIR`) to the local stack; `--dry-run`, `--verify`, `--undo` |
-| `node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs` | Copy the BAC papers, PDFs, cached AI solutions and flashcards from the local stack to production; dry run unless `--apply` |
-| `npm run prewarm:solutions` | Solve every unsolved paper ahead of time as an admin, so students get cached AI solutions; resumable, `--limit N` |
-| `npm run security` | 199 tests run as real signed-in users |
+| `node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs` | Copy the BAC papers, PDFs and cached AI solutions from the local stack to production (flashcards are private per student and never copied); dry run unless `--apply` |
+| `npm run prewarm:solutions` | Solve every unsolved paper ahead of time as an admin, so students get cached AI solutions, then copy each solved question's wording from the paper for the solution page's question card; resumable, `--limit N`. Rerun after uploading papers |
+| `npm run security` | 210 tests run as real signed-in users |
 
 `src/integrations/supabase/types.ts` is **generated**. Never hand-edit it — run
 `npm run types:gen` after any schema change, or the types drift from the
@@ -81,11 +93,12 @@ database and queries silently collapse to `never`.
 `npm run security` runs two suites against the local stack:
 
 - `scripts/check-security.mjs` — the five original RLS assertions
-- `scripts/attack-suite.mjs` — 194 attacks executed as real signed-in users:
+- `scripts/attack-suite.mjs` — 205 attacks executed as real signed-in users:
   privilege escalation, IDOR across a 55-user cohort, points and score forgery,
   an anonymous read sweep over every table, premium bypass, storage, the edge
-  function (daily AI ceiling, oversized papers, SSRF), download-counter
-  forgery, and forged or anonymous premium requests
+  function (daily AI ceiling, oversized papers, SSRF), private flashcard decks
+  and per-student AI caches, download-counter forgery, and forged or anonymous
+  premium requests
 
 Every test **passes when an attack is blocked**. Reseed before each run
 (`npm run seed:testusers`) — a failing run can leave escalated roles behind, and
@@ -105,7 +118,12 @@ Notable properties the suites enforce:
 - `profiles.email` is account identity: a student cannot rewrite it, and a
   confirmed `auth.updateUser({ email })` is mirrored back by a trigger
 - A student cannot change their own role, subscription status or score
+- Every AI result a student gets is theirs alone: their flashcard deck, their
+  tutor history and their saved exam-help answers. Only the step-by-step paper
+  solutions are shared, and those only through `gemini-chat`
 - Nothing is readable with only the publishable key
+- Study days (streak, calendar, weekly report) come from `review_log`, which
+  keeps every review. A student can read their own rows and write none
 
 ---
 
@@ -121,11 +139,13 @@ every remote command.
    --project-ref <ref>` and `supabase db push`. Never pass `--include-seed`,
    never `db reset --linked`, and never `supabase config push` — that would
    push the local auth settings (localhost URLs, 6-character passwords).
-2. **Copy the content** (BAC papers, their PDFs, the cached AI solutions, the
-   flashcards) from the local stack with
+2. **Copy the content** (BAC papers, their PDFs, the cached AI solutions) from
+   the local stack with
    `node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs`
    (dry run; add `--apply` to write). `.env.prod-secrets` holds
-   `PROD_SUPABASE_URL` and `PROD_SERVICE_ROLE_KEY` and is gitignored.
+   `PROD_SUPABASE_URL` and `PROD_SERVICE_ROLE_KEY` and is gitignored. Rerunning
+   it is safe: it keeps the live download counters, skips PDFs already there,
+   and carries new solutions and question texts across.
 3. **Deploy the edge function** and set its secrets:
    ```bash
    supabase functions deploy gemini-chat --use-api
@@ -187,15 +207,14 @@ src/
   components/
     admin/        admin panel screens and dialogs
     dashboard/    student dashboard widgets
-    layout/       Navigation
+    layout/       AppShell (navigation) and PageHeader
     ui/           shadcn primitives + shared Loading/Empty/Error states
-  contexts/       AuthContext, LanguageContext (Arabic only)
+  contexts/       AuthContext
   hooks/          data and activity hooks
   integrations/   generated Supabase client and types
   lib/bac.ts      THE domain vocabulary: streams, subjects, chapters,
-                  coefficients, the exam date, /20 grading
+                  coefficients, the exam date, the Algiers day (dzKey)
   pages/          routed pages
-  styles/         ornamental layer
 supabase/
   migrations/     schema and RLS, applied in filename order
   functions/      gemini-chat edge function

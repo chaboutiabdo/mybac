@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuizStats } from "@/hooks/useQuizStats";
 import { useStudyStreak } from "@/hooks/useStudyStreak";
+import { useUserScore } from "@/hooks/useUserScore";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { TONE_BG, chapterLabel, subjectLabel, subjectTone } from "@/lib/bac";
@@ -76,6 +77,8 @@ const Quizzes = () => {
   const [loading, setLoading] = useState(true);
   const quizStats = useQuizStats();
   const { currentStreak } = useStudyStreak();
+  const { score } = useUserScore();
+  const todaysQuiz = dailyQuizzes.find((q) => q.id === quizStats.todaysQuizId);
 
   useEffect(() => {
     // quizzes_public strips the answer key; grading happens server-side
@@ -144,7 +147,8 @@ const Quizzes = () => {
   const weekly = [
     { label: "اختبارات مكتملة", value: String(quizStats.completedQuizzes), icon: Target, tone: "bg-tone-mint" },
     { label: "متوسط النتيجة", value: `${Math.round(quizStats.averageScore)}%`, icon: TrendingUp, tone: "bg-tone-lav" },
-    { label: "مجموع النقاط", value: `+${quizStats.pointsEarned}`, icon: Trophy, tone: "bg-tone-peach" },
+    // the leaderboard total (profiles.total_score), not a recount of quiz answers
+    { label: "مجموع النقاط", value: String(score), icon: Trophy, tone: "bg-tone-peach" },
     { label: "أيام متتالية", value: String(currentStreak), icon: Flame, tone: "bg-tone-pink" },
   ];
 
@@ -166,8 +170,8 @@ const Quizzes = () => {
             <Button
               size="lg"
               className="w-full"
-              disabled={dailyQuizzes.length === 0}
-              onClick={() => dailyQuizzes[0] && startQuiz(dailyQuizzes[0])}
+              disabled={!todaysQuiz}
+              onClick={() => todaysQuiz && startQuiz(todaysQuiz)}
             >
               ابدأ اختبار اليوم
               <ArrowLeft aria-hidden />

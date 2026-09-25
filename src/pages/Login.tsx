@@ -15,6 +15,7 @@ const Login = () => {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("login");
   const { signIn, signUp, user, profile } = useAuth();
 
   const selectedPlan = sessionStorage.getItem("selectedPlan");
@@ -40,6 +41,8 @@ const Login = () => {
     setLoading(true);
     const { error } = await signUp(email, password, name, phone, selectedPlan ?? undefined, city);
     if (!error) sessionStorage.removeItem("selectedPlan");
+    // the email is shared by both forms, so the sign-in form is ready to go
+    if (error?.code === "user_already_exists") setTab("login");
     setLoading(false);
   };
 
@@ -75,7 +78,7 @@ const Login = () => {
             سجّل الدخول لمتابعة تحضيرك للبكالوريا.
           </p>
 
-          <Tabs defaultValue="login" className="mt-8 w-full">
+          <Tabs value={tab} onValueChange={setTab} className="mt-8 w-full">
             <TabsList className="w-full">
               <TabsTrigger value="login">تسجيل الدخول</TabsTrigger>
               <TabsTrigger value="signup">حساب جديد</TabsTrigger>

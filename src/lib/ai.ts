@@ -26,6 +26,12 @@ import { supabase } from "@/integrations/supabase/client";
  * worth the lost auth-header handling.
  */
 
+/**
+ * answer_text of an ai_learning_conversations row that was metered but never
+ * answered (PENDING in gemini-chat). Every reader of saved answers skips it.
+ */
+export const PENDING_ANSWER = "__pending__";
+
 /** Text modes: the server stops trying models after 55 s. */
 export const AI_TIMEOUT_MS = 90_000;
 /** solve_exam reads a whole PDF: the server stops trying after ~128 s. */

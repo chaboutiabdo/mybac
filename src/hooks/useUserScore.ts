@@ -10,7 +10,7 @@ export const useUserScore = () => {
   useEffect(() => {
     // No realtime subscription: profiles was never in the supabase_realtime
     // publication, so the old one never received an event — it only opened a
-    // websocket the CSP would have had to allow. Callers use refreshScore().
+    // websocket the CSP would have had to allow. The score is read on mount.
     if (user) fetchUserScore();
   }, [user]);
 
@@ -60,11 +60,5 @@ export const useUserScore = () => {
     }
   };
 
-  const refreshScore = () => {
-    if (user) {
-      fetchUserScore();
-    }
-  };
-
-  return { score, loading, refreshScore };
+  return { score, loading };
 };

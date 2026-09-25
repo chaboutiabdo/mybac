@@ -49,6 +49,17 @@ shadows, and six pastel **tones** that colour-code streams and subjects.
 - **RTL uses logical properties** (`ms-`/`me-`/`ps-`/`pe-`, `text-start`), not
   `ml-`/`mr-`. The one exception is the `left-1/2 + translate-x` centring idiom,
   which must stay physical or dialogs land off-centre.
+- **Never `supabase db reset` a stack with real accounts.** It deletes every
+  local account and all progress. Apply migrations with
+  `npx supabase migration up`, after a `db dump --local --data-only` backup.
+- **Study days come from `review_log`, never from `last_reviewed_at`.** Each
+  review overwrites an item's `last_reviewed_at`, so a streak computed from it
+  lost yesterday whenever a card or mistake was reviewed again today. Triggers
+  on `mistakes` and `student_flashcard_progress` append every review to the
+  log; `get_study_stats`, `get_weekly_report` and the calendar read it.
+- **Day boundaries are Algiers days.** Use `dzKey()` from `src/lib/bac.ts` in
+  the client and `AT TIME ZONE 'Africa/Algiers'` in SQL, never
+  `toISOString().slice(0, 10)` (a UTC day).
 - **One toast system: Sonner.** The shadcn toast was removed. Reintroducing it
   means mounting its `<Toaster />`, and forgetting that is exactly how ~97
   toast calls once rendered nothing at all.
@@ -111,6 +122,12 @@ each new session's papers.
 
 ## Things that were fixed and are easy to break again
 
+- An AI exam solution is written from the official corrigé, which doesn't
+  restate the questions. The admin-only `extract_questions` mode copies each
+  question's wording from the paper into two optional fields per item
+  (`question_text`, `exercise_text`) and touches nothing else. Don't bump
+  `SOLVE_PROMPT_VERSION` for those fields: old rows stay valid without them,
+  and a bump re-solves every paper. `npm run prewarm:solutions` fills them.
 - `completed_at` must be set when a quiz is submitted. Five queries filter on
   it; when it was never written, every completed-quiz count and the day streak
   were permanently zero.
