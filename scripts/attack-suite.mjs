@@ -23,6 +23,10 @@ const DOMAIN = "sectest.local";
 const anonClient = () => createClient(URL, ANON, { auth: { persistSession: false } });
 const svc = createClient(URL, SERVICE, { auth: { persistSession: false } });
 
+/** YYYY-MM-DD of the Africa/Algiers day, the way the database buckets days.
+ *  The UTC date differs from 00:00 to 01:00 Algiers every night. */
+const dzDate = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Algiers" }).format(d);
+
 async function signIn(email) {
   const c = createClient(URL, ANON, { auth: { persistSession: false } });
   const { data, error } = await c.auth.signInWithPassword({ email, password: PASSWORD });
@@ -395,6 +399,23 @@ describe("admin-only tables are not student-writable", () => {
       assert.equal(data?.length, 1, `PRIVILEGE: student deleted from ${table}`);
     });
   }
+
+  // The curated video library: a repointed video would send every student who
+  // clicks it wherever the attacker likes. Owns its row, so it never skips.
+  test("student cannot repoint or delete a curated video", async () => {
+    const url = "https://www.youtube.com/watch?v=SECTESTvid1";
+    const { data: v } = await svc.from("videos")
+      .upsert({ title: "SEC TEST VIDEO", subject: "Math", type: "youtube", url, kind: "lesson" }, { onConflict: "url,exam_id" })
+      .select("id").single();
+    try {
+      await A.client.from("videos").update({ url: "https://evil.example/phish" }).eq("id", v.id);
+      await A.client.from("videos").delete().eq("id", v.id);
+      const { data } = await svc.from("videos").select("url").eq("id", v.id);
+      assert.equal(data?.[0]?.url, url, "TAMPERING: a student changed or deleted a video");
+    } finally {
+      await svc.from("videos").delete().eq("id", v.id);
+    }
+  });
 });
 
 /* ═══════════════════════════════════════════ 5. anon blanket sweep ══ */
@@ -2224,9 +2245,10 @@ describe("study streak", () => {
 
     const offsets = [0, 1, 2, 4, 5, 6, 7];
     for (const i of offsets) {
-      // midday Algiers, so the row can't drift across a date boundary
-      const d = new Date(Date.now() - i * 86_400_000);
-      d.setUTCHours(11, 0, 0, 0);
+      // midday Algiers of the Algiers day i days back, so the row can't drift
+      // across a date boundary (the UTC date is a day behind before 01:00)
+      const d = new Date(`${dzDate()}T11:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - i);
       await svc.from("quiz_attempts").insert({
         student_id: B.user.id, quiz_id: quiz.id, score: 0, attempt_number: 900 + i,
         completed_at: d.toISOString(),
@@ -2660,7 +2682,7 @@ describe("audit regressions", () => {
     // simulate the daily question having been answered from this quiz
     await svc.from("daily_questions").insert({
       student_id: prof.user_id,
-      assigned_date: new Date().toISOString().slice(0, 10),
+      assigned_date: dzDate(),
       quiz_id: quiz.id,
       question_id: quiz.questions[0].id ?? "q_1",
       reason: "balanced",

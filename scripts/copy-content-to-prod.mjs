@@ -1,12 +1,14 @@
 /**
  * Copies the real content from the LOCAL stack to the hosted (production)
- * project: the BAC papers (exams rows + their PDFs) and the cached AI
- * solutions. Nothing else locally is real content — the quizzes, videos, tips
- * and users are seed placeholders or test data, and flashcards are each
- * student's private deck (20260924000000_personal_ai.sql), never copied.
+ * project: the BAC papers (exams rows + their PDFs), the cached AI solutions
+ * and the curated YouTube video library. Nothing else locally is real content —
+ * the quizzes, tips and users are seed placeholders or test data, and
+ * flashcards are each student's private deck (20260924000000_personal_ai.sql),
+ * never copied.
  *
  *   node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs           dry run
  *   node --env-file=.env.prod-secrets scripts/copy-content-to-prod.mjs --apply   write
+ *   ... --apply --videos-only                                                     only the videos
  *
  * .env.prod-secrets (gitignored by `.env.*`, never read by Vite) holds
  * PROD_SUPABASE_URL and PROD_SERVICE_ROLE_KEY. Keys are never printed.
@@ -24,6 +26,7 @@ const LOCAL_KEY =
 const PROD_URL = process.env.PROD_SUPABASE_URL;
 const PROD_KEY = process.env.PROD_SERVICE_ROLE_KEY;
 const APPLY = process.argv.includes("--apply");
+const VIDEOS_ONLY = process.argv.includes("--videos-only");
 const BUCKET = "documents";
 
 const fail = (msg) => {
@@ -54,9 +57,23 @@ async function upsert(table, rows, onConflict, size) {
   }
 }
 
+/** Every row of a table past the API's 1,000-row cap, in a stable order. */
+async function pages(db, table, columns, filter = (q) => q) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await filter(db.from(table).select(columns)).order("id").range(from, from + 999);
+    if (error) fail(`${table}: ${error.message}`);
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
+}
+
 /* ---------------------------------------------------------------- read */
 
 const exams = await all(local, "exams", "id, title, subject, stream, year, exam_url, solution_url, difficulty, questions, created_at");
+// The curated YouTube library: links only (premium uploads live in storage and
+// are not copied). Corrections point at the exams above, which keep their ids.
+const videos = await pages(local, "videos", "title, subject, chapter, kind, type, url, channel, duration, description, exam_id, created_at", (q) => q.eq("type", "youtube"));
 const solutions = await all(local, "exam_ai_solutions", "exam_id, solution, source, model, prompt_version, created_at");
 
 if (!exams.length) fail("no local exams — is the local stack running?");
@@ -69,8 +86,9 @@ const localIds = new Set(exams.map((e) => e.id));
 const foreign = prodExams.filter((e) => !localIds.has(e.id));
 if (foreign.length) fail(`production already has ${foreign.length} exam(s) that aren't local (uploaded by hand?): ${foreign.slice(0, 5).map((e) => e.id).join(", ")}`);
 
-console.log(`local: ${exams.length} exams, ${solutions.length} AI solutions, ${paths.length} PDFs`);
-console.log(`target: ${PROD_URL} (${prodExams.length} exams there now)`);
+const prodVideos = await pages(prod, "videos", "id");
+console.log(`local: ${exams.length} exams, ${solutions.length} AI solutions, ${paths.length} PDFs, ${videos.length} videos`);
+console.log(`target: ${PROD_URL} (${prodExams.length} exams, ${prodVideos.length} videos there now)`);
 if (!APPLY) {
   console.log("\ndry run — nothing written. Rerun with --apply.");
   process.exit(0);
@@ -78,6 +96,9 @@ if (!APPLY) {
 
 /* ---------------------------------------------------------------- write, FK order */
 
+// --videos-only: the papers are already there; don't rewrite them or the AI
+// solutions production may have regenerated since.
+if (!VIDEOS_ONLY) {
 // No `downloads`: it used to be sent as 0, so every rerun (new papers, the
 // question texts) reset the live counters. New rows get the column default, 0.
 await upsert("exams", exams, "id", 50);
@@ -102,14 +123,21 @@ for (const [i, p] of paths.entries()) {
   if ((i + 1) % 20 === 0 || i === paths.length - 1) console.log(`  [${i + 1}/${paths.length}] uploaded ${uploaded}, skipped ${skipped}`);
 }
 console.log(`✓ PDFs: ${uploaded} uploaded (${(bytes / 1048576).toFixed(0)} MB), ${skipped} already there`);
+}
+
+// (url, exam_id) is unique: the physics paper shared by two streams lists one
+// video twice, once per paper.
+await upsert("videos", videos, "url,exam_id", 200);
+console.log(`✓ videos: ${videos.length}`);
 
 /* ---------------------------------------------------------------- verify */
 
 const after = {
   exams: (await all(prod, "exams", "id")).length,
   exam_ai_solutions: (await all(prod, "exam_ai_solutions", "exam_id")).length,
+  videos: (await pages(prod, "videos", "id", (q) => q.eq("type", "youtube"))).length,
 };
-const want = { exams: exams.length, exam_ai_solutions: solutions.length };
+const want = { exams: exams.length, exam_ai_solutions: VIDEOS_ONLY ? after.exam_ai_solutions : solutions.length, videos: videos.length };
 for (const t of Object.keys(want)) {
   if (after[t] !== want[t]) fail(`${t}: production has ${after[t]}, expected ${want[t]}`);
 }

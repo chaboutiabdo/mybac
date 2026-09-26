@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Eye, FileText, Sparkles } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Sparkles, Youtube } from "lucide-react";
 import { toast } from "sonner";
 
 import FilterPills, { STREAM_OPTIONS, SUBJECT_OPTIONS } from "@/components/FilterPills";
 import PageHeader from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState, Loading } from "@/components/ui/states";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +19,32 @@ import { openStoredFile } from "@/lib/files";
 import { cn } from "@/lib/utils";
 
 type Exam = Tables<"exams">;
+type Correction = { url: string; title: string; description: string | null };
+
+const openVideo = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
+
+/** Opens the paper's video correction, or lets the student pick one when each topic has its own. */
+function CorrectionButton({ videos }: { videos: Correction[] }) {
+  const button = (onClick?: () => void) => (
+    <Button variant="secondary" className="bg-card-raised/70 hover:bg-card-raised" onClick={onClick}>
+      <Youtube aria-hidden />
+      تصحيح بالفيديو
+    </Button>
+  );
+  if (videos.length === 1) return button(() => openVideo(videos[0].url));
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{button()}</DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {videos.map((v) => (
+          <DropdownMenuItem key={v.url} onSelect={() => openVideo(v.url)}>
+            {v.description || v.title}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 const Exams = () => {
   const [stream, setStream] = useState<string | null>(null);
@@ -25,6 +52,7 @@ const Exams = () => {
   const [year, setYear] = useState("all");
   const [exams, setExams] = useState<Exam[]>([]);
   const [examProgress, setExamProgress] = useState<Record<string, Tables<"exam_progress">>>({});
+  const [corrections, setCorrections] = useState<Record<string, Correction[]>>({});
   const [loading, setLoading] = useState(true);
 
   const { user } = useAuth();
@@ -34,7 +62,10 @@ const Exams = () => {
 
   useEffect(() => {
     fetchExams();
-    if (user) fetchExamProgress();
+    if (user) {
+      fetchExamProgress();
+      fetchCorrections();
+    }
   }, [user]);
 
   const fetchExams = async () => {
@@ -60,6 +91,29 @@ const Exams = () => {
       return;
     }
     setExamProgress(Object.fromEntries((data ?? []).map((p) => [p.exam_id, p])));
+  };
+
+  // Video corrections by paper. RLS lets only signed-in users read videos. The
+  // API returns at most 1,000 rows per request, and there are about that many.
+  const fetchCorrections = async () => {
+    const byExam: Record<string, Correction[]> = {};
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("videos")
+        .select("exam_id, url, title, description")
+        .eq("kind", "correction")
+        .order("created_at", { ascending: false })
+        .range(from, from + 999);
+      if (error) {
+        console.error("Error fetching video corrections:", error);
+        return;
+      }
+      for (const v of data) {
+        if (v.exam_id && v.url) (byExam[v.exam_id] ??= []).push({ url: v.url, title: v.title, description: v.description });
+      }
+      if (data.length < 1000) break;
+    }
+    setCorrections(byExam);
   };
 
   const handleExamAction = async (exam: Exam, action: "viewed" | "viewed_solution" | "solved_with_ai") => {
@@ -229,6 +283,7 @@ const Exams = () => {
                     <Sparkles aria-hidden />
                     {exam.exam_url || exam.solution_url ? "حل بالذكاء الاصطناعي" : "لا يوجد ملف"}
                   </Button>
+                  {corrections[exam.id] && <CorrectionButton videos={corrections[exam.id]} />}
                 </div>
               </article>
             );

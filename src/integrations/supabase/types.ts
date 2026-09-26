@@ -1146,12 +1146,15 @@ export type Database = {
       }
       videos: {
         Row: {
+          channel: string | null
           chapter: string | null
           created_at: string
           description: string | null
           duration: number | null
+          exam_id: string | null
           file_path: string | null
           id: string
+          kind: string
           subject: string
           title: string
           type: Database["public"]["Enums"]["video_type"]
@@ -1159,12 +1162,15 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          channel?: string | null
           chapter?: string | null
           created_at?: string
           description?: string | null
           duration?: number | null
+          exam_id?: string | null
           file_path?: string | null
           id?: string
+          kind?: string
           subject: string
           title: string
           type: Database["public"]["Enums"]["video_type"]
@@ -1172,19 +1178,30 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          channel?: string | null
           chapter?: string | null
           created_at?: string
           description?: string | null
           duration?: number | null
+          exam_id?: string | null
           file_path?: string | null
           id?: string
+          kind?: string
           subject?: string
           title?: string
           type?: Database["public"]["Enums"]["video_type"]
           updated_at?: string
           url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "videos_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -104,12 +104,6 @@ INSERT INTO public.exams (title, subject, stream, year, difficulty, questions) V
 ('الرياضيات — بكالوريا 2023', 'Math',    'Mathématiques',           2023, 'easy',   4)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO public.videos (title, subject, chapter, type, url, description) VALUES
-('مقدّمة إلى الدوال اللوغاريتمية', 'Math',    'logarithmic',          'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الدرس الأول'),
-('الاشتقاقية والمشتقات',           'Math',    'derivatives',          'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الدرس الأول'),
-('دراسة ظواهر كهربائية',           'Physics', 'electrical_phenomena', 'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'الوحدة الثالثة')
-ON CONFLICT DO NOTHING;
-
 INSERT INTO public.advice_tips (title, content, priority, is_public, active) VALUES
 ('راجع التمارين المحلولة', 'ابدأ بمواضيع السنوات الثلاث الأخيرة قبل الانتقال إلى ما قبلها.', 3, true, true),
 ('نظّم وقتك',              'جلسات من 45 دقيقة مع استراحة 10 دقائق أفضل من ساعات متواصلة.',   1, true, true)
